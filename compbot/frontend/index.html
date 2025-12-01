@@ -398,6 +398,39 @@
             color: var(--danger);
         }
         
+        /* Server Select Items */
+        .server-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+        }
+        
+        .server-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .server-info {
+            flex: 1;
+        }
+        
+        .server-name {
+            font-weight: 500;
+        }
+        
+        .server-permission {
+            font-size: 12px;
+            color: var(--gray);
+        }
+        
         /* Responsive */
         @media (max-width: 1024px) {
             .sidebar {
@@ -613,6 +646,28 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Teams Section -->
+            <div id="teamsSection" class="section" style="display: none;">
+                <h2 style="margin-bottom: 30px;">Team Management</h2>
+                <div id="teamsContent">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading teams...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Schedule Section -->
+            <div id="scheduleSection" class="section" style="display: none;">
+                <h2 style="margin-bottom: 30px;">Tournament Schedule</h2>
+                <div id="scheduleContent">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading schedule...
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -626,21 +681,23 @@
     </div>
 
     <script>
-        // Production Configuration
+        // ========== CONFIGURATION ==========
         const CONFIG = {
-            const API_URL = "https://compbot-lhuy.onrender.com"; // Your Render URL
-        const DISCORD_CLIENT_ID = "1445127821742575726"; // REPLACE WITH YOUR ACTUAL CLIENT ID
-        const REDIRECT_URI = "https://xotiicsplaza.us/"; // Your Vercel URL
-            DISCORD_INVITE: `https://discord.com/oauth2/authorize?client_id=1445127821742575726&integration_type=0&scope=applications.commands`
+            API_URL: "https://compbot-lhuy.onrender.com", // Your Render URL
+            DISCORD_CLIENT_ID: "1445127821742575726", // Your Discord Client ID
+            REDIRECT_URI: "https://xotiicsplaza.us/", // Your website URL
+            DISCORD_INVITE: "https://discord.com/oauth2/authorize?client_id=1445127821742575726&permissions=8&scope=bot%20applications.commands"
         };
 
-        // State
+        // ========== STATE ==========
         let currentUser = null;
         let userToken = null;
         let userServers = [];
 
-        // Initialize
+        // ========== INITIALIZATION ==========
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('XTourney loaded');
+            
             // Check for auth callback
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
@@ -655,45 +712,63 @@
                 }
             }
             
-            // Set default date/time
+            // Set default date/time (tomorrow 6 PM)
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             tomorrow.setHours(18, 0, 0);
-            document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
+            const localDateTime = tomorrow.toISOString().slice(0, 16);
+            document.getElementById('startDate').value = localDateTime;
         });
 
-        // Discord OAuth Login
+        // ========== DISCORD AUTHENTICATION ==========
         function loginWithDiscord() {
             const scope = 'identify email guilds';
             const state = generateState();
             localStorage.setItem('oauth_state', state);
             
-            const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&response_type=code&scope=${scope}&state=${state}`;
+            // Build Discord OAuth URL
+            const authUrl = new URL('https://discord.com/api/oauth2/authorize');
+            authUrl.searchParams.append('client_id', CONFIG.DISCORD_CLIENT_ID);
+            authUrl.searchParams.append('redirect_uri', CONFIG.REDIRECT_URI);
+            authUrl.searchParams.append('response_type', 'code');
+            authUrl.searchParams.append('scope', scope);
+            authUrl.searchParams.append('state', state);
+            authUrl.searchParams.append('prompt', 'none');
             
             // Show loading modal
             document.getElementById('authModal').style.display = 'flex';
             
-            // Open in same window for production
-            window.location.href = authUrl;
+            // Redirect to Discord OAuth
+            setTimeout(() => {
+                window.location.href = authUrl.toString();
+            }, 500);
         }
 
-        // Handle auth callback
         async function handleAuthCallback(code) {
             try {
-                document.getElementById('authModal').style.display = 'flex';
+                console.log('Handling auth callback with code:', code);
                 
+                // Exchange code for token via YOUR backend
                 const response = await fetch(`${CONFIG.API_URL}/api/auth/discord?code=${code}`, {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
                 
+                if (!response.ok) {
+                    throw new Error(`Auth failed: ${response.status}`);
+                }
+                
                 const data = await response.json();
+                console.log('Auth response:', data);
                 
                 if (data.success) {
                     currentUser = data.user;
                     userToken = data.access_token;
                     userServers = data.servers || [];
                     
-                    // Store tokens
+                    // Store in localStorage
                     localStorage.setItem('xtourney_token', userToken);
                     localStorage.setItem('xtourney_user', JSON.stringify(currentUser));
                     localStorage.setItem('xtourney_servers', JSON.stringify(userServers));
@@ -703,18 +778,20 @@
                     loadUserData();
                     
                     // Clean URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
+                    window.history.replaceState({}, document.title, '/');
+                    
+                    showAlert('Successfully logged in!', 'success');
                 } else {
                     throw new Error(data.detail || 'Authentication failed');
                 }
             } catch (error) {
-                showError('Authentication failed: ' + error.message);
+                console.error('Auth error:', error);
+                showError('Login failed: ' + error.message);
             } finally {
                 document.getElementById('authModal').style.display = 'none';
             }
         }
 
-        // Validate stored token
         async function validateToken(token) {
             try {
                 const response = await fetch(`${CONFIG.API_URL}/api/auth/me`, {
@@ -725,7 +802,7 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    currentUser = JSON.parse(localStorage.getItem('xtourney_user'));
+                    currentUser = JSON.parse(localStorage.getItem('xtourney_user')) || data.user;
                     userToken = token;
                     userServers = JSON.parse(localStorage.getItem('xtourney_servers') || '[]');
                     
@@ -735,11 +812,12 @@
                     logout();
                 }
             } catch (error) {
+                console.error('Token validation error:', error);
                 logout();
             }
         }
 
-        // Show dashboard
+        // ========== DASHBOARD FUNCTIONS ==========
         function showDashboard() {
             document.getElementById('landingPage').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
@@ -748,9 +826,11 @@
             const authButtons = document.getElementById('authButtons');
             authButtons.innerHTML = `
                 <div class="user-profile">
-                    <img src="${currentUser.avatar}" alt="Avatar" class="user-avatar">
+                    <img src="${currentUser.avatar || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                         alt="Avatar" class="user-avatar" 
+                         onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
                     <div class="user-info">
-                        <div class="user-name">${currentUser.username}</div>
+                        <div class="user-name">${currentUser.username || 'User'}</div>
                         <div class="user-role">Tournament Host</div>
                     </div>
                     <button onclick="logout()" style="margin-left: 10px; padding: 6px 12px; background: var(--danger); color: white; border: none; border-radius: 6px; font-size: 12px; cursor: pointer;">
@@ -763,8 +843,51 @@
             loadServersDropdown();
         }
 
-        // Load user data
+        function loadServersDropdown() {
+            const select = document.getElementById('serverSelect');
+            select.innerHTML = '<option value="">Select a server...</option>';
+            
+            if (!userServers || userServers.length === 0) {
+                select.innerHTML += '<option value="" disabled>No servers found</option>';
+                return;
+            }
+            
+            // Filter servers where user has ADMINISTRATOR permission (0x8)
+            const adminServers = userServers.filter(server => {
+                const permissions = parseInt(server.permissions);
+                return (permissions & 0x8) === 0x8; // Check for ADMINISTRATOR permission
+            });
+            
+            if (adminServers.length === 0) {
+                select.innerHTML += '<option value="" disabled>No servers with admin permission</option>';
+                return;
+            }
+            
+            adminServers.forEach(server => {
+                const option = document.createElement('option');
+                option.value = server.id;
+                option.innerHTML = `
+                    <div class="server-option">
+                        ${server.icon ? 
+                            `<img src="${server.icon}" alt="${server.name}" style="width: 20px; height: 20px; border-radius: 50%;">` :
+                            `<div class="server-icon">${server.name.charAt(0)}</div>`
+                        }
+                        <div class="server-info">
+                            <div class="server-name">${server.name}</div>
+                            <div class="server-permission">Administrator</div>
+                        </div>
+                    </div>
+                `;
+                select.appendChild(option);
+            });
+            
+            // Update stats
+            document.getElementById('statServers').textContent = adminServers.length;
+        }
+
         async function loadUserData() {
+            if (!currentUser || !userToken) return;
+            
             try {
                 // Load tournaments
                 const response = await fetch(`${CONFIG.API_URL}/api/tournaments`, {
@@ -775,34 +898,23 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    updateStats(data.tournaments);
-                    renderTournaments(data.tournaments);
+                    console.log('Tournaments data:', data);
                     
-                    // Update bracket tournament select
-                    updateBracketSelect(data.tournaments);
+                    if (data.tournaments) {
+                        updateStats(data.tournaments);
+                        renderTournaments(data.tournaments);
+                        updateBracketSelect(data.tournaments);
+                    }
+                } else {
+                    console.error('Failed to load tournaments:', response.status);
                 }
             } catch (error) {
                 console.error('Error loading user data:', error);
+                showError('Failed to load tournaments: ' + error.message);
             }
         }
 
-        // Load servers dropdown
-        function loadServersDropdown() {
-            const select = document.getElementById('serverSelect');
-            select.innerHTML = '<option value="">Select a server...</option>';
-            
-            userServers.forEach(server => {
-                const option = document.createElement('option');
-                option.value = server.id;
-                option.textContent = server.name;
-                select.appendChild(option);
-            });
-            
-            // Update stats
-            document.getElementById('statServers').textContent = userServers.length;
-        }
-
-        // Create tournament
+        // ========== TOURNAMENT MANAGEMENT ==========
         async function createTournament() {
             const form = document.getElementById('createForm');
             const alertDiv = document.getElementById('createAlert');
@@ -823,6 +935,11 @@
                 return;
             }
             
+            if (!tournamentData.name || !tournamentData.game) {
+                showAlert('Please fill in all required fields', 'error');
+                return;
+            }
+            
             try {
                 const response = await fetch(`${CONFIG.API_URL}/api/tournaments`, {
                     method: 'POST',
@@ -834,25 +951,35 @@
                 });
                 
                 const data = await response.json();
+                console.log('Create tournament response:', data);
                 
                 if (response.ok && data.success) {
                     showAlert('Tournament created successfully!', 'success');
+                    
+                    // Reset form
                     form.reset();
                     
-                    // Reload user data
-                    loadUserData();
+                    // Set default date
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(18, 0, 0);
+                    document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
                     
-                    // Switch to tournaments view
-                    showSection('tournaments');
+                    // Reload user data
+                    setTimeout(() => {
+                        loadUserData();
+                        showSection('tournaments');
+                    }, 1000);
                 } else {
                     throw new Error(data.detail || 'Failed to create tournament');
                 }
             } catch (error) {
+                console.error('Create tournament error:', error);
                 showAlert('Error: ' + error.message, 'error');
             }
         }
 
-        // Load bracket
+        // ========== BRACKET MANAGEMENT ==========
         async function loadBracket(tournamentId) {
             if (!tournamentId) return;
             
@@ -866,35 +993,38 @@
                     }
                 });
                 
-                const data = await response.json();
-                
-                if (response.ok) {
-                    renderBracket(data);
-                } else {
-                    throw new Error(data.detail || 'Failed to load bracket');
+                if (!response.ok) {
+                    throw new Error('Failed to load bracket');
                 }
+                
+                const data = await response.json();
+                renderBracket(data);
             } catch (error) {
+                console.error('Load bracket error:', error);
                 bracketDisplay.innerHTML = `<div class="alert alert-error">Error: ${error.message}</div>`;
             }
         }
 
-        // Render bracket
         function renderBracket(data) {
-            const { tournament, rounds, teams } = data;
+            const { tournament, rounds = {}, teams = [] } = data;
             const bracketDisplay = document.getElementById('bracketDisplay');
             
             let html = `
                 <div style="margin-bottom: 30px;">
                     <h3>${tournament.name} - ${tournament.game}</h3>
                     <p style="color: var(--gray); margin-top: 10px;">${tournament.description || 'No description provided'}</p>
+                    <div style="display: flex; gap: 20px; margin-top: 20px;">
+                        <span>Status: <strong>${tournament.status.toUpperCase()}</strong></span>
+                        <span>Teams: <strong>${tournament.current_teams}/${tournament.max_teams}</strong></span>
+                        <span>Type: <strong>${tournament.bracket_type.replace('_', ' ').toUpperCase()}</strong></span>
+                    </div>
                 </div>
             `;
             
-            if (Object.keys(rounds).length > 0) {
+            const roundNumbers = Object.keys(rounds).sort((a, b) => a - b);
+            
+            if (roundNumbers.length > 0) {
                 html += `<div class="bracket-container"><div class="bracket-rounds">`;
-                
-                // Sort rounds
-                const roundNumbers = Object.keys(rounds).sort((a, b) => a - b);
                 
                 roundNumbers.forEach(roundNum => {
                     const roundMatches = rounds[roundNum];
@@ -905,14 +1035,24 @@
                             ${roundMatches.map(match => `
                                 <div class="match-card">
                                     <div class="match-teams">
-                                        <div class="team ${match.winner_id ? 'winner' : ''}">
-                                            <span>Team ${match.match_number}A</span>
-                                            <span>${match.score_team1}</span>
+                                        <div class="team ${match.winner_id === match.team1_id ? 'winner' : ''}">
+                                            <span>${getTeamName(match.team1_id, teams) || `Team ${match.match_number}A`}</span>
+                                            <span style="color: var(--primary); font-weight: bold;">${match.score_team1}</span>
                                         </div>
-                                        <div class="team ${match.winner_id ? '' : ''}">
-                                            <span>Team ${match.match_number}B</span>
-                                            <span>${match.score_team2}</span>
+                                        <div class="team ${match.winner_id === match.team2_id ? 'winner' : ''}">
+                                            <span>${getTeamName(match.team2_id, teams) || `Team ${match.match_number}B`}</span>
+                                            <span style="color: var(--primary); font-weight: bold;">${match.score_team2}</span>
                                         </div>
+                                    </div>
+                                    ${match.scheduled_time ? `
+                                        <div style="text-align: center; margin-top: 10px; font-size: 12px; color: var(--gray);">
+                                            ${new Date(match.scheduled_time).toLocaleString()}
+                                        </div>
+                                    ` : ''}
+                                    <div style="text-align: center; margin-top: 10px;">
+                                        <span style="padding: 4px 8px; background: ${getMatchStatusColor(match.status)}; border-radius: 4px; font-size: 11px;">
+                                            ${match.status.toUpperCase()}
+                                        </span>
                                     </div>
                                 </div>
                             `).join('')}
@@ -922,28 +1062,46 @@
                 
                 html += `</div></div>`;
             } else {
-                html += `<div style="text-align: center; padding: 40px; color: var(--gray);">
-                    <p>No bracket generated yet. Teams need to register first.</p>
-                </div>`;
+                html += `
+                    <div style="text-align: center; padding: 60px; color: var(--gray);">
+                        <p style="margin-bottom: 20px;">No bracket generated yet.</p>
+                        <p>Teams need to register first.</p>
+                    </div>
+                `;
             }
             
             bracketDisplay.innerHTML = html;
         }
 
-        // Update stats
+        function getTeamName(teamId, teams) {
+            if (!teamId) return null;
+            const team = teams.find(t => t.id === teamId);
+            return team ? team.name : null;
+        }
+
+        function getMatchStatusColor(status) {
+            const colors = {
+                'pending': 'var(--warning)',
+                'ongoing': 'var(--primary)',
+                'completed': 'var(--success)',
+                'cancelled': 'var(--danger)'
+            };
+            return colors[status] || 'var(--gray)';
+        }
+
+        // ========== UI HELPERS ==========
         function updateStats(tournaments) {
             const active = tournaments.filter(t => t.status === 'registration' || t.status === 'ongoing').length;
-            const totalTeams = tournaments.reduce((sum, t) => sum + t.current_teams, 0);
+            const totalTeams = tournaments.reduce((sum, t) => sum + (t.current_teams || 0), 0);
             
             document.getElementById('statActive').textContent = active;
             document.getElementById('statTeams').textContent = totalTeams;
         }
 
-        // Render tournaments
         function renderTournaments(tournaments) {
             const container = document.getElementById('tournamentsContent');
             
-            if (tournaments.length === 0) {
+            if (!tournaments || tournaments.length === 0) {
                 container.innerHTML = `
                     <div style="text-align: center; padding: 60px; color: var(--gray);">
                         <p style="margin-bottom: 20px;">No tournaments yet</p>
@@ -967,7 +1125,7 @@
                             </div>
                         </div>
                         <div class="tournament-meta">
-                            ${tournament.game} • ${tournament.current_teams}/${tournament.max_teams} teams
+                            ${tournament.game} • ${tournament.current_teams || 0}/${tournament.max_teams} teams
                         </div>
                         <p style="color: var(--gray); font-size: 14px; margin-bottom: 20px;">
                             ${tournament.description || 'No description'}
@@ -988,33 +1146,30 @@
             container.innerHTML = html;
         }
 
-        // Update bracket select
         function updateBracketSelect(tournaments) {
             const select = document.getElementById('bracketTournamentSelect');
             select.innerHTML = '<option value="">Select a tournament...</option>';
             
+            if (!tournaments) return;
+            
             tournaments.forEach(tournament => {
                 const option = document.createElement('option');
                 option.value = tournament.id;
-                option.textContent = tournament.name;
+                option.textContent = `${tournament.name} (${tournament.game})`;
                 select.appendChild(option);
             });
         }
 
-        // View tournament
         function viewTournament(tournamentId) {
             showSection('brackets');
             loadBracket(tournamentId);
             document.getElementById('bracketTournamentSelect').value = tournamentId;
         }
 
-        // Manage tournament
         function manageTournament(tournamentId) {
-            // Implement tournament management
-            alert('Tournament management coming soon!');
+            showAlert('Tournament management features coming soon!', 'success');
         }
 
-        // Show section
         function showSection(sectionName) {
             // Hide all sections
             document.querySelectorAll('.section').forEach(section => {
@@ -1022,7 +1177,10 @@
             });
             
             // Show selected section
-            document.getElementById(`${sectionName}Section`).style.display = 'block';
+            const section = document.getElementById(`${sectionName}Section`);
+            if (section) {
+                section.style.display = 'block';
+            }
             
             // Update nav items
             document.querySelectorAll('.nav-item').forEach(item => {
@@ -1031,30 +1189,60 @@
             
             // Find and activate corresponding nav item
             document.querySelectorAll('.nav-item').forEach(item => {
-                if (item.textContent.includes(sectionName.charAt(0).toUpperCase() + sectionName.slice(1))) {
+                if (item.textContent.trim().toLowerCase().includes(sectionName.toLowerCase())) {
                     item.classList.add('active');
                 }
             });
+            
+            // Load data for the section
+            if (sectionName === 'overview') {
+                loadUserData();
+            } else if (sectionName === 'tournaments') {
+                loadUserData();
+            }
         }
 
-        // Show alert
-        function showAlert(message, type = 'error') {
+        // ========== UTILITY FUNCTIONS ==========
+        function showAlert(message, type = 'success') {
             const alertDiv = document.getElementById('createAlert');
+            if (!alertDiv) return;
+            
             alertDiv.style.display = 'block';
             alertDiv.className = `alert alert-${type}`;
             alertDiv.textContent = message;
+            alertDiv.style.animation = 'fadeIn 0.3s';
             
             setTimeout(() => {
                 alertDiv.style.display = 'none';
             }, 5000);
         }
 
-        // Generate state for OAuth
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-error';
+            errorDiv.textContent = message;
+            errorDiv.style.position = 'fixed';
+            errorDiv.style.top = '20px';
+            errorDiv.style.right = '20px';
+            errorDiv.style.zIndex = '3000';
+            errorDiv.style.maxWidth = '400px';
+            errorDiv.style.padding = '15px';
+            errorDiv.style.borderRadius = '8px';
+            errorDiv.style.animation = 'fadeIn 0.3s';
+            
+            document.body.appendChild(errorDiv);
+            
+            setTimeout(() => {
+                errorDiv.style.opacity = '0';
+                errorDiv.style.transition = 'opacity 0.3s';
+                setTimeout(() => errorDiv.remove(), 300);
+            }, 5000);
+        }
+
         function generateState() {
             return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         }
 
-        // Logout
         function logout() {
             localStorage.removeItem('xtourney_token');
             localStorage.removeItem('xtourney_user');
@@ -1077,30 +1265,24 @@
             
             // Clear URL
             window.history.replaceState({}, document.title, window.location.pathname);
+            
+            showAlert('Successfully logged out', 'success');
         }
 
-        // Invite bot
         function inviteBot() {
-            window.open(CONFIG.DISCORD_INVITE.replace('YOUR_CLIENT_ID', CONFIG.DISCORD_CLIENT_ID), '_blank');
+            window.open(CONFIG.DISCORD_INVITE, '_blank');
         }
 
-        // Error handling
-        function showError(message) {
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'alert alert-error';
-            errorDiv.textContent = message;
-            errorDiv.style.position = 'fixed';
-            errorDiv.style.top = '20px';
-            errorDiv.style.right = '20px';
-            errorDiv.style.zIndex = '3000';
-            errorDiv.style.maxWidth = '400px';
-            
-            document.body.appendChild(errorDiv);
-            
-            setTimeout(() => {
-                errorDiv.remove();
-            }, 5000);
-        }
+        // Add CSS animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(-10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
+
