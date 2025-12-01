@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TournaBot - Tournament Manager</title>
+    <title>XTourney - Complete Tournament Manager</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
             color: white;
         }
@@ -26,285 +26,948 @@
         
         header {
             text-align: center;
-            padding: 60px 20px;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            margin-bottom: 40px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         h1 {
-            font-size: 3.5rem;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .subtitle {
-            font-size: 1.2rem;
-            opacity: 0.9;
-            max-width: 600px;
-            margin: 0 auto 40px;
-        }
-        
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            margin: 60px 0;
-        }
-        
-        .feature-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
-            transition: transform 0.3s, background 0.3s;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .feature-card:hover {
-            transform: translateY(-5px);
-            background: rgba(255, 255, 255, 0.15);
-        }
-        
-        .feature-icon {
             font-size: 3rem;
             margin-bottom: 20px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
         
-        .feature-card h3 {
-            font-size: 1.5rem;
-            margin-bottom: 15px;
+        .auth-section {
+            position: absolute;
+            top: 20px;
+            right: 20px;
         }
         
-        .setup-steps {
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 40px;
-            margin: 60px 0;
-        }
-        
-        .step {
-            display: flex;
-            align-items: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-        }
-        
-        .step-number {
-            width: 50px;
-            height: 50px;
-            background: #4CAF50;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-right: 20px;
-            flex-shrink: 0;
-        }
-        
-        .cta-button {
-            display: inline-block;
-            background: #7289DA;
-            color: white;
-            padding: 18px 40px;
-            font-size: 1.2rem;
-            font-weight: bold;
+            padding: 10px 20px;
             border-radius: 50px;
-            text-decoration: none;
-            transition: all 0.3s;
-            border: none;
-            cursor: pointer;
-            margin: 10px;
         }
         
-        .cta-button:hover {
-            background: #5B6EAE;
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #667eea;
+        }
+        
+        .user-info {
+            text-align: left;
+        }
+        
+        .user-name {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .user-role {
+            font-size: 12px;
+            color: #a0a0a0;
+        }
+        
+        .login-btn {
+            background: #5865F2;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .login-btn:hover {
+            background: #4752C4;
             transform: scale(1.05);
         }
         
-        .command-list {
-            background: rgba(255, 255, 255, 0.1);
+        .dashboard {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .sidebar {
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
             padding: 25px;
+            height: fit-content;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .main-content {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 15px;
+        }
+        
+        .tab-btn {
+            background: transparent;
+            color: #a0a0a0;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .tab-btn.active {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .tournament-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+        }
+        
+        .tournament-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+        
+        .tournament-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .tournament-name {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .tournament-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-registration {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+        
+        .status-ongoing {
+            background: rgba(33, 150, 243, 0.2);
+            color: #2196F3;
+        }
+        
+        .bracket-view {
+            display: flex;
+            overflow-x: auto;
+            gap: 40px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            min-height: 400px;
+        }
+        
+        .bracket-round {
+            min-width: 250px;
+        }
+        
+        .round-header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #667eea;
+            font-weight: bold;
+            padding: 10px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+        }
+        
+        .bracket-match {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .match-teams {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .team {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.03);
+        }
+        
+        .team.winner {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+        
+        .team-name {
+            font-weight: 500;
+        }
+        
+        .team-score {
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .match-time {
+            font-size: 12px;
+            color: #a0a0a0;
+            text-align: center;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .create-tournament-form {
+            display: grid;
+            gap: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-label {
+            font-weight: 500;
+            color: #a0a0a0;
+        }
+        
+        .form-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px 15px;
+            color: white;
+            font-size: 16px;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .server-selector {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px 15px;
+            color: white;
+            width: 100%;
+            cursor: pointer;
+        }
+        
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 0 5px;
+        }
+        
+        .role-host {
+            background: rgba(255, 193, 7, 0.2);
+            color: #FFC107;
+        }
+        
+        .role-player {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+        
+        .role-admin {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #a0a0a0;
+        }
+        
+        .error {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            color: #f44336;
+            padding: 15px;
+            border-radius: 8px;
             margin: 20px 0;
         }
         
-        .command {
-            font-family: 'Courier New', monospace;
-            background: rgba(0,0,0,0.3);
-            padding: 10px 15px;
+        .success {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            color: #4CAF50;
+            padding: 15px;
             border-radius: 8px;
-            margin: 10px 0;
-            display: block;
+            margin: 20px 0;
         }
         
         footer {
             text-align: center;
-            padding: 40px 20px;
-            margin-top: 60px;
-            opacity: 0.8;
+            margin-top: 50px;
+            padding: 20px;
+            color: #a0a0a0;
+            font-size: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         @media (max-width: 768px) {
-            h1 {
-                font-size: 2.5rem;
-            }
-            
-            .features {
+            .dashboard {
                 grid-template-columns: 1fr;
             }
             
-            .step {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .step-number {
-                margin-right: 0;
-                margin-bottom: 15px;
+            .auth-section {
+                position: static;
+                margin-bottom: 20px;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Authentication Section -->
+        <div class="auth-section" id="authSection">
+            <div id="userProfile" style="display: none;">
+                <div class="user-profile">
+                    <img id="userAvatar" class="user-avatar" src="" alt="Avatar">
+                    <div class="user-info">
+                        <div id="userName" class="user-name"></div>
+                        <div id="userRole" class="user-role"></div>
+                    </div>
+                    <button onclick="logout()" style="margin-left: 10px; padding: 8px 15px; background: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Logout
+                    </button>
+                </div>
+            </div>
+            <button id="loginButton" class="login-btn" onclick="loginWithDiscord()">
+                <img src="https://cdn.jsdelivr.net/npm/simple-icons@v5/icons/discord.svg" alt="Discord" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 8px;">
+                Login with Discord
+            </button>
+        </div>
+
         <header>
-            <h1>🎮 TournaBot</h1>
-            <p class="subtitle">Complete Discord tournament management system with automated brackets, match verification, and organized channels.</p>
-            
-            <div style="margin-top: 40px;">
-                <a href="https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=8&scope=bot%20applications.commands" 
-                   class="cta-button" target="_blank">
-                    Add to Discord
-                </a>
-                <a href="#setup" class="cta-button" style="background: #4CAF50;">
-                    Quick Setup Guide
-                </a>
-            </div>
+            <h1>🎮 TournaBot Dashboard</h1>
+            <p>Manage tournaments, view brackets, schedule matches, and assign roles</p>
         </header>
-        
-        <section class="features">
-            <div class="feature-card">
-                <div class="feature-icon">🏆</div>
-                <h3>Auto-Brackets</h3>
-                <p>Automatic bracket generation for single/double elimination tournaments. Real-time updates and progression.</p>
-            </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">📋</div>
-                <h3>Channel Management</h3>
-                <p>Organized channels for announcements, registrations, brackets, LFG, clips, and verifications.</p>
-            </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">✅</div>
-                <h3>Match Verification</h3>
-                <p>Players submit proof, hosts verify. Automated bracket updates and result posting.</p>
-            </div>
-        </section>
-        
-        <section id="setup" class="setup-steps">
-            <h2 style="text-align: center; margin-bottom: 40px; font-size: 2rem;">🚀 Quick Setup</h2>
-            
-            <div class="step">
-                <div class="step-number">1</div>
-                <div>
-                    <h3>Add TournaBot to Your Server</h3>
-                    <p>Use the invite link above with Administrator permissions.</p>
-                </div>
-            </div>
-            
-            <div class="step">
-                <div class="step-number">2</div>
-                <div>
-                    <h3>Run Setup Command</h3>
-                    <p>In your Discord server, type: <span class="command">/setup</span></p>
-                    <p>This will auto-create all necessary channels and roles.</p>
-                </div>
-            </div>
-            
-            <div class="step">
-                <div class="step-number">3</div>
-                <div>
-                    <h3>Configure Channels (Optional)</h3>
-                    <p>If you want to use existing channels:</p>
-                    <div class="command">/channels set type:announcements</div>
-                    <div class="command">/channels set type:brackets</div>
-                    <div class="command">/channels set type:verifications</div>
-                </div>
-            </div>
-            
-            <div class="step">
-                <div class="step-number">4</div>
-                <div>
-                    <h3>Create Your First Tournament</h3>
-                    <p>Use: <span class="command">/tournament create</span></p>
-                    <p>All announcements will go to your configured channels automatically!</p>
-                </div>
-            </div>
-        </section>
-        
-        <section style="text-align: center; margin: 60px 0;">
-            <h2 style="font-size: 2rem; margin-bottom: 30px;">🎯 Key Commands</h2>
-            
-            <div style="max-width: 600px; margin: 0 auto;">
-                <div class="command-list">
-                    <strong>Channel Management:</strong>
-                    <div class="command">/channels set</div>
-                    <div class="command">/channels view</div>
+
+        <div class="dashboard">
+            <!-- Sidebar Navigation -->
+            <div class="sidebar">
+                <h3 style="margin-bottom: 20px; color: #667eea;">Navigation</h3>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button onclick="showTab('dashboard')" class="tab-btn active">
+                        📊 Dashboard
+                    </button>
+                    <button onclick="showTab('tournaments')" class="tab-btn">
+                        🏆 Tournaments
+                    </button>
+                    <button onclick="showTab('brackets')" class="tab-btn">
+                        📋 Brackets
+                    </button>
+                    <button onclick="showTab('schedule')" class="tab-btn">
+                        🗓️ Schedule
+                    </button>
+                    <button onclick="showTab('create')" class="tab-btn">
+                        ➕ Create Tournament
+                    </button>
+                    <button onclick="showTab('roles')" class="tab-btn">
+                        👥 Role Manager
+                    </button>
                 </div>
                 
-                <div class="command-list">
-                    <strong>Tournaments:</strong>
-                    <div class="command">/tournament create</div>
-                    <div class="command">/tournament announce</div>
-                </div>
-                
-                <div class="command-list">
-                    <strong>Match System:</strong>
-                    <div class="command">/match report</div>
-                    <div class="command">/match verify</div>
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                    <h4 style="margin-bottom: 15px; color: #a0a0a0;">Quick Stats</h4>
+                    <div id="quickStats">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span>Active Tournaments:</span>
+                            <span id="activeTournaments">0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span>Your Role:</span>
+                            <span id="userRoleBadge">Not logged in</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Servers:</span>
+                            <span id="serverCount">0</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </section>
-        
+
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Dashboard Tab -->
+                <div id="dashboardTab" class="tab-content active">
+                    <h2>Welcome to TournaBot</h2>
+                    <p style="margin: 20px 0; color: #a0a0a0;">Manage your gaming tournaments with ease</p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 30px;">
+                        <div class="tournament-card">
+                            <h3>Quick Actions</h3>
+                            <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+                                <button onclick="showTab('create')" class="submit-btn" style="padding: 12px;">
+                                    Create Tournament
+                                </button>
+                                <button onclick="showTab('brackets')" class="submit-btn" style="background: #2196F3; padding: 12px;">
+                                    View Brackets
+                                </button>
+                                <button onclick="inviteBot()" class="submit-btn" style="background: #5865F2; padding: 12px;">
+                                    Invite Bot to Server
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="tournament-card">
+                            <h3>Your Tournaments</h3>
+                            <div id="userTournamentsList" style="margin-top: 15px;">
+                                <div class="loading">Loading your tournaments...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tournaments Tab -->
+                <div id="tournamentsTab" class="tab-content">
+                    <h2>Active Tournaments</h2>
+                    <div id="tournamentsList" style="margin-top: 20px;">
+                        <div class="loading">Loading tournaments...</div>
+                    </div>
+                </div>
+
+                <!-- Brackets Tab -->
+                <div id="bracketsTab" class="tab-content">
+                    <h2>Tournament Brackets</h2>
+                    <div style="margin: 20px 0;">
+                        <select id="bracketTournamentSelect" class="server-selector" onchange="loadBracket(this.value)">
+                            <option value="">Select a tournament...</option>
+                        </select>
+                    </div>
+                    <div id="bracketContainer">
+                        <div class="loading">Select a tournament to view brackets</div>
+                    </div>
+                </div>
+
+                <!-- Schedule Tab -->
+                <div id="scheduleTab" class="tab-content">
+                    <h2>Match Schedule</h2>
+                    <div id="scheduleList" style="margin-top: 20px;">
+                        <div class="loading">Loading schedule...</div>
+                    </div>
+                </div>
+
+                <!-- Create Tournament Tab -->
+                <div id="createTab" class="tab-content">
+                    <h2>Create New Tournament</h2>
+                    <p style="margin: 10px 0 30px 0; color: #a0a0a0;">Fill in the details to create your tournament</p>
+                    
+                    <div id="createFormError" class="error" style="display: none;"></div>
+                    <div id="createFormSuccess" class="success" style="display: none;"></div>
+                    
+                    <form class="create-tournament-form" onsubmit="createTournament(event)">
+                        <div class="form-group">
+                            <label class="form-label">Discord Server</label>
+                            <select id="serverSelect" class="server-selector" required>
+                                <option value="">Select a server...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Tournament Name</label>
+                            <input type="text" class="form-input" id="tournamentName" required 
+                                   placeholder="Summer Championship 2024">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Game</label>
+                            <input type="text" class="form-input" id="tournamentGame" required 
+                                   placeholder="Valorant, CS2, League of Legends, etc.">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Max Teams</label>
+                            <select class="server-selector" id="maxTeams" required>
+                                <option value="8">8 Teams</option>
+                                <option value="16" selected>16 Teams</option>
+                                <option value="32">32 Teams</option>
+                                <option value="64">64 Teams</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Bracket Type</label>
+                            <select class="server-selector" id="bracketType" required>
+                                <option value="single_elimination">Single Elimination</option>
+                                <option value="double_elimination">Double Elimination</option>
+                                <option value="round_robin">Round Robin</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Start Date & Time</label>
+                            <input type="datetime-local" class="form-input" id="startDate" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Description (Optional)</label>
+                            <textarea class="form-input" id="description" rows="3" 
+                                      placeholder="Tournament rules, prize pool, schedule..."></textarea>
+                        </div>
+                        
+                        <button type="submit" class="submit-btn">Create Tournament</button>
+                    </form>
+                </div>
+
+                <!-- Role Manager Tab -->
+                <div id="rolesTab" class="tab-content">
+                    <h2>Role Management</h2>
+                    <p style="margin: 10px 0 30px 0; color: #a0a0a0;">Assign roles to users in your tournaments</p>
+                    
+                    <div id="roleManager">
+                        <div class="loading">Loading role manager...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <footer>
-            <p>TournaBot is not affiliated with Discord or any game companies.</p>
-            <p style="margin-top: 10px;">Need help? Join our <a href="https://discord.gg/example" style="color: #7289DA; text-decoration: none;">Support Server</a></p>
+            <p>XTourney - Complete Tournament Management System</p>
+            <p style="margin-top: 10px; font-size: 12px;">Not affiliated with Discord or any game companies.</p>
         </footer>
     </div>
-    
+
     <script>
-        // Simple functionality for the page
+        // Configuration
+        const API_URL = "https://compbot-lhuy.onrender.com"; // Your Render URL
+        const DISCORD_CLIENT_ID = "1445127821742575726"; // REPLACE WITH YOUR ACTUAL CLIENT ID
+        const REDIRECT_URI = "https://xotiicsplaza.us/"; // Your Vercel URL
+        
+        // State
+        let currentUser = null;
+        let userServers = [];
+        
+        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            // Smooth scrolling for anchor links
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                anchor.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    const targetId = this.getAttribute('href');
-                    if(targetId === '#') return;
-                    
-                    const targetElement = document.querySelector(targetId);
-                    if(targetElement) {
-                        targetElement.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
-                    }
+            checkAuth();
+            loadServers();
+            setDateTimeDefault();
+        });
+        
+        // Set default datetime to tomorrow
+        function setDateTimeDefault() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(18, 0, 0); // 6 PM
+            
+            const localDateTime = tomorrow.toISOString().slice(0, 16);
+            document.getElementById('startDate').value = localDateTime;
+        }
+        
+        // Discord OAuth Login
+        function loginWithDiscord() {
+            const scope = 'identify email guilds';
+            const redirectUri = encodeURIComponent(REDIRECT_URI);
+            const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1445127821742575726&permissions=268692560&integration_type=0&scope=bot`;
+            
+            // For development, use popup
+            const width = 500;
+            const height = 700;
+            const left = (screen.width - width) / 2;
+            const top = (screen.height - height) / 2;
+            
+            window.open(discordAuthUrl, 'Discord Login', 
+                `width=${width},height=${height},top=${top},left=${left}`);
+            
+            // Listen for auth callback
+            window.addEventListener('message', async function(event) {
+                if (event.data.type === 'discord-auth') {
+                    const code = event.data.code;
+                    await exchangeCodeForToken(code);
+                }
+            });
+        }
+        
+        // Exchange auth code for token
+        async function exchangeCodeForToken(code) {
+            try {
+                const response = await fetch(`${API_URL}/auth/discord?code=${code}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentUser = data.user;
+                    localStorage.setItem('discord_token', data.access_token);
+                    localStorage.setItem('user_data', JSON.stringify(data.user));
+                    updateUserProfile();
+                    loadUserData();
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+            }
+        }
+        
+        // Check if user is already logged in
+        function checkAuth() {
+            const userData = localStorage.getItem('user_data');
+            if (userData) {
+                currentUser = JSON.parse(userData);
+                updateUserProfile();
+                loadUserData();
+            }
+        }
+        
+        // Update user profile display
+        function updateUserProfile() {
+            if (currentUser) {
+                document.getElementById('userProfile').style.display = 'block';
+                document.getElementById('loginButton').style.display = 'none';
+                
+                document.getElementById('userName').textContent = currentUser.username;
+                document.getElementById('userAvatar').src = currentUser.avatar_url || 
+                    'https://cdn.discordapp.com/embed/avatars/0.png';
+                
+                // Set role badge
+                document.getElementById('userRoleBadge').innerHTML = 
+                    `<span class="role-badge role-host">Host</span>`;
+            }
+        }
+        
+        // Logout
+        function logout() {
+            localStorage.removeItem('discord_token');
+            localStorage.removeItem('user_data');
+            currentUser = null;
+            
+            document.getElementById('userProfile').style.display = 'none';
+            document.getElementById('loginButton').style.display = 'block';
+            document.getElementById('userRoleBadge').textContent = 'Not logged in';
+            
+            // Clear user data
+            document.getElementById('userTournamentsList').innerHTML = 
+                '<div class="loading">Login to see your tournaments</div>';
+        }
+        
+        // Load user's Discord servers
+        async function loadServers() {
+            try {
+                // This would normally come from Discord API
+                // For demo, we'll use mock data
+                userServers = [
+                    { id: '1', name: 'Gaming Community', icon: '🎮' },
+                    { id: '2', name: 'Esports Club', icon: '🏆' },
+                    { id: '3', name: 'Tournament Hub', icon: '⚔️' }
+                ];
+                
+                const serverSelect = document.getElementById('serverSelect');
+                serverSelect.innerHTML = '<option value="">Select a server...</option>';
+                
+                userServers.forEach(server => {
+                    const option = document.createElement('option');
+                    option.value = server.id;
+                    option.textContent = `${server.icon} ${server.name}`;
+                    serverSelect.appendChild(option);
                 });
+                
+                document.getElementById('serverCount').textContent = userServers.length;
+            } catch (error) {
+                console.error('Error loading servers:', error);
+            }
+        }
+        
+        // Load user data
+        async function loadUserData() {
+            if (!currentUser) return;
+            
+            // Load user tournaments
+            try {
+                const response = await fetch(`${API_URL}/users/${currentUser.id}/tournaments`);
+                const tournaments = await response.json();
+                
+                const container = document.getElementById('userTournamentsList');
+                if (tournaments.length > 0) {
+                    container.innerHTML = tournaments.map(tournament => `
+                        <div class="tournament-card">
+                            <div class="tournament-header">
+                                <div class="tournament-name">${tournament.name}</div>
+                                <div class="tournament-status status-${tournament.status}">
+                                    ${tournament.status.toUpperCase()}
+                                </div>
+                            </div>
+                            <div style="color: #a0a0a0; font-size: 14px;">
+                                ${tournament.game} • ${tournament.current_teams}/${tournament.max_teams} teams
+                            </div>
+                            <button onclick="viewTournament('${tournament.id}')" 
+                                    style="margin-top: 10px; padding: 8px 15px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;">
+                                View Details
+                            </button>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div style="color: #a0a0a0; text-align: center; padding: 20px;">No tournaments yet</div>';
+                }
+                
+                document.getElementById('activeTournaments').textContent = tournaments.length;
+            } catch (error) {
+                console.error('Error loading user tournaments:', error);
+            }
+        }
+        
+        // Create tournament
+        async function createTournament(event) {
+            event.preventDefault();
+            
+            if (!currentUser) {
+                alert('Please login first!');
+                return;
+            }
+            
+            const serverId = document.getElementById('serverSelect').value;
+            if (!serverId) {
+                alert('Please select a Discord server');
+                return;
+            }
+            
+            const tournamentData = {
+                name: document.getElementById('tournamentName').value,
+                game: document.getElementById('tournamentGame').value,
+                description: document.getElementById('description').value,
+                max_teams: parseInt(document.getElementById('maxTeams').value),
+                bracket_type: document.getElementById('bracketType').value,
+                start_date: document.getElementById('startDate').value,
+                discord_server_id: serverId,
+                created_by: currentUser.id,
+                assign_host_role: true
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/tournaments/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(tournamentData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('createFormSuccess').style.display = 'block';
+                    document.getElementById('createFormError').style.display = 'none';
+                    document.getElementById('createFormSuccess').textContent = 
+                        `✅ Tournament "${result.tournament.name}" created successfully!`;
+                    
+                    // Reset form
+                    event.target.reset();
+                    setDateTimeDefault();
+                    
+                    // Reload user data
+                    loadUserData();
+                } else {
+                    throw new Error(result.error || 'Failed to create tournament');
+                }
+            } catch (error) {
+                document.getElementById('createFormError').style.display = 'block';
+                document.getElementById('createFormSuccess').style.display = 'none';
+                document.getElementById('createFormError').textContent = 
+                    `❌ Error: ${error.message}`;
+            }
+        }
+        
+        // View tournament
+        function viewTournament(tournamentId) {
+            showTab('brackets');
+            loadBracket(tournamentId);
+        }
+        
+        // Load bracket for tournament
+        async function loadBracket(tournamentId) {
+            if (!tournamentId) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/tournaments/${tournamentId}/bracket`);
+                const bracketData = await response.json();
+                
+                displayBracket(bracketData);
+            } catch (error) {
+                document.getElementById('bracketContainer').innerHTML = `
+                    <div class="error">Error loading bracket: ${error.message}</div>
+                `;
+            }
+        }
+        
+        // Display bracket
+        function displayBracket(bracketData) {
+            const container = document.getElementById('bracketContainer');
+            const tournament = bracketData.tournament;
+            const rounds = bracketData.rounds;
+            
+            let html = `
+                <div style="margin-bottom: 20px;">
+                    <h3>${tournament.name} - ${tournament.game}</h3>
+                    <p style="color: #a0a0a0;">${tournament.description || 'No description'}</p>
+                </div>
+            `;
+            
+            if (Object.keys(rounds).length > 0) {
+                html += `<div class="bracket-view">`;
+                
+                // Sort rounds
+                const roundNumbers = Object.keys(rounds).sort((a, b) => a - b);
+                
+                roundNumbers.forEach(roundNum => {
+                    const roundMatches = rounds[roundNum];
+                    
+                    html += `
+                        <div class="bracket-round">
+                            <div class="round-header">Round ${roundNum}</div>
+                            ${roundMatches.map(match => `
+                                <div class="bracket-match">
+                                    <div class="match-teams">
+                                        <div class="team ${match.winner_id === match.team1_id ? 'winner' : ''}">
+                                            <span class="team-name">Team ${match.match_number}A</span>
+                                            <span class="team-score">${match.score_team1}</span>
+                                        </div>
+                                        <div class="team ${match.winner_id === match.team2_id ? 'winner' : ''}">
+                                            <span class="team-name">Team ${match.match_number}B</span>
+                                            <span class="team-score">${match.score_team2}</span>
+                                        </div>
+                                    </div>
+                                    ${match.scheduled_time ? `
+                                        <div class="match-time">
+                                            ${new Date(match.scheduled_time).toLocaleString()}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                });
+                
+                html += `</div>`;
+            } else {
+                html += `<div style="text-align: center; padding: 50px; color: #a0a0a0;">
+                    <p>No bracket generated yet. Teams need to register first.</p>
+                    <button onclick="generateBracket('${tournament.id}')" 
+                            style="margin-top: 20px; padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Generate Bracket
+                    </button>
+                </div>`;
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        // Invite bot to server
+        function inviteBot() {
+            const inviteUrl = `https://discord.com/oauth2/authorize?client_id=1445127821742575726&permissions=268692560&integration_type=0&scope=bot`;
+            window.open(inviteUrl, '_blank');
+        }
+        
+        // Tab navigation
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
             });
             
-            // Add hover effects to feature cards
-            const cards = document.querySelectorAll('.feature-card');
-            cards.forEach(card => {
-                card.addEventListener('mouseenter', () => {
-                    card.style.transform = 'translateY(-5px)';
-                });
-                card.addEventListener('mouseleave', () => {
-                    card.style.transform = 'translateY(0)';
-                });
+            // Deactivate all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
             });
+            
+            // Show selected tab
+            document.getElementById(`${tabName}Tab`).classList.add('active');
+            
+            // Activate button (find by onclick attribute)
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.getAttribute('onclick') === `showTab('${tabName}')`) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+        
+        // Simulate Discord auth callback
+        window.addEventListener('load', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            
+            if (code) {
+                // Send message to parent window (for popup)
+                if (window.opener) {
+                    window.opener.postMessage({ type: 'discord-auth', code: code }, '*');
+                    window.close();
+                } else {
+                    // If not popup, exchange code directly
+                    exchangeCodeForToken(code);
+                    
+                    // Remove code from URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }
         });
     </script>
 </body>
