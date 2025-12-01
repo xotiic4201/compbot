@@ -19,7 +19,7 @@ app.add_middleware(
 
 # Security
 security = HTTPBearer()
-SECRET_KEY = os.getenv("JWT_SECRET", "production-secret-key-change-in-production")
+SECRET_KEY = os.getenv("JWT_SECRET", "y1R77vGOn3dmjSdfz_kIVdYeCKXdV3Kq-5SVBxMLqdNEsBQjD1sgvYTfh4TbDlBQ7ywtawUpvXW-ILOOg_qKLg")
 ALGORITHM = "HS256"
 
 # ========== SUPABASE SETUP ==========
@@ -350,4 +350,5 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port, proxy_headers=True)
+
 
