@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TournaBot - Tournament Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto 40px;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 60px 0;
+        }
+        
+        .feature-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            transition: transform 0.3s, background 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+        
+        .setup-steps {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 60px 0;
+        }
+        
+        .step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+        }
+        
+        .step-number {
+            width: 50px;
+            height: 50px;
+            background: #4CAF50;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-right: 20px;
+            flex-shrink: 0;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: #7289DA;
+            color: white;
+            padding: 18px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            text-decoration: none;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            margin: 10px;
+        }
+        
+        .cta-button:hover {
+            background: #5B6EAE;
+            transform: scale(1.05);
+        }
+        
+        .command-list {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        
+        .command {
+            font-family: 'Courier New', monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: block;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            margin-top: 60px;
+            opacity: 0.8;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+            }
+            
+            .step {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .step-number {
+                margin-right: 0;
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 TournaBot</h1>
+            <p class="subtitle">Complete Discord tournament management system with automated brackets, match verification, and organized channels.</p>
+            
+            <div style="margin-top: 40px;">
+                <a href="https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=8&scope=bot%20applications.commands" 
+                   class="cta-button" target="_blank">
+                    Add to Discord
+                </a>
+                <a href="#setup" class="cta-button" style="background: #4CAF50;">
+                    Quick Setup Guide
+                </a>
+            </div>
+        </header>
+        
+        <section class="features">
+            <div class="feature-card">
+                <div class="feature-icon">🏆</div>
+                <h3>Auto-Brackets</h3>
+                <p>Automatic bracket generation for single/double elimination tournaments. Real-time updates and progression.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">📋</div>
+                <h3>Channel Management</h3>
+                <p>Organized channels for announcements, registrations, brackets, LFG, clips, and verifications.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">✅</div>
+                <h3>Match Verification</h3>
+                <p>Players submit proof, hosts verify. Automated bracket updates and result posting.</p>
+            </div>
+        </section>
+        
+        <section id="setup" class="setup-steps">
+            <h2 style="text-align: center; margin-bottom: 40px; font-size: 2rem;">🚀 Quick Setup</h2>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div>
+                    <h3>Add TournaBot to Your Server</h3>
+                    <p>Use the invite link above with Administrator permissions.</p>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">2</div>
+                <div>
+                    <h3>Run Setup Command</h3>
+                    <p>In your Discord server, type: <span class="command">/setup</span></p>
+                    <p>This will auto-create all necessary channels and roles.</p>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">3</div>
+                <div>
+                    <h3>Configure Channels (Optional)</h3>
+                    <p>If you want to use existing channels:</p>
+                    <div class="command">/channels set type:announcements</div>
+                    <div class="command">/channels set type:brackets</div>
+                    <div class="command">/channels set type:verifications</div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">4</div>
+                <div>
+                    <h3>Create Your First Tournament</h3>
+                    <p>Use: <span class="command">/tournament create</span></p>
+                    <p>All announcements will go to your configured channels automatically!</p>
+                </div>
+            </div>
+        </section>
+        
+        <section style="text-align: center; margin: 60px 0;">
+            <h2 style="font-size: 2rem; margin-bottom: 30px;">🎯 Key Commands</h2>
+            
+            <div style="max-width: 600px; margin: 0 auto;">
+                <div class="command-list">
+                    <strong>Channel Management:</strong>
+                    <div class="command">/channels set</div>
+                    <div class="command">/channels view</div>
+                </div>
+                
+                <div class="command-list">
+                    <strong>Tournaments:</strong>
+                    <div class="command">/tournament create</div>
+                    <div class="command">/tournament announce</div>
+                </div>
+                
+                <div class="command-list">
+                    <strong>Match System:</strong>
+                    <div class="command">/match report</div>
+                    <div class="command">/match verify</div>
+                </div>
+            </div>
+        </section>
+        
+        <footer>
+            <p>TournaBot is not affiliated with Discord or any game companies.</p>
+            <p style="margin-top: 10px;">Need help? Join our <a href="https://discord.gg/example" style="color: #7289DA; text-decoration: none;">Support Server</a></p>
+        </footer>
+    </div>
+    
+    <script>
+        // Simple functionality for the page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Smooth scrolling for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    if(targetId === '#') return;
+                    
+                    const targetElement = document.querySelector(targetId);
+                    if(targetElement) {
+                        targetElement.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+            
+            // Add hover effects to feature cards
+            const cards = document.querySelectorAll('.feature-card');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    card.style.transform = 'translateY(-5px)';
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = 'translateY(0)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
