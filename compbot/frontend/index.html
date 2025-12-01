@@ -686,7 +686,7 @@
             API_URL: "https://compbot-lhuy.onrender.com", // Your Render URL
             DISCORD_CLIENT_ID: "1445127821742575726", // Your Discord Client ID
             REDIRECT_URI: "https://compbot-git-main-xotiics-projects.vercel.app/", // Your website URL
-            DISCORD_INVITE: "https://discord.com/oauth2/authorize?client_id=1445127821742575726&response_type=code&redirect_uri=https%3A%2F%2Fcompbot-git-main-xotiics-projects.vercel.app%2F&integration_type=0&scope=applications.commands+gateway.connect"
+            DISCORD_INVITE: "https://discord.com/oauth2/authorize?client_id=1445127821742575726&response_type=code&redirect_uri=https%3A%2F%2Fcompbot-git-main-xotiics-projects.vercel.app%2F&integration_type=0&scope=applications.commands+gateway.connect+identify+email+guilds"
         const DISCORD_LOGIN_URL = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&response_type=code&scope=identify%20email%20guilds`;
         };
 
@@ -1286,6 +1286,7 @@
     </script>
 </body>
 </html>
+
 
 
 
