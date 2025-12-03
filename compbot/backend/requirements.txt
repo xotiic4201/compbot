@@ -1,7 +1,10 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.5.0
-python-multipart==0.0.6
-requests==2.31.0
-pyjwt==2.8.0  # Use pyjwt instead of python-jose
-python-dotenv==1.0.0
+fastapi==0.115.0
+uvicorn==0.30.0
+pydantic==2.10.1
+pydantic-core==2.23.3
+python-multipart==0.0.9
+requests==2.32.3
+pyjwt==2.9.0
+python-dotenv==1.0.1
+
+
