@@ -377,11 +377,6 @@
             color: var(--gray);
         }
         
-        /* Dashboard */
-        .dashboard {
-            display: none;
-        }
-        
         /* Forms */
         .form-container {
             max-width: 500px;
@@ -861,9 +856,9 @@
     <script>
         // ========== CONFIGURATION ==========
         const CONFIG = {
-            API_URL: "https://www.xotiicsplaza.us/",
+            API_URL: "https://compbot-lhuy.onrender.com",
             DISCORD_CLIENT_ID: "1445127821742575726",
-            REDIRECT_URI: "https://compbot-git-main-xotiics-projects.vercel.app",
+            REDIRECT_URI: "https://www.xotiicsplaza.us/",
             DISCORD_INVITE: "https://discord.com/oauth2/authorize?client_id=1445127821742575726&permissions=8&scope=bot%20applications.commands"
         };
 
@@ -877,18 +872,7 @@
             console.log('XTourney Platform loaded');
             
             // Try auto-login first
-            attemptAutoLogin().then(success => {
-                if (!success) {
-                    // If auto-login fails, check for OAuth callback
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const code = urlParams.get('code');
-                    
-                    if (code) {
-                        console.log('Processing Discord OAuth callback...');
-                        processDiscordCallback(code);
-                    }
-                }
-            });
+            checkExistingSession();
             
             // Load public data
             loadPublicData();
@@ -900,64 +884,92 @@
             if (document.getElementById('startDate')) {
                 document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
             }
+            
+            // Check for OAuth callback in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const error = urlParams.get('error');
+            
+            if (code) {
+                console.log('Processing Discord OAuth callback...');
+                processDiscordCallback(code);
+            } else if (error) {
+                console.error('OAuth error:', error);
+                showError('Authentication failed: ' + error);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
         });
 
-        // ========== AUTO LOGIN ==========
-        async function attemptAutoLogin() {
-            console.log('Attempting auto-login...');
-            
+        // ========== SESSION MANAGEMENT ==========
+        function checkExistingSession() {
             const storedToken = localStorage.getItem('xtourney_token');
             const storedUser = localStorage.getItem('xtourney_user');
+            const storedServers = localStorage.getItem('xtourney_servers');
             
-            if (!storedToken || !storedUser) {
-                console.log('No stored session found');
-                return false;
+            if (storedToken && storedUser) {
+                try {
+                    currentUser = JSON.parse(storedUser);
+                    userToken = storedToken;
+                    userServers = storedServers ? JSON.parse(storedServers) : [];
+                    
+                    console.log('Found existing session for user:', currentUser.username);
+                    
+                    updateUIAfterLogin();
+                    
+                    if (userServers.length > 0) {
+                        loadUserServers();
+                        updateStats();
+                    }
+                    
+                    // Try to refresh the token
+                    refreshUserToken();
+                    
+                } catch (e) {
+                    console.error('Error parsing stored session:', e);
+                    logout();
+                }
+            } else {
+                console.log('No existing session found');
             }
+        }
+
+        async function refreshUserToken() {
+            if (!userToken) return;
             
             try {
-                console.log('Found stored session, attempting refresh...');
+                console.log('Refreshing user token...');
                 
-                // Try to refresh the token with backend
-                const response = await fetch(`${CONFIG.API_URL}/api/auth/discord/refresh`, {
+                const response = await fetch(`${CONFIG.API_URL}/api/auth/refresh`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        token: storedToken
+                        token: userToken
                     })
                 });
                 
                 if (response.ok) {
                     const data = await response.json();
                     
-                    if (data.success) {
-                        console.log('Auto-login successful!');
-                        
-                        // Update stored data
+                    if (data.success && data.access_token) {
+                        // Update stored token
                         localStorage.setItem('xtourney_token', data.access_token);
-                        localStorage.setItem('xtourney_user', JSON.stringify(data.user));
-                        localStorage.setItem('xtourney_servers', JSON.stringify(data.servers || []));
-                        
-                        currentUser = data.user;
                         userToken = data.access_token;
-                        userServers = data.servers || [];
                         
-                        updateUIAfterLogin();
-                        
-                        if (userServers.length > 0) {
+                        if (data.servers && data.servers.length > 0) {
+                            localStorage.setItem('xtourney_servers', JSON.stringify(data.servers));
+                            userServers = data.servers;
                             loadUserServers();
                         }
                         
-                        showAlert('Welcome back!', 'success');
-                        return true;
+                        console.log('Token refreshed successfully');
                     }
                 }
             } catch (error) {
-                console.log('Auto-login failed, will try fresh login:', error.message);
+                console.log('Token refresh failed:', error.message);
+                // Don't logout on refresh failure, keep using old token
             }
-            
-            return false;
         }
 
         // ========== DISCORD AUTH ==========
@@ -1029,6 +1041,9 @@
                     if (userServers.length > 0) {
                         loadUserServers();
                     }
+                    
+                    // Update stats
+                    updateStats();
                 } else {
                     throw new Error(data.detail || 'Authentication failed');
                 }
@@ -1041,7 +1056,9 @@
         }
 
         function updateUIAfterLogin() {
-            console.log('Updating UI after login for user:', currentUser.username);
+            console.log('Updating UI after login for user:', currentUser?.username);
+            
+            if (!currentUser) return;
             
             // Update auth buttons
             const authButtons = document.getElementById('authButtons');
@@ -1065,6 +1082,59 @@
             
             // Load user's servers into dropdown
             loadServerDropdown();
+        }
+
+        // ========== STATS FUNCTIONS ==========
+        async function updateStats() {
+            try {
+                console.log('Updating stats...');
+                
+                // Get live matches count
+                let matchesCount = 0;
+                try {
+                    const matchesRes = await fetch(`${CONFIG.API_URL}/api/matches/live`);
+                    if (matchesRes.ok) {
+                        const matchesData = await matchesRes.json();
+                        matchesCount = matchesData.matches?.length || 0;
+                    }
+                } catch (e) {
+                    console.log('Error fetching matches:', e.message);
+                }
+                
+                // Get tournaments count
+                let tournamentsCount = 0;
+                try {
+                    const tournamentsRes = await fetch(`${CONFIG.API_URL}/api/tournaments/public`);
+                    if (tournamentsRes.ok) {
+                        const tournamentsData = await tournamentsRes.json();
+                        tournamentsCount = tournamentsData.tournaments?.length || 0;
+                    }
+                } catch (e) {
+                    console.log('Error fetching tournaments:', e.message);
+                }
+                
+                // Get connected servers count
+                const serverCount = userServers.length || 0;
+                
+                // Calculate estimated players (average 5 players per team * average 8 teams per tournament)
+                const estimatedPlayers = tournamentsCount * 8 * 5;
+                
+                console.log('Stats calculated:', { 
+                    matchesCount, 
+                    tournamentsCount, 
+                    serverCount, 
+                    estimatedPlayers 
+                });
+                
+                // Update UI
+                document.getElementById('liveMatchesCount').textContent = matchesCount;
+                document.getElementById('activeTournaments').textContent = tournamentsCount;
+                document.getElementById('connectedServers').textContent = serverCount;
+                document.getElementById('totalPlayers').textContent = estimatedPlayers.toLocaleString();
+                
+            } catch (error) {
+                console.error('Error updating stats:', error);
+            }
         }
 
         // ========== SERVER MANAGEMENT ==========
@@ -1107,6 +1177,7 @@
             
             serversGrid.innerHTML = html;
             
+            // Update stats
             document.getElementById('connectedServers').textContent = userServers.length;
         }
 
@@ -1222,8 +1293,9 @@
                     document.getElementById('maxPlayersPerTeam').value = 5;
                     document.getElementById('regionFilter').value = "false";
                     
-                    // Reload tournaments
+                    // Reload tournaments and stats
                     loadTournaments();
+                    updateStats();
                     
                     // Show tournaments section
                     showSection('tournaments');
@@ -1262,9 +1334,9 @@
             try {
                 await Promise.all([
                     loadLiveMatches(),
-                    loadTournaments(),
-                    updateStats()
+                    loadTournaments()
                 ]);
+                updateStats();
             } catch (error) {
                 console.error('Error loading public data:', error);
             }
@@ -1313,8 +1385,6 @@
                     matchesGrid.appendChild(createMatchCard(match));
                 });
             }
-            
-            document.getElementById('liveMatchesCount').textContent = matches.length;
         }
 
         function createMatchCard(match) {
@@ -1386,8 +1456,6 @@
             tournaments.forEach(tournament => {
                 container.appendChild(createTournamentCard(tournament));
             });
-            
-            document.getElementById('activeTournaments').textContent = tournaments.length;
         }
 
         function createTournamentCard(tournament) {
@@ -1478,41 +1546,6 @@
             
             if (document.getElementById('tournamentsGrid')) {
                 document.getElementById('tournamentsGrid').innerHTML = html;
-            }
-        }
-
-        async function updateStats() {
-            try {
-                console.log('Updating stats...');
-                const [matchesRes, tournamentsRes] = await Promise.all([
-                    fetch(`${CONFIG.API_URL}/api/matches/live`),
-                    fetch(`${CONFIG.API_URL}/api/tournaments/public`)
-                ]);
-                
-                let matchesCount = 0;
-                let tournamentsCount = 0;
-                
-                if (matchesRes.ok) {
-                    const matchesData = await matchesRes.json();
-                    matchesCount = matchesData.matches?.length || 0;
-                }
-                
-                if (tournamentsRes.ok) {
-                    const tournamentsData = await tournamentsRes.json();
-                    tournamentsCount = tournamentsData.tournaments?.length || 0;
-                }
-                
-                const serverCount = userServers.length;
-                const estimatedPlayers = tournamentsCount * 32;
-                
-                console.log('Stats:', { matchesCount, tournamentsCount, serverCount, estimatedPlayers });
-                
-                document.getElementById('liveMatchesCount').textContent = matchesCount;
-                document.getElementById('activeTournaments').textContent = tournamentsCount;
-                document.getElementById('connectedServers').textContent = serverCount;
-                document.getElementById('totalPlayers').textContent = estimatedPlayers.toLocaleString();
-            } catch (error) {
-                console.error('Error updating stats:', error);
             }
         }
 
@@ -1655,4 +1688,3 @@
     </script>
 </body>
 </html>
-
