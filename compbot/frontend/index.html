@@ -715,7 +715,7 @@
                     <h2 class="section-title">Featured Tournaments</h2>
                     <p class="section-subtitle">Join tournaments across connected servers</p>
                 </div>
-                <button class="btn btn-primary" onclick="showCreateTournament()" id="createTournamentBtn">
+                <button class="btn btn-primary" onclick="showCreateTournament()" id="createTournamentBtn" style="display: none;">
                     <i class="fas fa-plus"></i> Create Tournament
                 </button>
             </div>
@@ -837,8 +837,9 @@
         const CONFIG = {
             API_URL: "https://compbot-lhuy.onrender.com",
             DISCORD_CLIENT_ID: "1445127821742575726",
-            // IMPORTANT: This must match EXACTLY what's in Discord Developer Portal
-            REDIRECT_URI: window.location.origin,
+            // IMPORTANT: This MUST match EXACTLY what's in Discord Developer Portal
+            // No trailing slash!
+            REDIRECT_URI: "https://compbot-git-main-xotiics-projects.vercel.app",
             DISCORD_INVITE: "https://discord.com/oauth2/authorize?client_id=1445127821742575726&permissions=8&scope=bot%20applications.commands"
         };
 
@@ -850,11 +851,17 @@
         // ========== INITIALIZATION ==========
         document.addEventListener('DOMContentLoaded', function() {
             console.log('XTourney Platform loaded');
+            console.log('Redirect URI:', CONFIG.REDIRECT_URI);
             
             // Check for auth callback in URL
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
             const error = urlParams.get('error');
+            const state = urlParams.get('state');
+            
+            console.log('URL params - code:', code ? 'Present' : 'Absent');
+            console.log('URL params - error:', error);
+            console.log('URL params - state:', state);
             
             if (code) {
                 console.log('Processing Discord OAuth callback...');
@@ -862,6 +869,8 @@
             } else if (error) {
                 console.error('OAuth error:', error);
                 showError('Authentication failed: ' + error);
+                // Clean URL
+                window.history.replaceState({}, document.title, window.location.pathname);
             }
             
             // Check for existing session
@@ -881,6 +890,8 @@
 
         // ========== DISCORD AUTH ==========
         function startDiscordOAuth() {
+            console.log('Starting Discord OAuth...');
+            
             // IMPORTANT: Make sure these scopes include 'guilds' to access servers
             const scope = 'identify email guilds';
             const state = generateState();
@@ -888,26 +899,34 @@
             // Store state for verification
             sessionStorage.setItem('oauth_state', state);
             
-            // Build Discord OAuth URL
-            const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1445127821742575726&response_type=code&redirect_uri=https%3A%2F%2Fcompbot-git-main-xotiics-projects.vercel.app%2F&scope=identify+email+guilds`;
+            // Build Discord OAuth URL with EXACT redirect_uri
+            const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${encodeURIComponent(scope)}&prompt=consent&state=${state}`;
             
             console.log('Redirecting to Discord OAuth:', discordAuthUrl);
             window.location.href = discordAuthUrl;
         }
 
         function loginWithDiscord() {
+            console.log('Login with Discord clicked');
+            // Clear any old tokens
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            // Force fresh login
             startDiscordOAuth();
         }
 
         async function processDiscordCallback(code) {
             try {
                 console.log('Processing OAuth code:', code.substring(0, 20) + '...');
+                console.log('Using redirect_uri:', CONFIG.REDIRECT_URI);
                 
                 // Exchange code for token via YOUR backend
                 const response = await fetch(`${CONFIG.API_URL}/api/auth/discord/token`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({
                         code: code,
@@ -915,13 +934,16 @@
                     })
                 });
                 
+                console.log('Backend response status:', response.status);
+                
                 if (!response.ok) {
                     const errorText = await response.text();
+                    console.error('Backend error response:', errorText);
                     throw new Error(`Backend error: ${response.status} - ${errorText}`);
                 }
                 
                 const data = await response.json();
-                console.log('Auth response:', data);
+                console.log('Auth response data:', data);
                 
                 if (data.success && data.access_token) {
                     // Store user data
@@ -945,12 +967,18 @@
                     if (userServers.length > 0) {
                         loadUserServers();
                     }
+                    
+                    // Show servers section
+                    showSection('servers');
                 } else {
                     throw new Error(data.detail || 'Authentication failed');
                 }
             } catch (error) {
                 console.error('OAuth callback error:', error);
                 showError('Failed to connect Discord: ' + error.message);
+                
+                // Clean URL on error too
+                window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
 
@@ -960,19 +988,30 @@
             const storedServers = localStorage.getItem('xtourney_servers');
             
             if (storedToken && storedUser) {
-                currentUser = JSON.parse(storedUser);
-                userToken = storedToken;
-                userServers = storedServers ? JSON.parse(storedServers) : [];
-                
-                updateUIAfterLogin();
-                
-                if (userServers.length > 0) {
-                    loadUserServers();
+                try {
+                    currentUser = JSON.parse(storedUser);
+                    userToken = storedToken;
+                    userServers = storedServers ? JSON.parse(storedServers) : [];
+                    
+                    console.log('Found existing session for user:', currentUser.username);
+                    
+                    updateUIAfterLogin();
+                    
+                    if (userServers.length > 0) {
+                        loadUserServers();
+                    }
+                } catch (e) {
+                    console.error('Error parsing stored session:', e);
+                    logout();
                 }
+            } else {
+                console.log('No existing session found');
             }
         }
 
         function updateUIAfterLogin() {
+            console.log('Updating UI after login for user:', currentUser.username);
+            
             // Update auth buttons
             const authButtons = document.getElementById('authButtons');
             const avatarUrl = currentUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.username || 'User')}&background=5865F2&color=fff`;
@@ -981,7 +1020,7 @@
                 <div class="user-profile" onclick="showSection('servers')">
                     <img src="${avatarUrl}" alt="Avatar" class="user-avatar">
                     <div style="font-weight: 600;">${currentUser.username || 'User'}</div>
-                    <button onclick="logout()" style="margin-left: 10px; padding: 0.3rem 0.6rem; background: var(--danger); color: white; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
+                    <button onclick="logout(); event.stopPropagation();" style="margin-left: 10px; padding: 0.3rem 0.6rem; background: var(--danger); color: white; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
                         Logout
                     </button>
                 </div>
@@ -1001,6 +1040,8 @@
         function loadUserServers() {
             const serversGrid = document.getElementById('serversGrid');
             if (!serversGrid) return;
+            
+            console.log('Loading user servers:', userServers.length);
             
             if (userServers.length === 0) {
                 serversGrid.innerHTML = `
@@ -1043,6 +1084,8 @@
             const select = document.getElementById('serverSelect');
             if (!select) return;
             
+            console.log('Loading server dropdown with', userServers.length, 'servers');
+            
             select.innerHTML = '<option value="">Select a server...</option>';
             
             if (userServers.length === 0) {
@@ -1059,15 +1102,21 @@
         }
 
         function createTournamentForServer(serverId) {
+            console.log('Creating tournament for server:', serverId);
             const select = document.getElementById('serverSelect');
             if (select) {
                 select.value = serverId;
                 showSection('servers');
+                
+                // Scroll to form
+                document.getElementById('createForm').scrollIntoView({ behavior: 'smooth' });
             }
         }
 
         // ========== TOURNAMENT MANAGEMENT ==========
         async function createTournament() {
+            console.log('Creating tournament...');
+            
             if (!userToken) {
                 showError('Please login first');
                 loginWithDiscord();
@@ -1081,8 +1130,15 @@
             const maxTeams = document.getElementById('maxTeams').value;
             const startDate = document.getElementById('startDate').value;
             
+            console.log('Tournament data:', { serverId, name, game, maxTeams, startDate });
+            
             if (!serverId) {
                 showError('Please select a Discord server');
+                return;
+            }
+            
+            if (!name || !game || !startDate) {
+                showError('Please fill all required fields');
                 return;
             }
             
@@ -1102,11 +1158,13 @@
                         discord_server_id: serverId,
                         bracket_type: "single_elimination",
                         max_players_per_team: 5,
-                        region_filter: false
+                        region_filter: false,
+                        prize_pool: ""
                     })
                 });
                 
                 const data = await response.json();
+                console.log('Create tournament response:', data);
                 
                 if (response.ok && data.success) {
                     showAlert('Tournament created successfully on server!', 'success');
@@ -1114,22 +1172,30 @@
                     // Reset form
                     document.getElementById('createForm').reset();
                     
+                    // Set default date
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(19, 0, 0);
+                    document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
+                    
                     // Reload tournaments
                     loadTournaments();
                     
                     // Show tournaments section
                     showSection('tournaments');
                 } else {
-                    throw new Error(data.detail || 'Failed to create tournament');
+                    throw new Error(data.detail || data.message || 'Failed to create tournament');
                 }
             } catch (error) {
                 console.error('Create tournament error:', error);
-                showError('Error: ' + error.message);
+                showError('Error creating tournament: ' + error.message);
             }
         }
 
         function showCreateTournament() {
+            console.log('Show create tournament clicked');
             if (!userToken) {
+                showError('Please login to create tournaments');
                 loginWithDiscord();
                 return;
             }
@@ -1141,6 +1207,11 @@
             }
             
             showSection('servers');
+            
+            // Scroll to form
+            setTimeout(() => {
+                document.getElementById('createForm').scrollIntoView({ behavior: 'smooth' });
+            }, 100);
         }
 
         // ========== PUBLIC DATA FUNCTIONS ==========
@@ -1158,13 +1229,16 @@
 
         async function loadLiveMatches() {
             try {
+                console.log('Loading live matches...');
                 const response = await fetch(`${CONFIG.API_URL}/api/matches/live`);
                 if (!response.ok) {
+                    console.error('Failed to load matches:', response.status);
                     showNoMatches();
                     return;
                 }
                 
                 const data = await response.json();
+                console.log('Loaded matches:', data.matches?.length || 0);
                 updateMatchesDisplay(data.matches || []);
             } catch (error) {
                 console.error('Error loading matches:', error);
@@ -1175,6 +1249,8 @@
         function updateMatchesDisplay(matches) {
             const previewContainer = document.getElementById('liveMatchesPreview');
             const matchesGrid = document.getElementById('matchesGrid');
+            
+            console.log('Updating matches display with', matches.length, 'matches');
             
             if (matches.length === 0) {
                 showNoMatches();
@@ -1207,7 +1283,7 @@
             card.innerHTML = `
                 <div class="match-header">
                     <div class="match-tournament">${match.tournament_name || 'Tournament'}</div>
-                    <div class="match-status status-${match.status || 'upcoming'}">${(match.status || 'upcoming').toUpperCase()}</div>
+                    <div class="match-status status-live">LIVE</div>
                 </div>
                 
                 <div class="match-teams">
@@ -1228,7 +1304,7 @@
                 
                 <div class="match-meta">
                     <div><i class="fas fa-gamepad"></i> ${match.game || 'Esports'}</div>
-                    <div><i class="fas fa-server"></i> ${match.server_name || 'Discord Server'}</div>
+                    <div><i class="fas fa-server"></i> Discord Server</div>
                 </div>
             `;
             
@@ -1237,13 +1313,16 @@
 
         async function loadTournaments() {
             try {
+                console.log('Loading tournaments...');
                 const response = await fetch(`${CONFIG.API_URL}/api/tournaments/public`);
                 if (!response.ok) {
+                    console.error('Failed to load tournaments:', response.status);
                     showNoTournaments();
                     return;
                 }
                 
                 const data = await response.json();
+                console.log('Loaded tournaments:', data.tournaments?.length || 0);
                 updateTournamentsDisplay(data.tournaments || []);
             } catch (error) {
                 console.error('Error loading tournaments:', error);
@@ -1254,6 +1333,8 @@
         function updateTournamentsDisplay(tournaments) {
             const container = document.getElementById('tournamentsGrid');
             if (!container) return;
+            
+            console.log('Updating tournaments display with', tournaments.length, 'tournaments');
             
             if (tournaments.length === 0) {
                 showNoTournaments();
@@ -1272,25 +1353,28 @@
             const card = document.createElement('div');
             card.className = 'tournament-card';
             
-            const teams = tournament.team_count || 0;
+            const teams = tournament.team_count || tournament.current_teams || 0;
             const maxTeams = tournament.max_teams || 16;
-            const progressPercent = (teams / maxTeams) * 100;
+            const progressPercent = maxTeams > 0 ? (teams / maxTeams) * 100 : 0;
+            const status = tournament.status || 'registration';
+            const statusClass = status === 'ongoing' ? 'ongoing' : 
+                               status === 'completed' ? 'completed' : 'registration';
             
             card.innerHTML = `
                 <div class="tournament-header">
                     <div class="tournament-title">${tournament.name}</div>
-                    <div class="tournament-status status-${tournament.status}">
-                        ${tournament.status.toUpperCase()}
+                    <div class="tournament-status status-${statusClass}">
+                        ${status.toUpperCase()}
                     </div>
                 </div>
                 
                 <div class="tournament-game">
-                    <i class="fas fa-gamepad"></i> ${tournament.game}
+                    <i class="fas fa-gamepad"></i> ${tournament.game || 'Esports'}
                 </div>
                 
                 <div class="tournament-meta">
                     <div><i class="fas fa-server"></i> Discord Server</div>
-                    <div><i class="fas fa-calendar"></i> ${new Date(tournament.start_date).toLocaleDateString()}</div>
+                    <div><i class="fas fa-calendar"></i> ${tournament.start_date ? new Date(tournament.start_date).toLocaleDateString() : 'TBA'}</div>
                 </div>
                 
                 <div class="tournament-progress">
@@ -1304,10 +1388,10 @@
                 </div>
                 
                 <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-${tournament.status === 'registration' ? 'primary' : 'secondary'}" 
+                    <button class="btn btn-${status === 'registration' ? 'primary' : 'secondary'}" 
                             onclick="viewTournament('${tournament.id}')">
-                        <i class="fas fa-${tournament.status === 'registration' ? 'sign-in-alt' : 'eye'}"></i>
-                        ${tournament.status === 'registration' ? 'Register Now' : 'View Tournament'}
+                        <i class="fas fa-${status === 'registration' ? 'sign-in-alt' : 'eye'}"></i>
+                        ${status === 'registration' ? 'Register Now' : 'View Tournament'}
                     </button>
                 </div>
             `;
@@ -1316,19 +1400,30 @@
         }
 
         function showNoMatches() {
+            console.log('Showing no matches message');
             const html = `
                 <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray);">
                     <i class="fas fa-tv" style="font-size: 3rem; margin-bottom: 1rem;"></i>
                     <h3>No Live Matches</h3>
                     <p>Create a tournament on your Discord server to get started!</p>
+                    ${!userToken ? `
+                    <button class="btn btn-primary" onclick="loginWithDiscord()" style="margin-top: 1rem;">
+                        <i class="fab fa-discord"></i> Connect Discord to Create
+                    </button>
+                    ` : ''}
                 </div>
             `;
             
-            document.getElementById('liveMatchesPreview').innerHTML = html;
-            document.getElementById('matchesGrid').innerHTML = html;
+            if (document.getElementById('liveMatchesPreview')) {
+                document.getElementById('liveMatchesPreview').innerHTML = html;
+            }
+            if (document.getElementById('matchesGrid')) {
+                document.getElementById('matchesGrid').innerHTML = html;
+            }
         }
 
         function showNoTournaments() {
+            console.log('Showing no tournaments message');
             const html = `
                 <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray);">
                     <i class="fas fa-trophy" style="font-size: 3rem; margin-bottom: 1rem;"></i>
@@ -1340,27 +1435,41 @@
                 </div>
             `;
             
-            document.getElementById('tournamentsGrid').innerHTML = html;
+            if (document.getElementById('tournamentsGrid')) {
+                document.getElementById('tournamentsGrid').innerHTML = html;
+            }
         }
 
         async function updateStats() {
             try {
+                console.log('Updating stats...');
                 const [matchesRes, tournamentsRes] = await Promise.all([
                     fetch(`${CONFIG.API_URL}/api/matches/live`),
                     fetch(`${CONFIG.API_URL}/api/tournaments/public`)
                 ]);
                 
-                const matchesData = await matchesRes.json();
-                const tournamentsData = await tournamentsRes.json();
+                let matchesCount = 0;
+                let tournamentsCount = 0;
                 
-                const matchesCount = matchesData.matches?.length || 0;
-                const tournamentsCount = tournamentsData.tournaments?.length || 0;
+                if (matchesRes.ok) {
+                    const matchesData = await matchesRes.json();
+                    matchesCount = matchesData.matches?.length || 0;
+                }
+                
+                if (tournamentsRes.ok) {
+                    const tournamentsData = await tournamentsRes.json();
+                    tournamentsCount = tournamentsData.tournaments?.length || 0;
+                }
+                
                 const serverCount = userServers.length;
+                const estimatedPlayers = tournamentsCount * 32; // Estimate 32 players per tournament
+                
+                console.log('Stats:', { matchesCount, tournamentsCount, serverCount, estimatedPlayers });
                 
                 document.getElementById('liveMatchesCount').textContent = matchesCount;
                 document.getElementById('activeTournaments').textContent = tournamentsCount;
                 document.getElementById('connectedServers').textContent = serverCount;
-                document.getElementById('totalPlayers').textContent = (tournamentsCount * 20).toLocaleString();
+                document.getElementById('totalPlayers').textContent = estimatedPlayers.toLocaleString();
             } catch (error) {
                 console.error('Error updating stats:', error);
             }
@@ -1368,6 +1477,8 @@
 
         // ========== UI FUNCTIONS ==========
         function showSection(sectionName) {
+            console.log('Showing section:', sectionName);
+            
             // Hide all sections
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('matchesSection').style.display = 'none';
@@ -1401,6 +1512,7 @@
         }
 
         function logout() {
+            console.log('Logging out...');
             localStorage.removeItem('xtourney_token');
             localStorage.removeItem('xtourney_user');
             localStorage.removeItem('xtourney_servers');
@@ -1426,17 +1538,24 @@
         }
 
         function inviteBot() {
+            console.log('Inviting bot...');
             window.open(CONFIG.DISCORD_INVITE, '_blank');
         }
 
         function viewTournament(tournamentId) {
-            alert(`Viewing tournament ${tournamentId}\nThis would show tournament details.`);
+            console.log('Viewing tournament:', tournamentId);
+            showAlert(`Viewing tournament ${tournamentId}. Tournament details page would open here.`, 'success');
         }
 
         // ========== UTILITY FUNCTIONS ==========
         function showAlert(message, type = 'success') {
+            console.log('Showing alert:', type, message);
+            
+            // Remove existing alerts
+            document.querySelectorAll('.alert-toast').forEach(el => el.remove());
+            
             const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type}`;
+            alertDiv.className = `alert alert-${type} alert-toast`;
             alertDiv.innerHTML = `
                 <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
                 ${message}
@@ -1447,26 +1566,57 @@
             alertDiv.style.zIndex = '3000';
             alertDiv.style.maxWidth = '300px';
             alertDiv.style.padding = '1rem';
+            alertDiv.style.animation = 'slideIn 0.3s ease-out';
             
             document.body.appendChild(alertDiv);
             
             setTimeout(() => {
-                alertDiv.remove();
+                alertDiv.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => {
+                    alertDiv.remove();
+                }, 300);
             }, 3000);
         }
 
         function showError(message) {
+            console.error('Showing error:', message);
             showAlert(message, 'error');
         }
 
         function generateState() {
-            return Math.random().toString(36).substring(2, 15);
+            return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         }
 
         function hideLoginModal() {
             document.getElementById('loginModal').style.display = 'none';
         }
+        
+        // Add CSS animations for alerts
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
-
