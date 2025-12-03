@@ -5,13 +5,16 @@ from datetime import datetime, timedelta
 import os
 import requests
 import jwt
+import secrets
+import hashlib
 from typing import Optional
+from pydantic import BaseModel, EmailStr
 
 app = FastAPI(title="XTourney API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://xtourney.vercel.app", "http://localhost:3000"],
+    allow_origins=["https://xtourney.vercel.app", "http://localhost:3000", "http://localhost:5000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -19,14 +22,28 @@ app.add_middleware(
 
 # Security
 security = HTTPBearer()
-SECRET_KEY = os.getenv("JWT_SECRET", "y1R77vGOn3dmjSdfz_kIVdYeCKXdV3Kq-5SVBxMLqdNEsBQjD1sgvYTfh4TbDlBQ7ywtawUpvXW-ILOOg_qKLg")
+SECRET_KEY = os.getenv("JWT_SECRET", secrets.token_urlsafe(32))
 ALGORITHM = "HS256"
 
+# ========== PYDANTIC MODELS ==========
+class DiscordAuthRequest(BaseModel):
+    code: str
+    redirect_uri: str
+
+class EmailRegisterRequest(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
+
+class EmailLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
 # ========== SUPABASE SETUP ==========
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
-DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "your-supabase-url")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "your-supabase-key")
+DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "1445127821742575726")
+DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET", "your-discord-secret")
 
 headers = {
     "apikey": SUPABASE_KEY,
@@ -71,6 +88,41 @@ def supabase_update(table, data, column, value):
         print(f"Supabase update error: {e}")
         return []
 
+# ========== PASSWORD HASHING ==========
+def hash_password(password: str) -> str:
+    """Hash password using SHA-256 with salt"""
+    salt = secrets.token_hex(16)
+    hash_obj = hashlib.sha256((password + salt).encode())
+    return f"{hash_obj.hexdigest()}:{salt}"
+
+def verify_password(password: str, hashed_password: str) -> bool:
+    """Verify password against hash"""
+    if not hashed_password or ":" not in hashed_password:
+        return False
+    hash_value, salt = hashed_password.split(":")
+    test_hash = hashlib.sha256((password + salt).encode()).hexdigest()
+    return test_hash == hash_value
+
+# ========== DISCORD TOKEN ENCRYPTION ==========
+def encrypt_token(token: str) -> str:
+    """Simple encryption for storing Discord tokens"""
+    # In production, use a proper encryption library like cryptography
+    import base64
+    encoded = base64.b64encode(token.encode()).decode()
+    return f"enc:{encoded}"
+
+def decrypt_token(encrypted_token: str) -> str:
+    """Decrypt Discord token"""
+    if not encrypted_token or not encrypted_token.startswith("enc:"):
+        return encrypted_token
+    import base64
+    try:
+        encoded = encrypted_token[4:]  # Remove 'enc:' prefix
+        decoded = base64.b64decode(encoded).decode()
+        return decoded
+    except:
+        return ""
+
 # ========== JWT AUTH ==========
 def create_jwt_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -94,36 +146,50 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
 
 # ========== DISCORD AUTH ==========
 @app.post("/api/auth/discord")
-async def discord_auth(code: str):
+async def discord_auth(request: DiscordAuthRequest):
     """Production Discord OAuth2"""
     try:
+        print(f"Discord auth request received: {request.redirect_uri}")
+        
         # Exchange code for token
         data = {
             'client_id': DISCORD_CLIENT_ID,
             'client_secret': DISCORD_CLIENT_SECRET,
             'grant_type': 'authorization_code',
-            'code': code,
-            'redirect_uri': os.getenv("DISCORD_REDIRECT_URI", "https://xtourney.vercel.app/auth/callback")
+            'code': request.code,
+            'redirect_uri': request.redirect_uri
         }
         
         response = requests.post('https://discord.com/api/oauth2/token', data=data, 
                                headers={'Content-Type': 'application/x-www-form-urlencoded'})
         
         if response.status_code != 200:
+            print(f"Discord token error: {response.text}")
             raise HTTPException(status_code=400, detail="Invalid authorization code")
         
         token_data = response.json()
         
+        # Store Discord tokens
+        discord_access_token = token_data.get("access_token")
+        discord_refresh_token = token_data.get("refresh_token")
+        discord_expires_in = token_data.get("expires_in")
+        
+        # Calculate expiry time
+        discord_expires_at = (datetime.utcnow() + timedelta(seconds=discord_expires_in)).isoformat() if discord_expires_in else None
+        
         # Get user info
-        user_headers = {'Authorization': f'Bearer {token_data["access_token"]}'}
+        user_headers = {'Authorization': f'Bearer {discord_access_token}'}
         user_response = requests.get('https://discord.com/api/users/@me', headers=user_headers)
         user_data = user_response.json()
+        
+        if 'id' not in user_data:
+            raise HTTPException(status_code=400, detail="Invalid user data from Discord")
         
         # Get user's guilds (servers)
         guilds_response = requests.get('https://discord.com/api/users/@me/guilds', headers=user_headers)
         guilds_data = guilds_response.json()
         
-        # Filter to guilds where bot is admin
+        # Filter to guilds where user has admin permissions
         bot_guilds = []
         for guild in guilds_data:
             permissions = int(guild.get('permissions', 0))
@@ -136,37 +202,71 @@ async def discord_auth(code: str):
                     'permissions': guild['permissions']
                 })
         
-        # Save/update user
+        # Generate unique username
+        discord_username = f"{user_data['username']}"
+        if user_data.get('discriminator') and user_data['discriminator'] != '0':
+            discord_username = f"{user_data['username']}#{user_data['discriminator']}"
+        
+        # Save/update user with Discord tokens
         user_db = {
             "discord_id": user_data["id"],
-            "username": user_data["username"],
-            "discriminator": user_data.get("discriminator", "0"),
+            "username": discord_username,
             "avatar_url": f"https://cdn.discordapp.com/avatars/{user_data['id']}/{user_data.get('avatar', '')}.png" if user_data.get('avatar') else f"https://cdn.discordapp.com/embed/avatars/{int(user_data.get('discriminator', '0')) % 5}.png",
             "email": user_data.get("email"),
-            "last_login": datetime.utcnow().isoformat()
+            "last_login": datetime.utcnow().isoformat(),
+            "account_type": "discord",
+            "discord_access_token": encrypt_token(discord_access_token) if discord_access_token else None,
+            "discord_refresh_token": encrypt_token(discord_refresh_token) if discord_refresh_token else None,
+            "discord_token_expires": discord_expires_at
         }
         
-        # Check if user exists
+        # Check if user exists by discord_id
         existing = supabase_select("users", f"discord_id=eq.{user_db['discord_id']}")
         if existing:
             supabase_update("users", user_db, "discord_id", user_db['discord_id'])
+            user_id = existing[0]['id']
         else:
-            supabase_insert("users", user_db)
+            # Also check if email exists (in case they registered with email first)
+            if user_db['email']:
+                existing_email = supabase_select("users", f"email=eq.{user_db['email']}")
+                if existing_email:
+                    # Link Discord to existing email account
+                    supabase_update("users", {
+                        "discord_id": user_db['discord_id'],
+                        "avatar_url": user_db['avatar_url'],
+                        "last_login": user_db['last_login'],
+                        "account_type": "both",  # User has both email and Discord
+                        "discord_access_token": user_db['discord_access_token'],
+                        "discord_refresh_token": user_db['discord_refresh_token'],
+                        "discord_token_expires": user_db['discord_token_expires']
+                    }, "email", user_db['email'])
+                    user_id = existing_email[0]['id']
+                else:
+                    # Create new user
+                    result = supabase_insert("users", user_db)
+                    user_id = result['id'] if result else None
+            else:
+                result = supabase_insert("users", user_db)
+                user_id = result['id'] if result else None
         
         # Create JWT token
         jwt_token = create_jwt_token({
-            "sub": user_data["id"],
-            "username": user_data["username"],
-            "avatar": user_data.get("avatar")
+            "sub": user_id if user_id else user_data["id"],
+            "username": discord_username,
+            "avatar": user_data.get("avatar"),
+            "email": user_data.get("email"),
+            "discord_id": user_data["id"],
+            "account_type": "discord"
         })
         
         return {
             "success": True,
             "user": {
-                "id": user_data["id"],
-                "username": user_data["username"],
+                "id": user_id if user_id else user_data["id"],
+                "username": discord_username,
                 "avatar": user_db["avatar_url"],
-                "email": user_data.get("email")
+                "email": user_data.get("email"),
+                "discord_id": user_data["id"]
             },
             "servers": bot_guilds,
             "access_token": jwt_token,
@@ -177,21 +277,282 @@ async def discord_auth(code: str):
         print(f"Auth error: {e}")
         raise HTTPException(status_code=500, detail="Authentication failed")
 
+# ========== EMAIL AUTH ==========
+@app.post("/api/auth/register")
+async def register_email(request: EmailRegisterRequest):
+    """Register with email and password"""
+    try:
+        # Check if email already exists
+        existing = supabase_select("users", f"email=eq.{request.email}")
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Check if username already exists
+        existing_user = supabase_select("users", f"username=eq.{request.username}")
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Username already taken")
+        
+        # Create user
+        user_db = {
+            "username": request.username,
+            "email": request.email,
+            "password_hash": hash_password(request.password),
+            "account_type": "email",
+            "avatar_url": f"https://ui-avatars.com/api/?name={request.username.replace(' ', '+')}&background=5865F2&color=fff",
+            "created_at": datetime.utcnow().isoformat(),
+            "last_login": datetime.utcnow().isoformat()
+        }
+        
+        result = supabase_insert("users", user_db)
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to create user")
+        
+        # Create JWT token
+        jwt_token = create_jwt_token({
+            "sub": result["id"],
+            "username": request.username,
+            "email": request.email,
+            "account_type": "email"
+        })
+        
+        return {
+            "success": True,
+            "user": {
+                "id": result["id"],
+                "username": request.username,
+                "email": request.email,
+                "avatar": user_db["avatar_url"]
+            },
+            "access_token": jwt_token,
+            "token_type": "Bearer"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Registration error: {e}")
+        raise HTTPException(status_code=500, detail="Registration failed")
+
+@app.post("/api/auth/login")
+async def login_email(request: EmailLoginRequest):
+    """Login with email and password"""
+    try:
+        # Find user by email
+        users = supabase_select("users", f"email=eq.{request.email}")
+        if not users:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        user = users[0]
+        
+        # Verify password
+        if not verify_password(request.password, user.get("password_hash")):
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        # Update last login
+        supabase_update("users", {
+            "last_login": datetime.utcnow().isoformat()
+        }, "id", user["id"])
+        
+        # Create JWT token
+        jwt_token = create_jwt_token({
+            "sub": user["id"],
+            "username": user["username"],
+            "email": user["email"],
+            "account_type": user.get("account_type", "email")
+        })
+        
+        avatar = user.get("avatar_url") or f"https://ui-avatars.com/api/?name={user['username'].replace(' ', '+')}&background=5865F2&color=fff"
+        
+        return {
+            "success": True,
+            "user": {
+                "id": user["id"],
+                "username": user["username"],
+                "email": user["email"],
+                "avatar": avatar
+            },
+            "access_token": jwt_token,
+            "token_type": "Bearer"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Login error: {e}")
+        raise HTTPException(status_code=500, detail="Login failed")
+
+# ========== GET USER PROFILE ==========
 @app.get("/api/auth/me")
-async def get_current_user(token: str = Depends(verify_token)):
+async def get_current_user(token: dict = Depends(verify_token)):
     """Get current user from JWT"""
-    return {"user": token}
+    try:
+        user_id = token.get("sub")
+        
+        # Get user from database
+        users = supabase_select("users", f"id=eq.{user_id}")
+        if not users:
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        user = users[0]
+        
+        # Don't return sensitive data
+        user.pop("password_hash", None)
+        user.pop("discord_access_token", None)
+        user.pop("discord_refresh_token", None)
+        
+        # Get Discord servers if user has Discord tokens
+        servers = []
+        if user.get("discord_access_token") and user.get("discord_id"):
+            try:
+                # Decrypt and use Discord token
+                access_token = decrypt_token(user.get("discord_access_token", ""))
+                if access_token:
+                    headers = {'Authorization': f'Bearer {access_token}'}
+                    response = requests.get('https://discord.com/api/users/@me/guilds', headers=headers)
+                    
+                    if response.status_code == 200:
+                        guilds_data = response.json()
+                        for guild in guilds_data:
+                            permissions = int(guild.get('permissions', 0))
+                            if permissions & 0x8:  # ADMINISTRATOR permission
+                                servers.append({
+                                    'id': guild['id'],
+                                    'name': guild['name'],
+                                    'icon': f"https://cdn.discordapp.com/icons/{guild['id']}/{guild.get('icon', '')}.png" if guild.get('icon') else None,
+                                    'permissions': guild['permissions']
+                                })
+            except Exception as e:
+                print(f"Error fetching Discord servers: {e}")
+                # Token might be expired, could implement refresh here
+        
+        return {
+            "user": {
+                "id": user["id"],
+                "username": user["username"],
+                "email": user.get("email"),
+                "avatar": user.get("avatar_url") or f"https://ui-avatars.com/api/?name={user['username'].replace(' ', '+')}&background=5865F2&color=fff",
+                "discord_id": user.get("discord_id"),
+                "account_type": user.get("account_type", "email")
+            },
+            "servers": servers
+        }
+        
+    except Exception as e:
+        print(f"Get me error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get user data")
+
+# ========== DISCORD TOKEN REFRESH ==========
+@app.post("/api/auth/discord/refresh")
+async def refresh_discord_token(token: dict = Depends(verify_token)):
+    """Refresh Discord access token"""
+    try:
+        user_id = token.get("sub")
+        
+        # Get user from database
+        users = supabase_select("users", f"id=eq.{user_id}")
+        if not users:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user = users[0]
+        refresh_token = decrypt_token(user.get("discord_refresh_token", ""))
+        
+        if not refresh_token:
+            raise HTTPException(status_code=400, detail="No refresh token available")
+        
+        # Request new tokens from Discord
+        data = {
+            'client_id': DISCORD_CLIENT_ID,
+            'client_secret': DISCORD_CLIENT_SECRET,
+            'grant_type': 'refresh_token',
+            'refresh_token': refresh_token
+        }
+        
+        response = requests.post('https://discord.com/api/oauth2/token', data=data,
+                               headers={'Content-Type': 'application/x-www-form-urlencoded'})
+        
+        if response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to refresh token")
+        
+        token_data = response.json()
+        
+        # Update stored tokens
+        discord_expires_at = (datetime.utcnow() + timedelta(seconds=token_data.get("expires_in", 604800))).isoformat()
+        
+        supabase_update("users", {
+            "discord_access_token": encrypt_token(token_data.get("access_token")),
+            "discord_refresh_token": encrypt_token(token_data.get("refresh_token")),
+            "discord_token_expires": discord_expires_at
+        }, "id", user_id)
+        
+        return {"success": True, "message": "Token refreshed"}
+        
+    except Exception as e:
+        print(f"Token refresh error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to refresh token")
+
+# ========== LOGOUT ==========
+@app.post("/api/auth/logout")
+async def logout_user(token: dict = Depends(verify_token)):
+    """Logout user (clear Discord tokens)"""
+    try:
+        user_id = token.get("sub")
+        
+        # Clear Discord tokens but keep user account
+        supabase_update("users", {
+            "discord_access_token": None,
+            "discord_refresh_token": None,
+            "discord_token_expires": None
+        }, "id", user_id)
+        
+        return {"success": True, "message": "Logged out successfully"}
+        
+    except Exception as e:
+        print(f"Logout error: {e}")
+        raise HTTPException(status_code=500, detail="Logout failed")
 
 # ========== SERVER MANAGEMENT ==========
 @app.get("/api/servers")
-async def get_user_servers(token: str = Depends(verify_token)):
+async def get_user_servers(token: dict = Depends(verify_token)):
     """Get user's Discord servers"""
     try:
+        user_id = token.get("sub")
+        users = supabase_select("users", f"id=eq.{user_id}")
+        
+        if not users:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user = users[0]
+        access_token = decrypt_token(user.get("discord_access_token", ""))
+        
+        if not access_token:
+            return {"servers": []}
+        
         # Get fresh data from Discord
-        # In production, you'd cache this
-        return {"servers": []}  # Placeholder
+        headers = {'Authorization': f'Bearer {access_token}'}
+        response = requests.get('https://discord.com/api/users/@me/guilds', headers=headers)
+        
+        if response.status_code != 200:
+            # Token might be expired
+            return {"servers": []}
+        
+        guilds_data = response.json()
+        bot_guilds = []
+        
+        for guild in guilds_data:
+            permissions = int(guild.get('permissions', 0))
+            if permissions & 0x8:  # ADMINISTRATOR permission
+                bot_guilds.append({
+                    'id': guild['id'],
+                    'name': guild['name'],
+                    'icon': f"https://cdn.discordapp.com/icons/{guild['id']}/{guild.get('icon', '')}.png" if guild.get('icon') else None,
+                    'permissions': guild['permissions']
+                })
+        
+        return {"servers": bot_guilds}
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Get servers error: {e}")
+        return {"servers": []}
 
 # ========== TOURNAMENT API ==========
 @app.post("/api/tournaments")
@@ -350,5 +711,3 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port, proxy_headers=True)
-
-
