@@ -839,7 +839,7 @@
             DISCORD_CLIENT_ID: "1445127821742575726",
             // IMPORTANT: This MUST match EXACTLY what's in Discord Developer Portal
             // No trailing slash!
-            REDIRECT_URI: "https://compbot-git-main-xotiics-projects.vercel.app",
+            REDIRECT_URI: "https://www.xotiicsplaza.us/",
             DISCORD_INVITE: "https://discord.com/oauth2/authorize?client_id=1445127821742575726&permissions=8&scope=bot%20applications.commands"
         };
 
@@ -900,7 +900,7 @@
             sessionStorage.setItem('oauth_state', state);
             
             // Build Discord OAuth URL with EXACT redirect_uri
-            const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${encodeURIComponent(scope)}&prompt=consent&state=${state}`;
+            const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1445127821742575726&response_type=code&redirect_uri=https%3A%2F%2Fwww.xotiicsplaza.us%2F&scope=identify+guilds+email`;
             
             console.log('Redirecting to Discord OAuth:', discordAuthUrl);
             window.location.href = discordAuthUrl;
@@ -1620,3 +1620,4 @@
     </script>
 </body>
 </html>
+
