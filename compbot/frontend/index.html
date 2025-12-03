@@ -750,19 +750,20 @@
 
         // ========== DISCORD AUTH ==========
         function loginWithDiscord() {
-            const scope = 'identify email guilds';
-            const state = generateState();
-            localStorage.setItem('oauth_state', state);
-            
-            // Build proper OAuth2 URL
-            const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}&prompt=consent`;
-            
-            hideLoginModal();
-            hideRegisterModal();
-            
-            console.log('Redirecting to Discord OAuth:', authUrl);
-            window.location.href = authUrl;
-        }
+        // Build proper OAuth2 URL with correct scopes
+        const scope = 'identify email guilds';
+        const state = generateState();
+             localStorage.setItem('oauth_state', state);
+    
+    // Use this URL format (YOUR provided URL with fixes):
+        const authUrl = `https://discord.com/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}&prompt=consent`;
+    
+    hideLoginModal();
+    hideRegisterModal();
+    
+    console.log('Redirecting to Discord OAuth:', authUrl);
+    window.location.href = authUrl;
+}
 
         async function handleAuthCallback(code) {
             try {
@@ -1363,3 +1364,4 @@
     </script>
 </body>
 </html>
+
