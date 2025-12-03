@@ -14,7 +14,7 @@ app = FastAPI(title="XTourney API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For testing, restrict in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -249,7 +249,7 @@ async def discord_auth(request: DiscordAuthRequest):
             discord_username = f"{user_data['username']}#{user_data['discriminator']}"
         
         # Check if user exists
-        existing = supabase_select("users", f"discord_id=eq.{user_data['id']}")
+        existing = supabase_select("users", f"discord_id=eq.'{user_data['id']}'")
         
         if existing:
             user_id = existing[0]['id']
@@ -436,7 +436,7 @@ async def set_channel(channel: ChannelConfig):
         
         # Check if exists
         existing = supabase_select("server_channels", 
-                                 f"discord_server_id=eq.{channel.discord_server_id}&channel_type=eq.{channel.channel_type}")
+                                 f"discord_server_id=eq.'{channel.discord_server_id}' AND channel_type=eq.'{channel.channel_type}'")
         
         if existing:
             result = supabase_update("server_channels", channel_data, 
@@ -457,7 +457,7 @@ async def set_channel(channel: ChannelConfig):
 async def get_channels(server_id: str):
     """Get all channels for a server"""
     try:
-        channels = supabase_select("server_channels", f"discord_server_id=eq.{server_id}")
+        channels = supabase_select("server_channels", f"discord_server_id=eq.'{server_id}'")
         return channels
     except Exception as e:
         print(f"Get channels error: {e}")
@@ -514,7 +514,7 @@ async def create_tournament(data: dict, token: dict = Depends(verify_token)):
             
             # Send to Discord if brackets channel is set
             try:
-                channels = supabase_select("server_channels", f"discord_server_id=eq.{server_id}")
+                channels = supabase_select("server_channels", f"discord_server_id=eq.'{server_id}'")
                 brackets_channel = next((c for c in channels if c['channel_type'] == 'brackets'), None)
                 
                 if brackets_channel and DISCORD_BOT_TOKEN:
@@ -645,7 +645,7 @@ async def create_tournament_bot(data: dict):
             raise HTTPException(status_code=403, detail="Need HOST role")
         
         # Check if user exists in database
-        users = supabase_select("users", f"discord_id=eq.{user_id}")
+        users = supabase_select("users", f"discord_id=eq.'{user_id}'")
         if not users:
             # Create user if doesn't exist
             user_db = {
@@ -684,7 +684,7 @@ async def create_tournament_bot(data: dict):
             
             # Send bracket to Discord
             try:
-                channels = supabase_select("server_channels", f"discord_server_id=eq.{server_id}")
+                channels = supabase_select("server_channels", f"discord_server_id=eq.'{server_id}'")
                 brackets_channel = next((c for c in channels if c['channel_type'] == 'brackets'), None)
                 
                 if brackets_channel and DISCORD_BOT_TOKEN:
