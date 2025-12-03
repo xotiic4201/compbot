@@ -694,29 +694,73 @@
         let userToken = null;
         let userServers = [];
 
-        // ========== INITIALIZATION ==========
+        // ========== DISCORD AUTH ==========
+        function loginWithDiscord() {
+            // Use direct backend OAuth2 endpoint
+            const authUrl = `${CONFIG.API_URL}/api/auth/discord`;
+            
+            hideLoginModal();
+            hideRegisterModal();
+            
+            console.log('Redirecting to Discord OAuth:', authUrl);
+            window.location.href = authUrl;
+        }
+
+        // Handle callback from URL parameters
+        function handleAuthCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const error = urlParams.get('error');
+            
+            if (token) {
+                // Store token and redirect
+                localStorage.setItem('xtourney_token', token);
+                
+                // Get user info
+                fetch(`${CONFIG.API_URL}/api/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.user) {
+                        localStorage.setItem('xtourney_user', JSON.stringify(data.user));
+                        currentUser = data.user;
+                        userToken = token;
+                        
+                        showDashboard();
+                        loadUserData();
+                        
+                        // Clean URL
+                        window.history.replaceState({}, document.title, '/');
+                        
+                        showAlert('Successfully logged in!', 'success');
+                    }
+                });
+            } else if (error) {
+                showError(`Login failed: ${error}`);
+                showLoginModal();
+            }
+        }
+
+        // Call this on page load
         document.addEventListener('DOMContentLoaded', function() {
+            handleAuthCallback();
+            
             console.log('XTourney loaded');
             
-            // Check for auth callback
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
+            // Check stored token
+            const storedToken = localStorage.getItem('xtourney_token');
+            const storedUser = localStorage.getItem('xtourney_user');
             
-            if (code) {
-                handleAuthCallback(code);
-            } else {
-                // Check stored token
-                const storedToken = localStorage.getItem('xtourney_token');
-                const storedUser = localStorage.getItem('xtourney_user');
+            if (storedToken && storedUser) {
+                currentUser = JSON.parse(storedUser);
+                userToken = storedToken;
+                userServers = JSON.parse(localStorage.getItem('xtourney_servers') || '[]');
                 
-                if (storedToken && storedUser) {
-                    currentUser = JSON.parse(storedUser);
-                    userToken = storedToken;
-                    userServers = JSON.parse(localStorage.getItem('xtourney_servers') || '[]');
-                    
-                    showDashboard();
-                    loadUserData();
-                }
+                showDashboard();
+                loadUserData();
             }
             
             // Set default date/time
@@ -746,72 +790,6 @@
 
         function hideRegisterModal() {
             document.getElementById('registerModal').style.display = 'none';
-        }
-
-        // ========== DISCORD AUTH ==========
-        function loginWithDiscord() {
-        // Build proper OAuth2 URL with correct scopes
-        const scope = 'identify email guilds';
-        const state = generateState();
-             localStorage.setItem('oauth_state', state);
-    
-    // Use this URL format (YOUR provided URL with fixes):
-        const authUrl = `https://discord.com/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}&prompt=consent`;
-    
-    hideLoginModal();
-    hideRegisterModal();
-    
-    console.log('Redirecting to Discord OAuth:', authUrl);
-    window.location.href = authUrl;
-}
-
-        async function handleAuthCallback(code) {
-            try {
-                console.log('Handling auth callback with code');
-                
-                const response = await fetch(`${CONFIG.API_URL}/api/auth/discord`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        code: code,
-                        redirect_uri: CONFIG.REDIRECT_URI
-                    })
-                });
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Auth failed: ${response.status} - ${errorText}`);
-                }
-                
-                const data = await response.json();
-                console.log('Auth response:', data);
-                
-                if (data.success && data.access_token) {
-                    currentUser = data.user;
-                    userToken = data.access_token;
-                    userServers = data.servers || [];
-                    
-                    localStorage.setItem('xtourney_token', userToken);
-                    localStorage.setItem('xtourney_user', JSON.stringify(currentUser));
-                    localStorage.setItem('xtourney_servers', JSON.stringify(userServers));
-                    
-                    showDashboard();
-                    loadUserData();
-                    
-                    // Clean URL
-                    window.history.replaceState({}, document.title, '/');
-                    
-                    showAlert('Successfully logged in with Discord!', 'success');
-                } else {
-                    throw new Error(data.detail || 'Authentication failed');
-                }
-            } catch (error) {
-                console.error('Auth error:', error);
-                showError('Discord login failed: ' + error.message);
-                showLoginModal();
-            }
         }
 
         // ========== EMAIL AUTH ==========
@@ -1320,10 +1298,6 @@
             showAlert(message, 'error');
         }
 
-        function generateState() {
-            return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        }
-
         function logout() {
             localStorage.removeItem('xtourney_token');
             localStorage.removeItem('xtourney_user');
@@ -1364,4 +1338,3 @@
     </script>
 </body>
 </html>
-
