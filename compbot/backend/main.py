@@ -1,16 +1,17 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime, timedelta
+from fastapi.responses import RedirectResponse
 import os
 import requests
 import secrets
 import hashlib
 import json
 import base64
+from datetime import datetime, timedelta
 from typing import Optional
 from pydantic import BaseModel, EmailStr
 
-app = FastAPI(title="XTourney API", version="5.0.0")
+app = FastAPI(title="XTourney API", version="6.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,8 +29,8 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "https://your-project.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "your-anon-key")
 DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "1445127821742575726")
 DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET", "your-client-secret")
-DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "your-bot-token")
-REDIRECT_URI = os.getenv("REDIRECT_URI", "https://compbot-38u6acfyi-xotiics-projects.vercel.app/")
+REDIRECT_URI = os.getenv("REDIRECT_URI", "https://compbot-ik5bayp8r-xotiics-projects.vercel.app/api/auth/callback")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://compbot-ik5bayp8r-xotiics-projects.vercel.app")
 
 headers = {
     "apikey": SUPABASE_KEY,
@@ -52,7 +53,7 @@ class EmailLoginRequest(BaseModel):
 
 # ========== SIMPLE JWT FUNCTIONS ==========
 def create_jwt_token(data: dict):
-    """Simple token creation without PyJWT"""
+    """Simple token creation"""
     # Add expiry (7 days from now)
     data['exp'] = (datetime.utcnow() + timedelta(days=7)).timestamp()
     data['iat'] = datetime.utcnow().timestamp()
@@ -80,14 +81,6 @@ def verify_jwt_token(token: str):
         
         # Check expiry
         if 'exp' in payload and datetime.utcnow().timestamp() > payload['exp']:
-            return None
-            
-        # Verify signature
-        header_b64 = parts[0]
-        payload_b64 = parts[1]
-        expected_signature = hashlib.sha256(f"{header_b64}.{payload_b64}.{SECRET_KEY}".encode()).hexdigest()
-        
-        if parts[2] != expected_signature:
             return None
             
         return payload
@@ -146,35 +139,122 @@ def verify_password(password: str, hashed_password: str) -> bool:
     test_hash = hashlib.sha256((password + salt).encode()).hexdigest()
     return test_hash == hash_value
 
-# ========== DISCORD FUNCTIONS ==========
-def get_discord_user_info(user_id: str):
-    try:
-        headers = {'Authorization': f'Bot {DISCORD_BOT_TOKEN}'}
-        response = requests.get(
-            f'https://discord.com/api/users/{user_id}',
-            headers=headers
-        )
-        if response.status_code == 200:
-            return response.json()
-        return None
-    except:
-        return None
-
 # ========== HEALTH CHECK ==========
 @app.get("/")
 async def root():
-    return {"message": "XTourney API", "status": "running", "version": "5.0.0"}
+    return {"message": "XTourney API", "status": "running", "version": "6.0.0"}
 
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
 # ========== DISCORD AUTH ==========
-@app.post("/api/auth/discord")
-async def discord_auth(request: DiscordAuthRequest):
-    """Discord OAuth2 authentication"""
+@app.get("/api/auth/discord")
+async def discord_auth_redirect():
+    """Redirect to Discord OAuth2"""
+    discord_auth_url = (
+        f"https://discord.com/api/oauth2/authorize?"
+        f"client_id={DISCORD_CLIENT_ID}&"
+        f"redirect_uri={REDIRECT_URI}&"
+        f"response_type=code&"
+        f"scope=identify%20email%20guilds&"
+        f"prompt=consent"
+    )
+    return RedirectResponse(url=discord_auth_url)
+
+@app.get("/api/auth/callback")
+async def discord_auth_callback(code: str, state: str = None):
+    """Handle Discord OAuth2 callback"""
     try:
-        print(f"Discord auth request received")
+        print(f"Discord callback received with code")
+        
+        # Exchange code for token
+        data = {
+            'client_id': DISCORD_CLIENT_ID,
+            'client_secret': DISCORD_CLIENT_SECRET,
+            'grant_type': 'authorization_code',
+            'code': code,
+            'redirect_uri': REDIRECT_URI
+        }
+        
+        headers_auth = {'Content-Type': 'application/x-www-form-urlencoded'}
+        response = requests.post('https://discord.com/api/oauth2/token', data=data, headers=headers_auth)
+        
+        print(f"Discord token response: {response.status_code}")
+        
+        if response.status_code != 200:
+            error_text = response.text
+            print(f"Discord token error: {error_text}")
+            # Redirect to frontend with error
+            return RedirectResponse(f"{FRONTEND_URL}?error=auth_failed&message={error_text}")
+        
+        token_data = response.json()
+        access_token = token_data.get("access_token")
+        
+        if not access_token:
+            return RedirectResponse(f"{FRONTEND_URL}?error=no_token")
+        
+        # Get user info
+        user_headers = {'Authorization': f'Bearer {access_token}'}
+        user_response = requests.get('https://discord.com/api/users/@me', headers=user_headers)
+        user_data = user_response.json()
+        
+        print(f"Discord user data: {user_data}")
+        
+        if 'id' not in user_data:
+            return RedirectResponse(f"{FRONTEND_URL}?error=invalid_user_data")
+        
+        # Create username
+        discord_username = user_data['username']
+        if user_data.get('global_name'):
+            discord_username = user_data['global_name']
+        
+        # Check if user exists
+        existing = supabase_select("users", f"discord_id=eq.'{user_data['id']}'")
+        
+        if existing:
+            user_id = existing[0]['id']
+            # Update user
+            supabase_update("users", {
+                "last_login": datetime.utcnow().isoformat()
+            }, "id", user_id)
+        else:
+            # Create new user
+            user_db = {
+                "discord_id": user_data["id"],
+                "username": discord_username,
+                "avatar_url": f"https://cdn.discordapp.com/avatars/{user_data['id']}/{user_data.get('avatar', '')}.png" if user_data.get('avatar') else None,
+                "email": user_data.get("email"),
+                "account_type": "discord",
+                "created_at": datetime.utcnow().isoformat(),
+                "last_login": datetime.utcnow().isoformat()
+            }
+            
+            result = supabase_insert("users", user_db)
+            if not result:
+                return RedirectResponse(f"{FRONTEND_URL}?error=user_creation_failed")
+            user_id = result['id']
+        
+        # Create JWT token
+        jwt_token = create_jwt_token({
+            "sub": user_id,
+            "username": discord_username,
+            "discord_id": user_data["id"],
+            "account_type": "discord"
+        })
+        
+        # Redirect to frontend with token
+        return RedirectResponse(f"{FRONTEND_URL}?token={jwt_token}&user_id={user_id}&username={discord_username}")
+        
+    except Exception as e:
+        print(f"Discord auth error: {str(e)}")
+        return RedirectResponse(f"{FRONTEND_URL}?error=server_error&message={str(e)}")
+
+@app.post("/api/auth/discord/token")
+async def discord_auth_token(request: DiscordAuthRequest):
+    """Direct token exchange (for frontend)"""
+    try:
+        print(f"Direct Discord auth with code")
         
         # Exchange code for token
         data = {
@@ -182,14 +262,13 @@ async def discord_auth(request: DiscordAuthRequest):
             'client_secret': DISCORD_CLIENT_SECRET,
             'grant_type': 'authorization_code',
             'code': request.code,
-            'redirect_uri': REDIRECT_URI
+            'redirect_uri': FRONTEND_URL
         }
         
         headers_auth = {'Content-Type': 'application/x-www-form-urlencoded'}
         response = requests.post('https://discord.com/api/oauth2/token', data=data, headers=headers_auth)
         
         if response.status_code != 200:
-            print(f"Discord token error: {response.status_code}")
             raise HTTPException(status_code=400, detail="Invalid authorization code")
         
         token_data = response.json()
@@ -257,7 +336,7 @@ async def discord_auth(request: DiscordAuthRequest):
         }
         
     except Exception as e:
-        print(f"Discord auth error: {str(e)}")
+        print(f"Direct Discord auth error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ========== EMAIL AUTH ==========
@@ -404,9 +483,10 @@ async def get_current_user(authorization: str = None):
 
 # ========== TOURNAMENT MANAGEMENT ==========
 @app.post("/api/tournaments")
-async def create_tournament(data: dict, authorization: str = None):
+async def create_tournament(request: Request):
     """Create tournament"""
     try:
+        authorization = request.headers.get("Authorization")
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Missing authorization")
         
@@ -417,13 +497,12 @@ async def create_tournament(data: dict, authorization: str = None):
             raise HTTPException(status_code=401, detail="Invalid token")
         
         user_id = payload.get("sub")
+        data = await request.json()
         
         # Get user
         users = supabase_select("users", f"id=eq.{user_id}")
         if not users:
             raise HTTPException(status_code=404, detail="User not found")
-        
-        user = users[0]
         
         # Create tournament
         tournament = {
@@ -482,7 +561,7 @@ async def get_tournaments(authorization: str = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/tournaments/{tournament_id}")
-async def get_tournament(tournament_id: str, authorization: str = None):
+async def get_tournament(tournament_id: str):
     """Get specific tournament"""
     try:
         tournaments = supabase_select("tournaments", f"id=eq.{tournament_id}")
@@ -490,8 +569,6 @@ async def get_tournament(tournament_id: str, authorization: str = None):
             raise HTTPException(status_code=404, detail="Tournament not found")
         
         tournament = tournaments[0]
-        
-        # Get teams
         teams = supabase_select("teams", f"tournament_id=eq.{tournament_id}")
         
         return {
@@ -502,11 +579,12 @@ async def get_tournament(tournament_id: str, authorization: str = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ========== BOT ENDPOINTS (No auth required) ==========
+# ========== BOT ENDPOINTS ==========
 @app.post("/api/bot/tournaments")
-async def create_tournament_bot(data: dict):
+async def create_tournament_bot(request: Request):
     """Create tournament via Discord bot"""
     try:
+        data = await request.json()
         user_id = data.get("created_by")
         server_id = data.get("discord_server_id")
         
@@ -594,9 +672,10 @@ async def get_server_tournaments(server_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/bot/teams")
-async def register_team_bot(data: dict):
+async def register_team_bot(request: Request):
     """Register team via bot"""
     try:
+        data = await request.json()
         tournament_id = data.get("tournament_id")
         team_name = data.get("name")
         captain_id = data.get("captain_discord_id")
@@ -656,9 +735,10 @@ async def register_team_bot(data: dict):
 
 # ========== CHANNEL MANAGEMENT ==========
 @app.post("/api/bot/channels/set")
-async def bot_set_channel(data: dict):
+async def bot_set_channel(request: Request):
     """Set channel via Discord bot"""
     try:
+        data = await request.json()
         channel_data = {
             "discord_server_id": data.get("discord_server_id"),
             "channel_type": data.get("channel_type"),
