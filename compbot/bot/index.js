@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, SlashCommandBuilder, REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, SlashCommandBuilder, REST, Routes, ChannelType } = require('discord.js');
 require('dotenv').config();
 const axios = require('axios');
 
@@ -12,7 +12,6 @@ const client = new Client({
 });
 
 const API_URL = process.env.API_URL || "https://compbot-lhuy.onrender.com";
-const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 
 // Channel types for tournament management
 const CHANNEL_TYPES = [
@@ -60,9 +59,6 @@ const commands = [
             .addStringOption(opt => opt.setName('date').setDescription('Start date (YYYY-MM-DD HH:MM)').setRequired(true))
             .addIntegerOption(opt => opt.setName('teams').setDescription('Max teams (8, 16, 32, 64)').setRequired(false))
             .addStringOption(opt => opt.setName('description').setDescription('Tournament description').setRequired(false)))
-        .addSubcommand(sub => sub
-            .setName('list')
-            .setDescription('List server tournaments'))
         .addSubcommand(sub => sub
             .setName('bracket')
             .setDescription('View tournament bracket')
@@ -264,7 +260,6 @@ async function handleTournament(interaction, options) {
                     const channelsRes = await axios.get(`${API_URL}/channels/${interaction.guildId}`);
                     const channels = channelsRes.data;
                     const announceChannel = channels.find(c => c.channel_type === 'announcements');
-                    const bracketsChannel = channels.find(c => c.channel_type === 'brackets');
                     
                     if (announceChannel) {
                         const announceChannelObj = await interaction.guild.channels.fetch(announceChannel.discord_channel_id);
@@ -274,52 +269,8 @@ async function handleTournament(interaction, options) {
                         });
                     }
                     
-                    // Send bracket to brackets channel
-                    if (bracketsChannel) {
-                        const bracketsChannelObj = await interaction.guild.channels.fetch(bracketsChannel.discord_channel_id);
-                        
-                        // Get bracket from API
-                        const bracketRes = await axios.get(`${API_URL}/api/bot/tournaments/${tournament.id}/bracket`);
-                        const bracketData = bracketRes.data;
-                        
-                        const bracketEmbed = new EmbedBuilder()
-                            .setTitle(`📋 ${tournament.name} Bracket`)
-                            .setDescription(`**${tournament.game}** - ${tournament.description || 'No description'}`)
-                            .addFields(
-                                { name: 'Status', value: tournament.status.toUpperCase(), inline: true },
-                                { name: 'Teams', value: `${tournament.current_teams}/${tournament.max_teams}`, inline: true },
-                                { name: 'Type', value: tournament.bracket_type.replace('_', ' ').toUpperCase(), inline: true }
-                            )
-                            .setColor('#F1C40F');
-                        
-                        let bracketText = '';
-                        const rounds = bracketData.rounds || {};
-                        
-                        if (Object.keys(rounds).length > 0) {
-                            bracketText = '**Bracket Structure:**\n';
-                            for (const roundNum in rounds) {
-                                bracketText += `\n**Round ${roundNum}:**\n`;
-                                rounds[roundNum].forEach(match => {
-                                    bracketText += `Match ${match.match_number}: TBD vs TBD\n`;
-                                });
-                            }
-                        } else {
-                            bracketText = 'No bracket generated yet. Teams need to register first.';
-                        }
-                        
-                        bracketEmbed.addFields({
-                            name: 'Bracket',
-                            value: bracketText.substring(0, 1020) + (bracketText.length > 1020 ? '...' : '')
-                        });
-                        
-                        await bracketsChannelObj.send({ 
-                            content: '🏆 **Tournament Bracket Created!**',
-                            embeds: [bracketEmbed]
-                        });
-                    }
-                    
                     await interaction.editReply({ 
-                        content: `✅ Tournament created successfully! Check the announcement and brackets channels.` 
+                        content: `✅ Tournament created successfully! Check the announcements channel.` 
                     });
                     
                 } catch (channelError) {
@@ -336,30 +287,6 @@ async function handleTournament(interaction, options) {
             console.error('Tournament creation error:', error.response?.data || error.message);
             await interaction.editReply({ 
                 content: '❌ Failed to create tournament: ' + (error.response?.data?.detail || error.message) 
-            });
-        }
-    }
-    
-    else if (subcommand === 'list') {
-        await interaction.deferReply({ ephemeral: true });
-        
-        try {
-            // Get tournaments for this server from API
-            // Note: This would need server-specific endpoint
-            const embed = new EmbedBuilder()
-                .setTitle('📋 Server Tournaments')
-                .setDescription('View and manage tournaments on the XTourney website:')
-                .addFields({
-                    name: 'Website',
-                    value: `[XTourney Dashboard](${process.env.WEBSITE_URL || 'https://xtourney.vercel.app'})`
-                })
-                .setColor('#5865F2');
-            
-            await interaction.editReply({ embeds: [embed] });
-            
-        } catch (error) {
-            await interaction.editReply({ 
-                content: '❌ Error: ' + (error.response?.data?.detail || error.message) 
             });
         }
     }
@@ -578,22 +505,6 @@ async function handleSetup(interaction) {
         });
     }
 }
-
-// Button interactions
-client.on('interactionCreate', async interaction => {
-    if (!interaction.isButton()) return;
-    
-    const customId = interaction.customId;
-    
-    if (customId.startsWith('register_')) {
-        const tournamentId = customId.replace('register_', '');
-        
-        await interaction.reply({
-            content: `To register a team for tournament \`${tournamentId}\`, use:\n\`/team register tournament_id:${tournamentId} name:YourTeamName\``,
-            ephemeral: true
-        });
-    }
-});
 
 // Start bot
 client.login(process.env.DISCORD_TOKEN).catch(error => {
