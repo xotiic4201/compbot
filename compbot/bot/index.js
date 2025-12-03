@@ -11,9 +11,10 @@ const client = new Client({
     ]
 });
 
-const API_URL = process.env.API_URL || "https://your-render-backend.onrender.com"; // Your Render URL
+const API_URL = process.env.API_URL || "https://compbot-lhuy.onrender.com";
+const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 
-// ========== CHANNEL TYPES ==========
+// Channel types for tournament management
 const CHANNEL_TYPES = [
     { name: '📢 Announcements', value: 'announcements', description: 'Tournament announcements' },
     { name: '📝 Registrations', value: 'registrations', description: 'Team registration' },
@@ -24,12 +25,12 @@ const CHANNEL_TYPES = [
     { name: '📊 Logs', value: 'logs', description: 'Activity logs' }
 ];
 
-// ========== SLASH COMMANDS ==========
+// Slash Commands
 const commands = [
     // CHANNELS COMMAND
     new SlashCommandBuilder()
         .setName('channels')
-        .setDescription('Configure where tournament info goes')
+        .setDescription('Configure tournament channels')
         .addSubcommand(sub => sub
             .setName('set')
             .setDescription('Set a channel type')
@@ -45,10 +46,7 @@ const commands = [
                 .addChannelTypes(ChannelType.GuildText)))
         .addSubcommand(sub => sub
             .setName('view')
-            .setDescription('See current channel setup'))
-        .addSubcommand(sub => sub
-            .setName('setup-help')
-            .setDescription('Get setup instructions')),
+            .setDescription('See current channel setup')),
     
     // TOURNAMENT COMMANDS
     new SlashCommandBuilder()
@@ -56,14 +54,15 @@ const commands = [
         .setDescription('Tournament management')
         .addSubcommand(sub => sub
             .setName('create')
-            .setDescription('Create new tournament')
+            .setDescription('Create new tournament (HOST role required)')
             .addStringOption(opt => opt.setName('name').setDescription('Tournament name').setRequired(true))
             .addStringOption(opt => opt.setName('game').setDescription('Game name').setRequired(true))
             .addStringOption(opt => opt.setName('date').setDescription('Start date (YYYY-MM-DD HH:MM)').setRequired(true))
-            .addIntegerOption(opt => opt.setName('teams').setDescription('Max teams').setRequired(false)))
+            .addIntegerOption(opt => opt.setName('teams').setDescription('Max teams (8, 16, 32, 64)').setRequired(false))
+            .addStringOption(opt => opt.setName('description').setDescription('Tournament description').setRequired(false)))
         .addSubcommand(sub => sub
             .setName('list')
-            .setDescription('List your tournaments'))
+            .setDescription('List server tournaments'))
         .addSubcommand(sub => sub
             .setName('bracket')
             .setDescription('View tournament bracket')
@@ -82,15 +81,15 @@ const commands = [
     // QUICK SETUP
     new SlashCommandBuilder()
         .setName('setup')
-        .setDescription('Quick server setup')
+        .setDescription('Quick server setup (Admin only)')
 ];
 
-// ========== REGISTER COMMANDS ==========
+// Register commands
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 client.once('ready', async () => {
     console.log(`✅ ${client.user.tag} is ready!`);
-    client.user.setActivity('/setup | XTourney');
+    client.user.setActivity('/help | XTourney');
     
     try {
         console.log('Registering slash commands...');
@@ -104,7 +103,7 @@ client.once('ready', async () => {
     }
 });
 
-// ========== COMMAND HANDLER ==========
+// Command handler
 client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return;
 
@@ -134,7 +133,7 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// ========== CHANNELS HANDLER ==========
+// Channels handler
 async function handleChannels(interaction, options) {
     const subcommand = options.getSubcommand();
     
@@ -150,7 +149,7 @@ async function handleChannels(interaction, options) {
         await interaction.deferReply({ ephemeral: true });
         
         try {
-            const response = await axios.post(`${API_URL}/channels/set`, {
+            await axios.post(`${API_URL}/channels/set`, {
                 discord_server_id: interaction.guildId,
                 channel_type: channelType,
                 discord_channel_id: channel.id,
@@ -166,8 +165,7 @@ async function handleChannels(interaction, options) {
                     { name: 'Type', value: channelInfo.description, inline: true },
                     { name: 'Channel', value: `<#${channel.id}>`, inline: true }
                 )
-                .setColor('#57F287')
-                .setFooter({ text: 'Use /channels view to see all configured channels' });
+                .setColor('#57F287');
             
             await interaction.editReply({ embeds: [embed] });
             
@@ -185,7 +183,7 @@ async function handleChannels(interaction, options) {
             
             const embed = new EmbedBuilder()
                 .setTitle('📋 Configured Channels')
-                .setDescription('Here are all the channels set for tournaments:')
+                .setDescription('Tournament channels:')
                 .setColor('#5865F2');
             
             if (!channels || channels.length === 0) {
@@ -209,48 +207,27 @@ async function handleChannels(interaction, options) {
             });
         }
     }
-    
-    else if (subcommand === 'setup-help') {
-        const embed = new EmbedBuilder()
-            .setTitle('🛠️ Channel Setup Guide')
-            .setDescription('Configure these channels for full functionality:')
-            .setColor('#F1C40F');
-        
-        CHANNEL_TYPES.forEach((ct, i) => {
-            embed.addFields({
-                name: `${ct.name}`,
-                value: `${ct.description}\n\`/channels set type:${ct.value}\``,
-                inline: i < CHANNEL_TYPES.length / 2
-            });
-        });
-        
-        embed.addFields({
-            name: '📌 Quick Setup',
-            value: 'Use `/setup` to auto-create all channels'
-        });
-        
-        await interaction.reply({ embeds: [embed], ephemeral: true });
-    }
 }
 
-// ========== TOURNAMENT HANDLER ==========
+// Tournament handler
 async function handleTournament(interaction, options) {
     const subcommand = options.getSubcommand();
     
     if (subcommand === 'create') {
         await interaction.deferReply();
         
-        // Parse date string to ISO format
+        // Parse date
         let startDate;
         try {
             startDate = new Date(options.getString('date')).toISOString();
         } catch (e) {
-            startDate = new Date().toISOString(); // Default to now if parsing fails
+            startDate = new Date().toISOString();
         }
         
         const tournamentData = {
             name: options.getString('name'),
             game: options.getString('game'),
+            description: options.getString('description') || '',
             max_teams: options.getInteger('teams') || 16,
             start_date: startDate,
             discord_server_id: interaction.guildId,
@@ -259,7 +236,7 @@ async function handleTournament(interaction, options) {
         };
         
         try {
-            const response = await axios.post(`${API_URL}/api/tournaments`, tournamentData, {
+            const response = await axios.post(`${API_URL}/api/bot/tournaments`, tournamentData, {
                 headers: {
                     'Content-Type': 'application/json'
                 }
@@ -268,6 +245,7 @@ async function handleTournament(interaction, options) {
             if (response.data.success) {
                 const tournament = response.data.tournament;
                 
+                // Create embed
                 const embed = new EmbedBuilder()
                     .setTitle(`🎮 ${tournament.name}`)
                     .setDescription(`New ${tournament.game} tournament created!`)
@@ -276,53 +254,78 @@ async function handleTournament(interaction, options) {
                         { name: 'Max Teams', value: `${tournament.max_teams}`, inline: true },
                         { name: 'Status', value: '🟢 REGISTRATION OPEN', inline: true },
                         { name: 'Starts', value: new Date(tournament.start_date).toLocaleString(), inline: true },
-                        { name: 'Host', value: `<@${interaction.user.id}>`, inline: true },
-                        { name: 'Game', value: tournament.game, inline: true }
+                        { name: 'Host', value: `<@${interaction.user.id}>`, inline: true }
                     )
                     .setColor('#5865F2')
                     .setTimestamp();
-                
-                // Add registration button
-                const row = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId(`register_${tournament.id}`)
-                            .setLabel('Register Team')
-                            .setStyle(ButtonStyle.Primary),
-                        new ButtonBuilder()
-                            .setLabel('View on Website')
-                            .setURL(`${process.env.WEBSITE_URL || 'https://xtourney.vercel.app'}`)
-                            .setStyle(ButtonStyle.Link)
-                    );
                 
                 // Try to send to announcements channel
                 try {
                     const channelsRes = await axios.get(`${API_URL}/channels/${interaction.guildId}`);
                     const channels = channelsRes.data;
                     const announceChannel = channels.find(c => c.channel_type === 'announcements');
+                    const bracketsChannel = channels.find(c => c.channel_type === 'brackets');
                     
                     if (announceChannel) {
                         const announceChannelObj = await interaction.guild.channels.fetch(announceChannel.discord_channel_id);
                         await announceChannelObj.send({ 
                             content: '🎉 **New Tournament Created!**',
-                            embeds: [embed],
-                            components: [row]
-                        });
-                        await interaction.editReply({ 
-                            content: `✅ Tournament created and announced in <#${announceChannel.discord_channel_id}>!` 
-                        });
-                    } else {
-                        await interaction.editReply({ 
-                            content: '✅ Tournament created! (No announcements channel set)', 
-                            embeds: [embed],
-                            components: [row]
+                            embeds: [embed]
                         });
                     }
+                    
+                    // Send bracket to brackets channel
+                    if (bracketsChannel) {
+                        const bracketsChannelObj = await interaction.guild.channels.fetch(bracketsChannel.discord_channel_id);
+                        
+                        // Get bracket from API
+                        const bracketRes = await axios.get(`${API_URL}/api/bot/tournaments/${tournament.id}/bracket`);
+                        const bracketData = bracketRes.data;
+                        
+                        const bracketEmbed = new EmbedBuilder()
+                            .setTitle(`📋 ${tournament.name} Bracket`)
+                            .setDescription(`**${tournament.game}** - ${tournament.description || 'No description'}`)
+                            .addFields(
+                                { name: 'Status', value: tournament.status.toUpperCase(), inline: true },
+                                { name: 'Teams', value: `${tournament.current_teams}/${tournament.max_teams}`, inline: true },
+                                { name: 'Type', value: tournament.bracket_type.replace('_', ' ').toUpperCase(), inline: true }
+                            )
+                            .setColor('#F1C40F');
+                        
+                        let bracketText = '';
+                        const rounds = bracketData.rounds || {};
+                        
+                        if (Object.keys(rounds).length > 0) {
+                            bracketText = '**Bracket Structure:**\n';
+                            for (const roundNum in rounds) {
+                                bracketText += `\n**Round ${roundNum}:**\n`;
+                                rounds[roundNum].forEach(match => {
+                                    bracketText += `Match ${match.match_number}: TBD vs TBD\n`;
+                                });
+                            }
+                        } else {
+                            bracketText = 'No bracket generated yet. Teams need to register first.';
+                        }
+                        
+                        bracketEmbed.addFields({
+                            name: 'Bracket',
+                            value: bracketText.substring(0, 1020) + (bracketText.length > 1020 ? '...' : '')
+                        });
+                        
+                        await bracketsChannelObj.send({ 
+                            content: '🏆 **Tournament Bracket Created!**',
+                            embeds: [bracketEmbed]
+                        });
+                    }
+                    
+                    await interaction.editReply({ 
+                        content: `✅ Tournament created successfully! Check the announcement and brackets channels.` 
+                    });
+                    
                 } catch (channelError) {
                     await interaction.editReply({ 
-                        content: '✅ Tournament created!', 
-                        embeds: [embed],
-                        components: [row]
+                        content: '✅ Tournament created! (Set up channels with `/channels set` for announcements)', 
+                        embeds: [embed]
                     });
                 }
             } else {
@@ -341,11 +344,11 @@ async function handleTournament(interaction, options) {
         await interaction.deferReply({ ephemeral: true });
         
         try {
-            // In production, you'd need to pass auth token
-            // For now, we'll just show a message
+            // Get tournaments for this server from API
+            // Note: This would need server-specific endpoint
             const embed = new EmbedBuilder()
-                .setTitle('📋 Your Tournaments')
-                .setDescription('View and manage your tournaments on the XTourney website:')
+                .setTitle('📋 Server Tournaments')
+                .setDescription('View and manage tournaments on the XTourney website:')
                 .addFields({
                     name: 'Website',
                     value: `[XTourney Dashboard](${process.env.WEBSITE_URL || 'https://xtourney.vercel.app'})`
@@ -367,7 +370,7 @@ async function handleTournament(interaction, options) {
         await interaction.deferReply();
         
         try {
-            const response = await axios.get(`${API_URL}/api/tournaments/${tournamentId}/bracket`);
+            const response = await axios.get(`${API_URL}/api/bot/tournaments/${tournamentId}/bracket`);
             
             if (response.data) {
                 const bracketData = response.data;
@@ -375,7 +378,7 @@ async function handleTournament(interaction, options) {
                 
                 const embed = new EmbedBuilder()
                     .setTitle(`📋 ${tournament.name} Bracket`)
-                    .setDescription(`Current bracket status for ${tournament.game}`)
+                    .setDescription(`**${tournament.game}** - ${tournament.description || 'No description'}`)
                     .addFields(
                         { name: 'Status', value: tournament.status.toUpperCase(), inline: true },
                         { name: 'Teams', value: `${tournament.current_teams}/${tournament.max_teams}`, inline: true },
@@ -383,16 +386,20 @@ async function handleTournament(interaction, options) {
                     )
                     .setColor('#F1C40F');
                 
-                // Show rounds info
-                const rounds = bracketData.rounds;
-                if (rounds && Object.keys(rounds).length > 0) {
-                    const roundCount = Object.keys(rounds).length;
-                    const matchesCount = Object.values(rounds).flat().length;
+                const rounds = bracketData.rounds || {};
+                if (Object.keys(rounds).length > 0) {
+                    let bracketText = '';
+                    for (const roundNum in rounds) {
+                        bracketText += `\n**Round ${roundNum}:**\n`;
+                        rounds[roundNum].forEach(match => {
+                            bracketText += `Match ${match.match_number}: ${match.team1_id ? 'Team' : 'TBD'} vs ${match.team2_id ? 'Team' : 'TBD'}\n`;
+                        });
+                    }
                     
-                    embed.addFields(
-                        { name: 'Rounds', value: `${roundCount}`, inline: true },
-                        { name: 'Total Matches', value: `${matchesCount}`, inline: true }
-                    );
+                    embed.addFields({
+                        name: 'Bracket Structure',
+                        value: bracketText.substring(0, 1020) + (bracketText.length > 1020 ? '...' : '')
+                    });
                 } else {
                     embed.addFields({
                         name: 'Bracket Status',
@@ -415,7 +422,7 @@ async function handleTournament(interaction, options) {
     }
 }
 
-// ========== TEAM HANDLER ==========
+// Team handler
 async function handleTeam(interaction, options) {
     const subcommand = options.getSubcommand();
     
@@ -426,9 +433,10 @@ async function handleTeam(interaction, options) {
         await interaction.deferReply({ ephemeral: true });
         
         try {
-            const response = await axios.post(`${API_URL}/api/teams`, {
+            const response = await axios.post(`${API_URL}/api/bot/teams`, {
                 tournament_id: tournamentId,
-                name: teamName
+                name: teamName,
+                captain_discord_id: interaction.user.id
             }, {
                 headers: {
                     'Content-Type': 'application/json'
@@ -443,8 +451,7 @@ async function handleTeam(interaction, options) {
                     .setDescription(`**${team.name}** has been registered`)
                     .addFields(
                         { name: 'Tournament ID', value: `\`${tournamentId}\``, inline: true },
-                        { name: 'Captain', value: `<@${interaction.user.id}>`, inline: true },
-                        { name: 'Team ID', value: `\`${team.id}\``, inline: false }
+                        { name: 'Captain', value: `<@${interaction.user.id}>`, inline: true }
                     )
                     .setColor('#57F287');
                 
@@ -481,7 +488,7 @@ async function handleTeam(interaction, options) {
     }
 }
 
-// ========== SETUP HANDLER ==========
+// Setup handler
 async function handleSetup(interaction) {
     if (!interaction.member.permissions.has('ADMINISTRATOR')) {
         await interaction.reply({ content: '❌ Need admin permissions!', ephemeral: true });
@@ -503,29 +510,20 @@ async function handleSetup(interaction) {
                 },
                 {
                     id: interaction.client.user.id,
-                    allow: ['ViewChannel', 'SendMessages', 'ManageMessages', 'ManageChannels']
+                    allow: ['ViewChannel', 'SendMessages', 'ManageMessages']
                 }
-            ],
-            reason: 'XTourney tournament management system'
+            ]
         });
         
         const createdChannels = [];
         
-        // Create all channel types
+        // Create channels
         for (const channelType of CHANNEL_TYPES) {
             const channel = await interaction.guild.channels.create({
                 name: channelType.value,
                 type: ChannelType.GuildText,
                 parent: category.id,
-                topic: channelType.description,
-                permissionOverwrites: [
-                    {
-                        id: interaction.guild.id,
-                        allow: ['ViewChannel', 'SendMessages'],
-                        deny: []
-                    }
-                ],
-                reason: `XTourney ${channelType.description} channel`
+                topic: channelType.description
             });
             
             // Save to database
@@ -540,37 +538,21 @@ async function handleSetup(interaction) {
                 createdChannels.push(channel);
             } catch (dbError) {
                 console.log('DB error:', dbError.message);
-                // Continue even if DB fails
             }
         }
         
         // Create roles
-        const organizerRole = await interaction.guild.roles.create({
+        const hostRole = await interaction.guild.roles.create({
             name: 'Tournament Host',
             color: 'Blue',
-            mentionable: true,
-            reason: 'XTourney tournament hosts'
+            mentionable: true
         });
         
-        const playerRole = await interaction.guild.roles.create({
-            name: 'Tournament Player',
-            color: 'Green',
-            reason: 'XTourney tournament participants'
-        });
-        
-        const adminRole = await interaction.guild.roles.create({
-            name: 'Tournament Admin',
-            color: 'Red',
-            mentionable: true,
-            reason: 'XTourney tournament administrators'
-        });
-        
-        // Assign admin role to command user
+        // Assign host role to command user
         try {
-            const member = await interaction.guild.members.fetch(interaction.user.id);
-            await member.roles.add(adminRole);
+            await interaction.member.roles.add(hostRole);
         } catch (roleError) {
-            console.log('Could not assign admin role:', roleError.message);
+            console.log('Could not assign host role:', roleError.message);
         }
         
         const embed = new EmbedBuilder()
@@ -579,17 +561,13 @@ async function handleSetup(interaction) {
             .addFields(
                 { name: 'Category', value: `${category}`, inline: true },
                 { name: 'Channels Created', value: createdChannels.length.toString(), inline: true },
-                { name: 'Host Role', value: `${organizerRole}`, inline: true },
-                { name: 'Player Role', value: `${playerRole}`, inline: true },
-                { name: 'Admin Role', value: `${adminRole}`, inline: true }
+                { name: 'Host Role', value: `${hostRole}`, inline: true }
             )
             .addFields({
                 name: '📋 Channel Guide',
-                value: createdChannels.map(c => `<#${c.id}>`).join('\n'),
-                inline: false
+                value: createdChannels.map(c => `<#${c.id}>`).join('\n')
             })
-            .setColor('#57F287')
-            .setFooter({ text: 'Use /tournament create to start your first tournament!' });
+            .setColor('#57F287');
         
         await interaction.editReply({ embeds: [embed] });
         
@@ -601,7 +579,7 @@ async function handleSetup(interaction) {
     }
 }
 
-// ========== BUTTON INTERACTIONS ==========
+// Button interactions
 client.on('interactionCreate', async interaction => {
     if (!interaction.isButton()) return;
     
@@ -617,7 +595,7 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// ========== START BOT ==========
+// Start bot
 client.login(process.env.DISCORD_TOKEN).catch(error => {
     console.error('❌ Failed to login:', error);
 });
