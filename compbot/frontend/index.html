@@ -795,6 +795,32 @@
                         </div>
                         
                         <div class="form-group">
+                            <label class="form-label">Max Players Per Team *</label>
+                            <select id="maxPlayersPerTeam" class="form-input" required>
+                                <option value="1">1 Player</option>
+                                <option value="2">2 Players</option>
+                                <option value="3">3 Players</option>
+                                <option value="4">4 Players</option>
+                                <option value="5" selected>5 Players</option>
+                                <option value="6">6 Players</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Region Filter</label>
+                            <select id="regionFilter" class="form-input">
+                                <option value="false">No Region Filter</option>
+                                <option value="true">Enable Region Filter</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Prize Pool (Optional)</label>
+                            <input type="text" id="prizePool" class="form-input" 
+                                   placeholder="e.g., $1000, Free Discord Nitro, etc.">
+                        </div>
+                        
+                        <div class="form-group">
                             <label class="form-label">Start Date & Time *</label>
                             <input type="datetime-local" id="startDate" class="form-input" required>
                         </div>
@@ -837,9 +863,7 @@
         const CONFIG = {
             API_URL: "https://compbot-lhuy.onrender.com",
             DISCORD_CLIENT_ID: "1445127821742575726",
-            // IMPORTANT: This MUST match EXACTLY what's in Discord Developer Portal
-            // No trailing slash!
-            REDIRECT_URI: "https://www.xotiicsplaza.us/",
+            REDIRECT_URI: "https://compbot-git-main-xotiics-projects.vercel.app",
             DISCORD_INVITE: "https://discord.com/oauth2/authorize?client_id=1445127821742575726&permissions=8&scope=bot%20applications.commands"
         };
 
@@ -851,30 +875,20 @@
         // ========== INITIALIZATION ==========
         document.addEventListener('DOMContentLoaded', function() {
             console.log('XTourney Platform loaded');
-            console.log('Redirect URI:', CONFIG.REDIRECT_URI);
             
-            // Check for auth callback in URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const error = urlParams.get('error');
-            const state = urlParams.get('state');
-            
-            console.log('URL params - code:', code ? 'Present' : 'Absent');
-            console.log('URL params - error:', error);
-            console.log('URL params - state:', state);
-            
-            if (code) {
-                console.log('Processing Discord OAuth callback...');
-                processDiscordCallback(code);
-            } else if (error) {
-                console.error('OAuth error:', error);
-                showError('Authentication failed: ' + error);
-                // Clean URL
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-            
-            // Check for existing session
-            checkExistingSession();
+            // Try auto-login first
+            attemptAutoLogin().then(success => {
+                if (!success) {
+                    // If auto-login fails, check for OAuth callback
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const code = urlParams.get('code');
+                    
+                    if (code) {
+                        console.log('Processing Discord OAuth callback...');
+                        processDiscordCallback(code);
+                    }
+                }
+            });
             
             // Load public data
             loadPublicData();
@@ -888,40 +902,88 @@
             }
         });
 
+        // ========== AUTO LOGIN ==========
+        async function attemptAutoLogin() {
+            console.log('Attempting auto-login...');
+            
+            const storedToken = localStorage.getItem('xtourney_token');
+            const storedUser = localStorage.getItem('xtourney_user');
+            
+            if (!storedToken || !storedUser) {
+                console.log('No stored session found');
+                return false;
+            }
+            
+            try {
+                console.log('Found stored session, attempting refresh...');
+                
+                // Try to refresh the token with backend
+                const response = await fetch(`${CONFIG.API_URL}/api/auth/discord/refresh`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        token: storedToken
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        console.log('Auto-login successful!');
+                        
+                        // Update stored data
+                        localStorage.setItem('xtourney_token', data.access_token);
+                        localStorage.setItem('xtourney_user', JSON.stringify(data.user));
+                        localStorage.setItem('xtourney_servers', JSON.stringify(data.servers || []));
+                        
+                        currentUser = data.user;
+                        userToken = data.access_token;
+                        userServers = data.servers || [];
+                        
+                        updateUIAfterLogin();
+                        
+                        if (userServers.length > 0) {
+                            loadUserServers();
+                        }
+                        
+                        showAlert('Welcome back!', 'success');
+                        return true;
+                    }
+                }
+            } catch (error) {
+                console.log('Auto-login failed, will try fresh login:', error.message);
+            }
+            
+            return false;
+        }
+
         // ========== DISCORD AUTH ==========
         function startDiscordOAuth() {
             console.log('Starting Discord OAuth...');
             
-            // IMPORTANT: Make sure these scopes include 'guilds' to access servers
             const scope = 'identify email guilds';
             const state = generateState();
             
-            // Store state for verification
             sessionStorage.setItem('oauth_state', state);
             
-            // Build Discord OAuth URL with EXACT redirect_uri
             const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1445127821742575726&response_type=code&redirect_uri=https%3A%2F%2Fwww.xotiicsplaza.us%2F&scope=identify+guilds+email`;
             
-            console.log('Redirecting to Discord OAuth:', discordAuthUrl);
+            console.log('Redirecting to Discord OAuth');
             window.location.href = discordAuthUrl;
         }
 
         function loginWithDiscord() {
             console.log('Login with Discord clicked');
-            // Clear any old tokens
-            localStorage.clear();
-            sessionStorage.clear();
-            
-            // Force fresh login
             startDiscordOAuth();
         }
 
         async function processDiscordCallback(code) {
             try {
                 console.log('Processing OAuth code:', code.substring(0, 20) + '...');
-                console.log('Using redirect_uri:', CONFIG.REDIRECT_URI);
                 
-                // Exchange code for token via YOUR backend
                 const response = await fetch(`${CONFIG.API_URL}/api/auth/discord/token`, {
                     method: 'POST',
                     headers: {
@@ -967,9 +1029,6 @@
                     if (userServers.length > 0) {
                         loadUserServers();
                     }
-                    
-                    // Show servers section
-                    showSection('servers');
                 } else {
                     throw new Error(data.detail || 'Authentication failed');
                 }
@@ -977,35 +1036,7 @@
                 console.error('OAuth callback error:', error);
                 showError('Failed to connect Discord: ' + error.message);
                 
-                // Clean URL on error too
                 window.history.replaceState({}, document.title, window.location.pathname);
-            }
-        }
-
-        function checkExistingSession() {
-            const storedToken = localStorage.getItem('xtourney_token');
-            const storedUser = localStorage.getItem('xtourney_user');
-            const storedServers = localStorage.getItem('xtourney_servers');
-            
-            if (storedToken && storedUser) {
-                try {
-                    currentUser = JSON.parse(storedUser);
-                    userToken = storedToken;
-                    userServers = storedServers ? JSON.parse(storedServers) : [];
-                    
-                    console.log('Found existing session for user:', currentUser.username);
-                    
-                    updateUIAfterLogin();
-                    
-                    if (userServers.length > 0) {
-                        loadUserServers();
-                    }
-                } catch (e) {
-                    console.error('Error parsing stored session:', e);
-                    logout();
-                }
-            } else {
-                console.log('No existing session found');
             }
         }
 
@@ -1076,7 +1107,6 @@
             
             serversGrid.innerHTML = html;
             
-            // Update stats
             document.getElementById('connectedServers').textContent = userServers.length;
         }
 
@@ -1108,7 +1138,6 @@
                 select.value = serverId;
                 showSection('servers');
                 
-                // Scroll to form
                 document.getElementById('createForm').scrollIntoView({ behavior: 'smooth' });
             }
         }
@@ -1128,9 +1157,15 @@
             const game = document.getElementById('tournamentGame').value;
             const description = document.getElementById('description').value;
             const maxTeams = document.getElementById('maxTeams').value;
+            const maxPlayersPerTeam = document.getElementById('maxPlayersPerTeam').value;
+            const regionFilter = document.getElementById('regionFilter').value === 'true';
+            const prizePool = document.getElementById('prizePool').value;
             const startDate = document.getElementById('startDate').value;
             
-            console.log('Tournament data:', { serverId, name, game, maxTeams, startDate });
+            console.log('Tournament data:', { 
+                serverId, name, game, maxTeams, maxPlayersPerTeam, 
+                regionFilter, prizePool, startDate 
+            });
             
             if (!serverId) {
                 showError('Please select a Discord server');
@@ -1143,24 +1178,28 @@
             }
             
             try {
+                const tournamentData = {
+                    name: name,
+                    game: game,
+                    description: description,
+                    max_teams: parseInt(maxTeams),
+                    start_date: startDate,
+                    discord_server_id: serverId,
+                    bracket_type: "single_elimination",
+                    max_players_per_team: parseInt(maxPlayersPerTeam),
+                    region_filter: regionFilter,
+                    prize_pool: prizePool
+                };
+                
+                console.log('Sending tournament data:', tournamentData);
+                
                 const response = await fetch(`${CONFIG.API_URL}/api/tournaments`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${userToken}`
                     },
-                    body: JSON.stringify({
-                        name: name,
-                        game: game,
-                        description: description,
-                        max_teams: parseInt(maxTeams),
-                        start_date: startDate,
-                        discord_server_id: serverId,
-                        bracket_type: "single_elimination",
-                        max_players_per_team: 5,
-                        region_filter: false,
-                        prize_pool: ""
-                    })
+                    body: JSON.stringify(tournamentData)
                 });
                 
                 const data = await response.json();
@@ -1177,6 +1216,11 @@
                     tomorrow.setDate(tomorrow.getDate() + 1);
                     tomorrow.setHours(19, 0, 0);
                     document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
+                    
+                    // Set default values
+                    document.getElementById('maxTeams').value = 16;
+                    document.getElementById('maxPlayersPerTeam').value = 5;
+                    document.getElementById('regionFilter').value = "false";
                     
                     // Reload tournaments
                     loadTournaments();
@@ -1208,7 +1252,6 @@
             
             showSection('servers');
             
-            // Scroll to form
             setTimeout(() => {
                 document.getElementById('createForm').scrollIntoView({ behavior: 'smooth' });
             }, 100);
@@ -1257,7 +1300,6 @@
                 return;
             }
             
-            // Update preview (first 3)
             if (previewContainer) {
                 previewContainer.innerHTML = '';
                 matches.slice(0, 3).forEach(match => {
@@ -1265,7 +1307,6 @@
                 });
             }
             
-            // Update all matches
             if (matchesGrid) {
                 matchesGrid.innerHTML = '';
                 matches.forEach(match => {
@@ -1462,7 +1503,7 @@
                 }
                 
                 const serverCount = userServers.length;
-                const estimatedPlayers = tournamentsCount * 32; // Estimate 32 players per tournament
+                const estimatedPlayers = tournamentsCount * 32;
                 
                 console.log('Stats:', { matchesCount, tournamentsCount, serverCount, estimatedPlayers });
                 
@@ -1479,18 +1520,15 @@
         function showSection(sectionName) {
             console.log('Showing section:', sectionName);
             
-            // Hide all sections
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('matchesSection').style.display = 'none';
             document.getElementById('tournamentsSection').style.display = 'none';
             document.getElementById('serversSection').style.display = 'none';
             
-            // Show selected section
             const section = document.getElementById(sectionName + 'Section');
             if (section) {
                 section.style.display = 'block';
                 
-                // Load section data
                 if (sectionName === 'matches') {
                     loadLiveMatches();
                 } else if (sectionName === 'tournaments') {
@@ -1500,7 +1538,6 @@
                 }
             }
             
-            // Update nav
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
             });
@@ -1521,7 +1558,6 @@
             userToken = null;
             userServers = [];
             
-            // Reset UI
             document.getElementById('authButtons').innerHTML = `
                 <button class="btn btn-primary" onclick="loginWithDiscord()">
                     <i class="fab fa-discord"></i> Login with Discord
@@ -1551,7 +1587,6 @@
         function showAlert(message, type = 'success') {
             console.log('Showing alert:', type, message);
             
-            // Remove existing alerts
             document.querySelectorAll('.alert-toast').forEach(el => el.remove());
             
             const alertDiv = document.createElement('div');
@@ -1620,4 +1655,3 @@
     </script>
 </body>
 </html>
-
