@@ -14,7 +14,6 @@
             --darker: #0a0f1d;
             --light: #f8fafc;
             --gray: #94a3b8;
-            --light-gray: #e2e8f0;
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
@@ -142,11 +141,6 @@
             border-color: var(--primary);
         }
         
-        .btn-sm {
-            padding: 0.5rem 1rem;
-            font-size: 0.8rem;
-        }
-        
         /* User Profile */
         .user-profile {
             display: flex;
@@ -167,20 +161,6 @@
             object-fit: cover;
         }
         
-        .user-info {
-            text-align: left;
-        }
-        
-        .user-name {
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-        
-        .user-role {
-            font-size: 0.75rem;
-            color: var(--gray);
-        }
-        
         /* Hero Section */
         .hero {
             padding: 5rem 0;
@@ -194,7 +174,6 @@
             background: linear-gradient(90deg, var(--primary), #8b5cf6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            line-height: 1.2;
         }
         
         .hero-subtitle {
@@ -202,7 +181,6 @@
             color: var(--gray);
             max-width: 700px;
             margin: 0 auto 2rem;
-            line-height: 1.6;
         }
         
         .hero-stats {
@@ -251,18 +229,6 @@
             margin-top: 0.5rem;
         }
         
-        .live-badge {
-            background: var(--danger);
-            color: white;
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
         /* Grid Layouts */
         .matches-grid, .tournaments-grid {
             display: grid;
@@ -283,10 +249,6 @@
         .match-card:hover, .tournament-card:hover {
             border-color: var(--primary);
             box-shadow: 0 10px 30px rgba(88, 101, 242, 0.2);
-        }
-        
-        .match-card.live {
-            border-left: 4px solid var(--danger);
         }
         
         .match-header, .tournament-header {
@@ -312,11 +274,6 @@
         .status-live {
             background: rgba(239, 68, 68, 0.15);
             color: var(--danger);
-        }
-        
-        .status-upcoming {
-            background: rgba(245, 158, 11, 0.15);
-            color: var(--warning);
         }
         
         .status-registration {
@@ -423,47 +380,6 @@
         /* Dashboard */
         .dashboard {
             display: none;
-            min-height: calc(100vh - 200px);
-        }
-        
-        .sidebar {
-            width: 250px;
-            background: rgba(15, 23, 42, 0.8);
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 2rem 1rem;
-            position: fixed;
-            height: calc(100vh - 70px);
-            overflow-y: auto;
-        }
-        
-        .main-content {
-            flex: 1;
-            padding: 2rem;
-            margin-left: 250px;
-        }
-        
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 0.8rem 1rem;
-            color: var(--gray);
-            text-decoration: none;
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-            transition: all 0.3s;
-            cursor: pointer;
-        }
-        
-        .nav-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--light);
-        }
-        
-        .nav-item.active {
-            background: rgba(88, 101, 242, 0.1);
-            color: var(--primary);
-            border-left: 3px solid var(--primary);
         }
         
         /* Forms */
@@ -628,29 +544,6 @@
             margin-bottom: 2rem;
         }
         
-        .footer-logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 1rem;
-        }
-        
-        .footer-links h4 {
-            margin-bottom: 1rem;
-            color: var(--light);
-        }
-        
-        .footer-links a {
-            display: block;
-            color: var(--gray);
-            margin-bottom: 0.5rem;
-            text-decoration: none;
-            transition: color 0.3s;
-        }
-        
-        .footer-links a:hover {
-            color: var(--primary);
-        }
-        
         .copyright {
             text-align: center;
             color: var(--gray);
@@ -659,80 +552,32 @@
             border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        /* Quick Stats */
-        .quick-stats {
+        /* Server Management */
+        .servers-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 1rem;
-            margin-bottom: 2rem;
+            margin-top: 1rem;
         }
         
-        .stat-card {
+        .server-card {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 8px;
-            padding: 1.5rem;
+            padding: 1rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .stat-card .value {
-            font-size: 2rem;
-            font-weight: 800;
-            color: var(--primary);
-        }
-        
-        .stat-card .label {
-            color: var(--gray);
-            font-size: 0.9rem;
-            margin-top: 0.5rem;
-        }
-        
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 3rem 1.5rem;
-            color: var(--gray);
-        }
-        
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            color: var(--gray);
-        }
-        
-        /* Floating Action Button */
-        .fab {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: var(--primary);
-            color: white;
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            cursor: pointer;
-            z-index: 100;
-            transition: all 0.3s;
+            gap: 1rem;
         }
         
-        .fab:hover {
-            transform: scale(1.1);
+        .server-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
         }
         
         /* Responsive */
-        @media (max-width: 1024px) {
-            .sidebar {
-                display: none;
-            }
-            .main-content {
-                margin-left: 0;
-                padding: 1rem;
-            }
-        }
-        
         @media (max-width: 768px) {
             .nav-links {
                 display: none;
@@ -769,8 +614,8 @@
                 <a class="nav-link" onclick="showSection('tournaments')">
                     <i class="fas fa-trophy"></i> Tournaments
                 </a>
-                <a class="nav-link" href="javascript:void(0)" id="dashboardLink" style="display: none;">
-                    <i class="fas fa-user-circle"></i> Dashboard
+                <a class="nav-link" onclick="showSection('servers')" id="serversLink" style="display: none;">
+                    <i class="fas fa-server"></i> My Servers
                 </a>
             </div>
             
@@ -786,10 +631,10 @@
     <section id="homeSection" class="section">
         <div class="hero">
             <div class="container">
-                <h1>Watch & Compete in Esports Tournaments</h1>
+                <h1>Manage Esports Tournaments Across Servers</h1>
                 <p class="hero-subtitle">
-                    Join thousands of players in competitive gaming. Watch live matches, join tournaments, 
-                    and compete for prizes. No login required to watch matches!
+                    Connect your Discord servers, create tournaments, and manage everything from one dashboard.
+                    Perfect for server admins and tournament organizers.
                 </p>
                 
                 <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem; flex-wrap: wrap;">
@@ -797,7 +642,7 @@
                         <i class="fas fa-tv"></i> Watch Live Matches
                     </button>
                     <button class="btn btn-secondary" onclick="loginWithDiscord()" style="padding: 1rem 2rem;">
-                        <i class="fas fa-user-plus"></i> Join & Compete
+                        <i class="fas fa-user-plus"></i> Connect Discord
                     </button>
                 </div>
                 
@@ -811,12 +656,12 @@
                         <div class="stat-label">Active Tournaments</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number" id="totalPlayers">0</div>
-                        <div class="stat-label">Active Players</div>
+                        <div class="stat-number" id="connectedServers">0</div>
+                        <div class="stat-label">Connected Servers</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number" id="prizePool">$0</div>
-                        <div class="stat-label">Prize Pool</div>
+                        <div class="stat-number" id="totalPlayers">0</div>
+                        <div class="stat-label">Active Players</div>
                     </div>
                 </div>
             </div>
@@ -827,7 +672,7 @@
             <div class="section-header">
                 <div>
                     <h2 class="section-title">Live Right Now</h2>
-                    <p class="section-subtitle">Watch professional esports matches in real-time</p>
+                    <p class="section-subtitle">Watch tournaments happening across connected servers</p>
                 </div>
                 <button class="btn btn-secondary" onclick="showSection('matches')">
                     View All <i class="fas fa-arrow-right"></i>
@@ -848,11 +693,8 @@
         <div class="container">
             <div class="section-header">
                 <div>
-                    <div class="live-badge">
-                        <i class="fas fa-circle"></i> LIVE
-                    </div>
                     <h2 class="section-title">Live & Upcoming Matches</h2>
-                    <p class="section-subtitle">Watch esports tournaments in real-time. No login required!</p>
+                    <p class="section-subtitle">Watch tournaments from connected Discord servers</p>
                 </div>
             </div>
             
@@ -871,9 +713,9 @@
             <div class="section-header">
                 <div>
                     <h2 class="section-title">Featured Tournaments</h2>
-                    <p class="section-subtitle">Join tournaments and compete for prizes</p>
+                    <p class="section-subtitle">Join tournaments across connected servers</p>
                 </div>
-                <button class="btn btn-primary" onclick="loginWithDiscord()" id="createTournamentBtn">
+                <button class="btn btn-primary" onclick="showCreateTournament()" id="createTournamentBtn">
                     <i class="fas fa-plus"></i> Create Tournament
                 </button>
             </div>
@@ -887,103 +729,38 @@
         </div>
     </section>
 
-    <!-- Dashboard -->
-    <section id="dashboard" class="dashboard" style="display: none;">
-        <div class="sidebar">
-            <div style="margin-bottom: 2rem; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1rem;">
-                    <img id="dashboardAvatar" src="https://ui-avatars.com/api/?name=User&background=5865F2&color=fff" 
-                         alt="Avatar" class="user-avatar">
-                    <div>
-                        <div id="dashboardUsername" style="font-weight: 600;">User</div>
-                        <div style="font-size: 0.75rem; color: var(--gray);">Pro Player</div>
-                    </div>
+    <!-- Servers Section -->
+    <section id="serversSection" class="section" style="display: none;">
+        <div class="container">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">My Discord Servers</h2>
+                    <p class="section-subtitle">Manage tournaments across your connected servers</p>
                 </div>
-                
-                <div class="quick-stats" style="grid-template-columns: 1fr; gap: 0.75rem;">
-                    <div class="stat-card" style="padding: 1rem;">
-                        <div class="value" id="userTournaments">0</div>
-                        <div class="label">Your Tournaments</div>
-                    </div>
-                    <div class="stat-card" style="padding: 1rem;">
-                        <div class="value" id="userWins">0</div>
-                        <div class="label">Matches Won</div>
-                    </div>
+                <button class="btn btn-primary" onclick="inviteBot()">
+                    <i class="fab fa-discord"></i> Add Bot to Server
+                </button>
+            </div>
+            
+            <div class="servers-grid" id="serversGrid">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading your servers...
                 </div>
             </div>
             
-            <h3 style="color: var(--primary); margin-bottom: 1rem; font-size: 0.9rem;">NAVIGATION</h3>
-            <div class="nav-item active" onclick="showDashboardSection('overview')">
-                <i class="fas fa-tachometer-alt"></i> Dashboard
-            </div>
-            <div class="nav-item" onclick="showDashboardSection('my-tournaments')">
-                <i class="fas fa-trophy"></i> My Tournaments
-            </div>
-            <div class="nav-item" onclick="showDashboardSection('create')">
-                <i class="fas fa-plus-circle"></i> Create Tournament
-            </div>
-            <div class="nav-item" onclick="showDashboardSection('teams')">
-                <i class="fas fa-users"></i> My Teams
-            </div>
-        </div>
-
-        <div class="main-content">
-            <!-- Dashboard Overview -->
-            <div id="overviewSection" class="dashboard-section">
-                <h2 style="margin-bottom: 1.5rem;">Welcome back, <span id="welcomeUsername">Player</span>! 👋</h2>
-                
-                <div class="quick-stats">
-                    <div class="stat-card">
-                        <div class="value" id="statActive">0</div>
-                        <div class="label">Active Tournaments</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="value" id="statTeams">0</div>
-                        <div class="label">Your Teams</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="value" id="statWins">0</div>
-                        <div class="label">Matches Won</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="value" id="statEarnings">$0</div>
-                        <div class="label">Total Earnings</div>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 2rem;">
-                    <h3 style="margin-bottom: 1rem;">Your Active Tournaments</h3>
-                    <div id="userTournamentsList" style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 1.5rem; min-height: 200px;">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            Loading your tournaments...
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- My Tournaments -->
-            <div id="myTournamentsSection" class="dashboard-section" style="display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h2>My Tournaments</h2>
-                    <button class="btn btn-primary" onclick="showDashboardSection('create')">
-                        <i class="fas fa-plus"></i> Create New
-                    </button>
-                </div>
-                <div id="myTournamentsContent">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        Loading your tournaments...
-                    </div>
-                </div>
-            </div>
-
-            <!-- Create Tournament -->
-            <div id="createSection" class="dashboard-section" style="display: none;">
-                <h2 style="margin-bottom: 1.5rem;">Create Tournament</h2>
+            <div style="margin-top: 3rem;">
+                <h3 style="margin-bottom: 1rem;">Create Tournament on Selected Server</h3>
                 <div class="form-container">
                     <div id="createAlert" class="alert" style="display: none;"></div>
                     <form id="createForm" onsubmit="event.preventDefault(); createTournament();">
+                        <div class="form-group">
+                            <label class="form-label">Select Server *</label>
+                            <select id="serverSelect" class="form-input" required>
+                                <option value="">Select a server...</option>
+                            </select>
+                        </div>
+                        
                         <div class="form-group">
                             <label class="form-label">Tournament Name *</label>
                             <input type="text" id="tournamentName" class="form-input" 
@@ -999,7 +776,6 @@
                                 <option value="League of Legends">League of Legends</option>
                                 <option value="Dota 2">Dota 2</option>
                                 <option value="Fortnite">Fortnite</option>
-                                <option value="Call of Duty">Call of Duty</option>
                             </select>
                         </div>
                         
@@ -1019,33 +795,14 @@
                         </div>
                         
                         <div class="form-group">
-                            <label class="form-label">Bracket Type *</label>
-                            <select id="bracketType" class="form-input" required>
-                                <option value="single_elimination" selected>Single Elimination</option>
-                                <option value="double_elimination">Double Elimination</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
                             <label class="form-label">Start Date & Time *</label>
                             <input type="datetime-local" id="startDate" class="form-input" required>
                         </div>
                         
                         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; margin-top: 0.5rem;">
-                            <i class="fas fa-rocket"></i> Create Tournament
+                            <i class="fas fa-rocket"></i> Create Tournament on Server
                         </button>
                     </form>
-                </div>
-            </div>
-
-            <!-- My Teams -->
-            <div id="teamsSection" class="dashboard-section" style="display: none;">
-                <h2 style="margin-bottom: 1.5rem;">My Teams</h2>
-                <div id="teamsContent">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        Loading your teams...
-                    </div>
                 </div>
             </div>
         </div>
@@ -1054,62 +811,25 @@
     <!-- Login Modal -->
     <div id="loginModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
-            <div class="modal-title">Welcome to XTourney</div>
-            <div class="modal-subtitle">Sign in to join tournaments and compete</div>
+            <div class="modal-title">Connect Discord Account</div>
+            <div class="modal-subtitle">Connect to manage tournaments across your servers</div>
             
             <div class="login-options">
-                <div class="login-option discord" onclick="loginWithDiscord()">
+                <div class="login-option discord" onclick="startDiscordOAuth()">
                     <i class="fab fa-discord"></i>
-                    <span>Continue with Discord</span>
+                    <span>Connect Discord Account</span>
                 </div>
             </div>
             
             <div style="margin-top: 1.5rem; font-size: 0.8rem; color: var(--gray); text-align: center;">
-                <p>By continuing, you agree to our <a href="#" style="color: var(--primary);">Terms of Service</a> 
-                and <a href="#" style="color: var(--primary);">Privacy Policy</a></p>
+                <p>We'll access your Discord servers to manage tournaments</p>
+                <p style="margin-top: 0.5rem;">Requires: View servers & Manage webhooks permissions</p>
             </div>
             
             <button onclick="hideLoginModal()" style="margin-top: 1rem; background: none; border: none; color: var(--gray); cursor: pointer;">
-                Close
+                Cancel
             </button>
         </div>
-    </div>
-
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div>
-                    <div class="footer-logo">
-                        <span>XTourney</span>
-                    </div>
-                    <p style="color: var(--gray); line-height: 1.6; max-width: 300px;">
-                        The ultimate platform for esports tournaments.
-                    </p>
-                </div>
-                
-                <div class="footer-links">
-                    <h4>Watch</h4>
-                    <a href="javascript:void(0)" onclick="showSection('matches')">Live Matches</a>
-                    <a href="javascript:void(0)" onclick="showSection('tournaments')">Tournaments</a>
-                </div>
-                
-                <div class="footer-links">
-                    <h4>Compete</h4>
-                    <a href="javascript:void(0)" onclick="loginWithDiscord()">Join Tournament</a>
-                    <a href="javascript:void(0)" onclick="loginWithDiscord()">Create Tournament</a>
-                </div>
-            </div>
-            
-            <div class="copyright">
-                &copy; 2024 XTourney. All rights reserved.
-            </div>
-        </div>
-    </footer>
-
-    <!-- Floating Action Button -->
-    <div class="fab" onclick="loginWithDiscord()" id="fabButton" title="Join Tournament">
-        <i class="fas fa-trophy"></i>
     </div>
 
     <script>
@@ -1117,69 +837,73 @@
         const CONFIG = {
             API_URL: "https://compbot-lhuy.onrender.com",
             DISCORD_CLIENT_ID: "1445127821742575726",
-            // FIX: Use the exact same redirect URI that's registered in Discord Developer Portal
-            REDIRECT_URI: "https://compbot-ik5bayp8r-xotiics-projects.vercel.app",
+            // IMPORTANT: This must match EXACTLY what's in Discord Developer Portal
+            REDIRECT_URI: window.location.origin,
             DISCORD_INVITE: "https://discord.com/oauth2/authorize?client_id=1445127821742575726&permissions=8&scope=bot%20applications.commands"
         };
 
         // ========== STATE ==========
         let currentUser = null;
         let userToken = null;
+        let userServers = [];
 
         // ========== INITIALIZATION ==========
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('XTourney loaded');
+            console.log('XTourney Platform loaded');
             
-            // Check for auth callback
+            // Check for auth callback in URL
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
+            const error = urlParams.get('error');
             
             if (code) {
-                console.log('Found Discord OAuth code, handling callback...');
-                handleDiscordCallback(code);
-            } else {
-                // Check stored token
-                const storedToken = localStorage.getItem('xtourney_token');
-                const storedUser = localStorage.getItem('xtourney_user');
-                
-                if (storedToken && storedUser) {
-                    currentUser = JSON.parse(storedUser);
-                    userToken = storedToken;
-                    showUserInterface();
-                }
+                console.log('Processing Discord OAuth callback...');
+                processDiscordCallback(code);
+            } else if (error) {
+                console.error('OAuth error:', error);
+                showError('Authentication failed: ' + error);
             }
+            
+            // Check for existing session
+            checkExistingSession();
             
             // Load public data
             loadPublicData();
             
-            // Set default date/time
+            // Set default date for tournament creation
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             tomorrow.setHours(19, 0, 0);
-            const localDateTime = tomorrow.toISOString().slice(0, 16);
             if (document.getElementById('startDate')) {
-                document.getElementById('startDate').value = localDateTime;
+                document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
             }
         });
 
         // ========== DISCORD AUTH ==========
-        function loginWithDiscord() {
-            // FIX: Use proper Discord OAuth URL with correct redirect URI
+        function startDiscordOAuth() {
+            // IMPORTANT: Make sure these scopes include 'guilds' to access servers
             const scope = 'identify email guilds';
             const state = generateState();
             
-            // Make sure to use the exact redirect URI that matches your Discord app settings
-            const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1445127821742575726&response_type=code&redirect_uri=https%3A%2F%2Fcompbot-git-main-xotiics-projects.vercel.app%2F&scope=identify+email+guilds`;
+            // Store state for verification
+            sessionStorage.setItem('oauth_state', state);
+            
+            // Build Discord OAuth URL
+            const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}&prompt=consent`;
             
             console.log('Redirecting to Discord OAuth:', discordAuthUrl);
             window.location.href = discordAuthUrl;
         }
 
-        async function handleDiscordCallback(code) {
+        function loginWithDiscord() {
+            startDiscordOAuth();
+        }
+
+        async function processDiscordCallback(code) {
             try {
-                console.log('Exchanging Discord code for token...');
+                console.log('Processing OAuth code:', code.substring(0, 20) + '...');
                 
-                // Use your backend endpoint
+                // Exchange code for token via YOUR backend
                 const response = await fetch(`${CONFIG.API_URL}/api/auth/discord/token`, {
                     method: 'POST',
                     headers: {
@@ -1191,29 +915,232 @@
                     })
                 });
                 
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Backend error: ${response.status} - ${errorText}`);
+                }
+                
                 const data = await response.json();
                 console.log('Auth response:', data);
                 
                 if (data.success && data.access_token) {
+                    // Store user data
                     localStorage.setItem('xtourney_token', data.access_token);
                     localStorage.setItem('xtourney_user', JSON.stringify(data.user));
+                    localStorage.setItem('xtourney_servers', JSON.stringify(data.servers || []));
                     
                     currentUser = data.user;
                     userToken = data.access_token;
-                    
-                    showUserInterface();
+                    userServers = data.servers || [];
                     
                     // Clean URL
                     window.history.replaceState({}, document.title, window.location.pathname);
                     
-                    showAlert('Successfully logged in with Discord!', 'success');
+                    // Update UI
+                    updateUIAfterLogin();
+                    
+                    showAlert('Successfully connected Discord account!', 'success');
+                    
+                    // Load servers if user has any
+                    if (userServers.length > 0) {
+                        loadUserServers();
+                    }
                 } else {
-                    throw new Error(data.detail || 'Discord login failed');
+                    throw new Error(data.detail || 'Authentication failed');
                 }
             } catch (error) {
-                console.error('Discord auth error:', error);
-                showError('Login failed: ' + error.message);
+                console.error('OAuth callback error:', error);
+                showError('Failed to connect Discord: ' + error.message);
             }
+        }
+
+        function checkExistingSession() {
+            const storedToken = localStorage.getItem('xtourney_token');
+            const storedUser = localStorage.getItem('xtourney_user');
+            const storedServers = localStorage.getItem('xtourney_servers');
+            
+            if (storedToken && storedUser) {
+                currentUser = JSON.parse(storedUser);
+                userToken = storedToken;
+                userServers = storedServers ? JSON.parse(storedServers) : [];
+                
+                updateUIAfterLogin();
+                
+                if (userServers.length > 0) {
+                    loadUserServers();
+                }
+            }
+        }
+
+        function updateUIAfterLogin() {
+            // Update auth buttons
+            const authButtons = document.getElementById('authButtons');
+            const avatarUrl = currentUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.username || 'User')}&background=5865F2&color=fff`;
+            
+            authButtons.innerHTML = `
+                <div class="user-profile" onclick="showSection('servers')">
+                    <img src="${avatarUrl}" alt="Avatar" class="user-avatar">
+                    <div style="font-weight: 600;">${currentUser.username || 'User'}</div>
+                    <button onclick="logout()" style="margin-left: 10px; padding: 0.3rem 0.6rem; background: var(--danger); color: white; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
+                        Logout
+                    </button>
+                </div>
+            `;
+            
+            // Show servers link
+            document.getElementById('serversLink').style.display = 'block';
+            
+            // Show create tournament button
+            document.getElementById('createTournamentBtn').style.display = 'block';
+            
+            // Load user's servers into dropdown
+            loadServerDropdown();
+        }
+
+        // ========== SERVER MANAGEMENT ==========
+        function loadUserServers() {
+            const serversGrid = document.getElementById('serversGrid');
+            if (!serversGrid) return;
+            
+            if (userServers.length === 0) {
+                serversGrid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--gray);">
+                        <i class="fas fa-server" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                        <h3>No Servers Connected</h3>
+                        <p>Add the bot to your Discord servers to manage tournaments</p>
+                        <button class="btn btn-primary" onclick="inviteBot()" style="margin-top: 1rem;">
+                            <i class="fab fa-discord"></i> Add Bot to Server
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            userServers.forEach(server => {
+                html += `
+                    <div class="server-card">
+                        <img src="${server.icon || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                             alt="${server.name}" class="server-icon">
+                        <div>
+                            <div style="font-weight: 600;">${server.name}</div>
+                            <div style="font-size: 0.8rem; color: var(--gray);">ID: ${server.id}</div>
+                            <button class="btn btn-secondary" onclick="createTournamentForServer('${server.id}')" style="margin-top: 0.5rem; padding: 0.3rem 0.6rem; font-size: 0.8rem;">
+                                Create Tournament
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            serversGrid.innerHTML = html;
+            
+            // Update stats
+            document.getElementById('connectedServers').textContent = userServers.length;
+        }
+
+        function loadServerDropdown() {
+            const select = document.getElementById('serverSelect');
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">Select a server...</option>';
+            
+            if (userServers.length === 0) {
+                select.innerHTML += '<option value="" disabled>No servers available</option>';
+                return;
+            }
+            
+            userServers.forEach(server => {
+                const option = document.createElement('option');
+                option.value = server.id;
+                option.textContent = server.name;
+                select.appendChild(option);
+            });
+        }
+
+        function createTournamentForServer(serverId) {
+            const select = document.getElementById('serverSelect');
+            if (select) {
+                select.value = serverId;
+                showSection('servers');
+            }
+        }
+
+        // ========== TOURNAMENT MANAGEMENT ==========
+        async function createTournament() {
+            if (!userToken) {
+                showError('Please login first');
+                loginWithDiscord();
+                return;
+            }
+            
+            const serverId = document.getElementById('serverSelect').value;
+            const name = document.getElementById('tournamentName').value;
+            const game = document.getElementById('tournamentGame').value;
+            const description = document.getElementById('description').value;
+            const maxTeams = document.getElementById('maxTeams').value;
+            const startDate = document.getElementById('startDate').value;
+            
+            if (!serverId) {
+                showError('Please select a Discord server');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${CONFIG.API_URL}/api/tournaments`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${userToken}`
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        game: game,
+                        description: description,
+                        max_teams: parseInt(maxTeams),
+                        start_date: startDate,
+                        discord_server_id: serverId,
+                        bracket_type: "single_elimination",
+                        max_players_per_team: 5,
+                        region_filter: false
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showAlert('Tournament created successfully on server!', 'success');
+                    
+                    // Reset form
+                    document.getElementById('createForm').reset();
+                    
+                    // Reload tournaments
+                    loadTournaments();
+                    
+                    // Show tournaments section
+                    showSection('tournaments');
+                } else {
+                    throw new Error(data.detail || 'Failed to create tournament');
+                }
+            } catch (error) {
+                console.error('Create tournament error:', error);
+                showError('Error: ' + error.message);
+            }
+        }
+
+        function showCreateTournament() {
+            if (!userToken) {
+                loginWithDiscord();
+                return;
+            }
+            
+            if (userServers.length === 0) {
+                showError('No Discord servers connected. Add the bot to your server first.');
+                inviteBot();
+                return;
+            }
+            
+            showSection('servers');
         }
 
         // ========== PUBLIC DATA FUNCTIONS ==========
@@ -1238,12 +1165,7 @@
                 }
                 
                 const data = await response.json();
-                
-                if (data.success) {
-                    updateMatchesDisplay(data.matches);
-                } else {
-                    showNoMatches();
-                }
+                updateMatchesDisplay(data.matches || []);
             } catch (error) {
                 console.error('Error loading matches:', error);
                 showNoMatches();
@@ -1254,12 +1176,12 @@
             const previewContainer = document.getElementById('liveMatchesPreview');
             const matchesGrid = document.getElementById('matchesGrid');
             
-            if (!matches || matches.length === 0) {
+            if (matches.length === 0) {
                 showNoMatches();
                 return;
             }
             
-            // Update preview
+            // Update preview (first 3)
             if (previewContainer) {
                 previewContainer.innerHTML = '';
                 matches.slice(0, 3).forEach(match => {
@@ -1267,7 +1189,7 @@
                 });
             }
             
-            // Update full grid
+            // Update all matches
             if (matchesGrid) {
                 matchesGrid.innerHTML = '';
                 matches.forEach(match => {
@@ -1275,34 +1197,17 @@
                 });
             }
             
-            // Update count
             document.getElementById('liveMatchesCount').textContent = matches.length;
-        }
-
-        function showNoMatches() {
-            const noMatchesHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-tv"></i>
-                    <h3>No Live Matches</h3>
-                    <p>Check back later for upcoming tournaments!</p>
-                </div>
-            `;
-            
-            const previewContainer = document.getElementById('liveMatchesPreview');
-            const matchesGrid = document.getElementById('matchesGrid');
-            
-            if (previewContainer) previewContainer.innerHTML = noMatchesHTML;
-            if (matchesGrid) matchesGrid.innerHTML = noMatchesHTML;
         }
 
         function createMatchCard(match) {
             const card = document.createElement('div');
-            card.className = `match-card ${match.status === 'live' ? 'live' : ''}`;
+            card.className = 'match-card';
             
             card.innerHTML = `
                 <div class="match-header">
                     <div class="match-tournament">${match.tournament_name || 'Tournament'}</div>
-                    <div class="match-status status-${match.status}">${match.status.toUpperCase()}</div>
+                    <div class="match-status status-${match.status || 'upcoming'}">${(match.status || 'upcoming').toUpperCase()}</div>
                 </div>
                 
                 <div class="match-teams">
@@ -1323,13 +1228,7 @@
                 
                 <div class="match-meta">
                     <div><i class="fas fa-gamepad"></i> ${match.game || 'Esports'}</div>
-                    <div><i class="fas fa-clock"></i> ${match.start_time ? new Date(match.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'TBD'}</div>
-                </div>
-                
-                <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-sm ${match.status === 'live' ? 'btn-primary' : 'btn-secondary'}" onclick="viewMatch('${match.id}')">
-                        <i class="fas fa-${match.status === 'live' ? 'play' : 'eye'}"></i> ${match.status === 'live' ? 'Watch Live' : 'View'}
-                    </button>
+                    <div><i class="fas fa-server"></i> ${match.server_name || 'Discord Server'}</div>
                 </div>
             `;
             
@@ -1345,12 +1244,7 @@
                 }
                 
                 const data = await response.json();
-                
-                if (data.success) {
-                    updateTournamentsDisplay(data.tournaments);
-                } else {
-                    showNoTournaments();
-                }
+                updateTournamentsDisplay(data.tournaments || []);
             } catch (error) {
                 console.error('Error loading tournaments:', error);
                 showNoTournaments();
@@ -1361,7 +1255,7 @@
             const container = document.getElementById('tournamentsGrid');
             if (!container) return;
             
-            if (!tournaments || tournaments.length === 0) {
+            if (tournaments.length === 0) {
                 showNoTournaments();
                 return;
             }
@@ -1374,19 +1268,6 @@
             document.getElementById('activeTournaments').textContent = tournaments.length;
         }
 
-        function showNoTournaments() {
-            const noTournamentsHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-trophy"></i>
-                    <h3>No Tournaments Available</h3>
-                    <p>Be the first to create a tournament!</p>
-                </div>
-            `;
-            
-            const container = document.getElementById('tournamentsGrid');
-            if (container) container.innerHTML = noTournamentsHTML;
-        }
-
         function createTournamentCard(tournament) {
             const card = document.createElement('div');
             card.className = 'tournament-card';
@@ -1394,7 +1275,6 @@
             const teams = tournament.team_count || 0;
             const maxTeams = tournament.max_teams || 16;
             const progressPercent = (teams / maxTeams) * 100;
-            const prize = tournament.settings?.prize_pool || 'No prize';
             
             card.innerHTML = `
                 <div class="tournament-header">
@@ -1409,12 +1289,8 @@
                 </div>
                 
                 <div class="tournament-meta">
-                    <div><i class="fas fa-users"></i> ${maxTeams} teams</div>
+                    <div><i class="fas fa-server"></i> Discord Server</div>
                     <div><i class="fas fa-calendar"></i> ${new Date(tournament.start_date).toLocaleDateString()}</div>
-                </div>
-                
-                <div class="tournament-prize">
-                    <i class="fas fa-gift"></i> Prize: ${prize}
                 </div>
                 
                 <div class="tournament-progress">
@@ -1429,7 +1305,7 @@
                 
                 <div style="text-align: center; margin-top: 1rem;">
                     <button class="btn btn-${tournament.status === 'registration' ? 'primary' : 'secondary'}" 
-                            onclick="${tournament.status === 'registration' ? 'registerForTournament(\'' + tournament.id + '\')' : 'viewTournament(\'' + tournament.id + '\')'}">
+                            onclick="viewTournament('${tournament.id}')">
                         <i class="fas fa-${tournament.status === 'registration' ? 'sign-in-alt' : 'eye'}"></i>
                         ${tournament.status === 'registration' ? 'Register Now' : 'View Tournament'}
                     </button>
@@ -1437,6 +1313,34 @@
             `;
             
             return card;
+        }
+
+        function showNoMatches() {
+            const html = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray);">
+                    <i class="fas fa-tv" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                    <h3>No Live Matches</h3>
+                    <p>Create a tournament on your Discord server to get started!</p>
+                </div>
+            `;
+            
+            document.getElementById('liveMatchesPreview').innerHTML = html;
+            document.getElementById('matchesGrid').innerHTML = html;
+        }
+
+        function showNoTournaments() {
+            const html = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray);">
+                    <i class="fas fa-trophy" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                    <h3>No Tournaments Available</h3>
+                    <p>Connect your Discord account to create tournaments</p>
+                    <button class="btn btn-primary" onclick="loginWithDiscord()" style="margin-top: 1rem;">
+                        <i class="fab fa-discord"></i> Connect Discord
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('tournamentsGrid').innerHTML = html;
         }
 
         async function updateStats() {
@@ -1449,267 +1353,16 @@
                 const matchesData = await matchesRes.json();
                 const tournamentsData = await tournamentsRes.json();
                 
-                const matchesCount = matchesData.success ? matchesData.matches.length : 0;
-                const tournamentsCount = tournamentsData.success ? tournamentsData.tournaments.length : 0;
+                const matchesCount = matchesData.matches?.length || 0;
+                const tournamentsCount = tournamentsData.tournaments?.length || 0;
+                const serverCount = userServers.length;
                 
                 document.getElementById('liveMatchesCount').textContent = matchesCount;
                 document.getElementById('activeTournaments').textContent = tournamentsCount;
+                document.getElementById('connectedServers').textContent = serverCount;
                 document.getElementById('totalPlayers').textContent = (tournamentsCount * 20).toLocaleString();
-                document.getElementById('prizePool').textContent = '$' + (tournamentsCount * 500).toLocaleString();
             } catch (error) {
                 console.error('Error updating stats:', error);
-            }
-        }
-
-        // ========== USER FUNCTIONS ==========
-        function showUserInterface() {
-            // Show dashboard
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'block';
-            
-            // Update auth buttons
-            const authButtons = document.getElementById('authButtons');
-            const avatarUrl = currentUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.username || 'User')}&background=5865F2&color=fff`;
-            
-            authButtons.innerHTML = `
-                <div class="user-profile" onclick="showDashboardSection('overview')">
-                    <img src="${avatarUrl}" alt="Avatar" class="user-avatar">
-                    <div class="user-info">
-                        <div class="user-name">${currentUser.username || 'User'}</div>
-                        <div class="user-role">Discord User</div>
-                    </div>
-                    <button onclick="logout()" style="margin-left: 10px; padding: 0.3rem 0.6rem; background: var(--danger); color: white; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
-                        Logout
-                    </button>
-                </div>
-            `;
-            
-            // Update dashboard
-            document.getElementById('dashboardUsername').textContent = currentUser.username || 'User';
-            document.getElementById('welcomeUsername').textContent = currentUser.username || 'Player';
-            document.getElementById('dashboardAvatar').src = avatarUrl;
-            
-            // Show dashboard link
-            document.getElementById('dashboardLink').style.display = 'block';
-            
-            // Load user data
-            loadUserData();
-        }
-
-        async function loadUserData() {
-            if (!userToken) return;
-            
-            try {
-                // Get user info
-                const userRes = await fetch(`${CONFIG.API_URL}/api/auth/me`, {
-                    headers: {
-                        'Authorization': `Bearer ${userToken}`
-                    }
-                });
-                
-                if (userRes.ok) {
-                    const userData = await userRes.json();
-                    currentUser = userData.user;
-                }
-                
-                // Get user tournaments
-                const tournamentsRes = await fetch(`${CONFIG.API_URL}/api/user/tournaments`, {
-                    headers: {
-                        'Authorization': `Bearer ${userToken}`
-                    }
-                });
-                
-                if (tournamentsRes.ok) {
-                    const tournamentsData = await tournamentsRes.json();
-                    if (tournamentsData.success) {
-                        updateUserTournaments(tournamentsData.tournaments);
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading user data:', error);
-            }
-        }
-
-        function updateUserTournaments(tournaments) {
-            const active = tournaments.filter(t => t.status === 'ongoing' || t.status === 'registration').length;
-            const teams = tournaments.reduce((sum, t) => sum + (t.team_count || 0), 0);
-            
-            document.getElementById('userTournaments').textContent = tournaments.length;
-            document.getElementById('statActive').textContent = active;
-            document.getElementById('statTeams').textContent = teams;
-            
-            // Update tournaments list
-            const container = document.getElementById('userTournamentsList');
-            if (!container) return;
-            
-            if (tournaments.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-trophy"></i>
-                        <h3>No Tournaments Yet</h3>
-                        <p>Create your first tournament to get started!</p>
-                        <button class="btn btn-primary" onclick="showDashboardSection('create')" style="margin-top: 1rem;">
-                            <i class="fas fa-plus"></i> Create Tournament
-                        </button>
-                    </div>
-                `;
-                return;
-            }
-            
-            let html = '<div style="display: flex; flex-direction: column; gap: 1rem;">';
-            tournaments.slice(0, 5).forEach(tournament => {
-                html += `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
-                        <div>
-                            <div style="font-weight: 600;">${tournament.name}</div>
-                            <div style="font-size: 0.8rem; color: var(--gray);">${tournament.game} • ${tournament.status}</div>
-                        </div>
-                        <button class="btn btn-sm btn-secondary" onclick="viewTournament('${tournament.id}')">
-                            View
-                        </button>
-                    </div>
-                `;
-            });
-            
-            if (tournaments.length > 5) {
-                html += `<div style="text-align: center; padding: 0.5rem;">
-                    <button class="btn btn-sm" onclick="showDashboardSection('my-tournaments')">
-                        View all ${tournaments.length} tournaments
-                    </button>
-                </div>`;
-            }
-            
-            html += '</div>';
-            container.innerHTML = html;
-            
-            // Update full tournaments list
-            const myTournamentsContainer = document.getElementById('myTournamentsContent');
-            if (myTournamentsContainer) {
-                let fullHtml = '<div class="tournaments-grid">';
-                tournaments.forEach(tournament => {
-                    fullHtml += `
-                        <div class="tournament-card">
-                            <div class="tournament-header">
-                                <div class="tournament-title">${tournament.name}</div>
-                                <div class="tournament-status status-${tournament.status}">
-                                    ${tournament.status.toUpperCase()}
-                                </div>
-                            </div>
-                            
-                            <div class="tournament-game">
-                                <i class="fas fa-gamepad"></i> ${tournament.game}
-                            </div>
-                            
-                            <div class="tournament-meta">
-                                <div><i class="fas fa-users"></i> ${tournament.team_count || 0}/${tournament.max_teams} teams</div>
-                                <div><i class="fas fa-calendar"></i> ${new Date(tournament.start_date).toLocaleDateString()}</div>
-                            </div>
-                            
-                            <div style="text-align: center; margin-top: 1rem;">
-                                <button class="btn btn-primary" onclick="viewTournament('${tournament.id}')">
-                                    <i class="fas fa-eye"></i> View Tournament
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                });
-                fullHtml += '</div>';
-                myTournamentsContainer.innerHTML = fullHtml;
-            }
-        }
-
-        // ========== TOURNAMENT FUNCTIONS ==========
-        async function createTournament() {
-            if (!userToken) {
-                loginWithDiscord();
-                return;
-            }
-            
-            const form = document.getElementById('createForm');
-            const alertDiv = document.getElementById('createAlert');
-            
-            const tournamentData = {
-                name: document.getElementById('tournamentName').value,
-                game: document.getElementById('tournamentGame').value,
-                description: document.getElementById('description').value,
-                max_teams: parseInt(document.getElementById('maxTeams').value),
-                bracket_type: document.getElementById('bracketType').value,
-                start_date: document.getElementById('startDate').value
-            };
-            
-            try {
-                const response = await fetch(`${CONFIG.API_URL}/api/tournaments`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${userToken}`
-                    },
-                    body: JSON.stringify(tournamentData)
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.success) {
-                    showAlert('Tournament created successfully!', 'success');
-                    form.reset();
-                    
-                    // Reset date
-                    const tomorrow = new Date();
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    tomorrow.setHours(19, 0, 0);
-                    document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
-                    
-                    // Reload data
-                    setTimeout(() => {
-                        loadUserData();
-                        showDashboardSection('my-tournaments');
-                    }, 1000);
-                } else {
-                    throw new Error(data.detail || 'Failed to create tournament');
-                }
-            } catch (error) {
-                console.error('Create tournament error:', error);
-                showAlert('Error: ' + error.message, 'error');
-            }
-        }
-
-        function registerForTournament(tournamentId) {
-            if (!userToken) {
-                loginWithDiscord();
-                return;
-            }
-            
-            const teamName = prompt('Enter your team name:');
-            if (!teamName) return;
-            
-            registerTeam(tournamentId, teamName);
-        }
-
-        async function registerTeam(tournamentId, teamName) {
-            try {
-                const response = await fetch(`${CONFIG.API_URL}/api/teams`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${userToken}`
-                    },
-                    body: JSON.stringify({
-                        tournament_id: tournamentId,
-                        name: teamName
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.success) {
-                    showAlert('Team registered successfully!', 'success');
-                    loadPublicData();
-                } else {
-                    throw new Error(data.detail || 'Registration failed');
-                }
-            } catch (error) {
-                console.error('Register team error:', error);
-                showAlert('Registration failed: ' + error.message, 'error');
             }
         }
 
@@ -1719,18 +1372,20 @@
             document.getElementById('homeSection').style.display = 'none';
             document.getElementById('matchesSection').style.display = 'none';
             document.getElementById('tournamentsSection').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('serversSection').style.display = 'none';
             
             // Show selected section
             const section = document.getElementById(sectionName + 'Section');
             if (section) {
                 section.style.display = 'block';
                 
-                // Load data
+                // Load section data
                 if (sectionName === 'matches') {
                     loadLiveMatches();
                 } else if (sectionName === 'tournaments') {
                     loadTournaments();
+                } else if (sectionName === 'servers' && userToken) {
+                    loadUserServers();
                 }
             }
             
@@ -1745,41 +1400,14 @@
             }
         }
 
-        function showDashboardSection(sectionName) {
-            document.querySelectorAll('.dashboard-section').forEach(section => {
-                section.style.display = 'none';
-            });
-            
-            const section = document.getElementById(sectionName + 'Section');
-            if (section) {
-                section.style.display = 'block';
-            }
-            
-            // Update nav
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            
-            const activeItem = document.querySelector(`.nav-item[onclick*="${sectionName}"]`);
-            if (activeItem) {
-                activeItem.classList.add('active');
-            }
-        }
-
-        function showLoginModal() {
-            document.getElementById('loginModal').style.display = 'flex';
-        }
-
-        function hideLoginModal() {
-            document.getElementById('loginModal').style.display = 'none';
-        }
-
         function logout() {
             localStorage.removeItem('xtourney_token');
             localStorage.removeItem('xtourney_user');
+            localStorage.removeItem('xtourney_servers');
             
             currentUser = null;
             userToken = null;
+            userServers = [];
             
             // Reset UI
             document.getElementById('authButtons').innerHTML = `
@@ -1788,8 +1416,8 @@
                 </button>
             `;
             
-            document.getElementById('dashboardLink').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('serversLink').style.display = 'none';
+            document.getElementById('createTournamentBtn').style.display = 'none';
             
             showSection('home');
             loadPublicData();
@@ -1797,16 +1425,12 @@
             showAlert('Successfully logged out', 'success');
         }
 
-        function viewTournament(tournamentId) {
-            alert(`Viewing tournament ${tournamentId}`);
-        }
-
-        function viewMatch(matchId) {
-            alert(`Viewing match ${matchId}`);
-        }
-
         function inviteBot() {
             window.open(CONFIG.DISCORD_INVITE, '_blank');
+        }
+
+        function viewTournament(tournamentId) {
+            alert(`Viewing tournament ${tournamentId}\nThis would show tournament details.`);
         }
 
         // ========== UTILITY FUNCTIONS ==========
@@ -1831,8 +1455,16 @@
             }, 3000);
         }
 
+        function showError(message) {
+            showAlert(message, 'error');
+        }
+
         function generateState() {
             return Math.random().toString(36).substring(2, 15);
+        }
+
+        function hideLoginModal() {
+            document.getElementById('loginModal').style.display = 'none';
         }
     </script>
 </body>
