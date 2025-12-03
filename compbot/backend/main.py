@@ -6,11 +6,13 @@ import os
 import requests
 import secrets
 import hashlib
-import jwt  # ADD THIS IMPORT
+import jwt
 from typing import Optional
 from pydantic import BaseModel, EmailStr
+import asyncio
+from enum import Enum
 
-app = FastAPI(title="XTourney API", version="1.0.0")
+app = FastAPI(title="XTourney API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -44,6 +46,12 @@ class ChannelConfig(BaseModel):
     channel_type: str
     discord_channel_id: str
     channel_name: str
+
+class TournamentSettings(BaseModel):
+    queue_time_minutes: int = 10
+    match_duration_minutes: int = 30
+    max_players_per_team: int = 5
+    region_filter: bool = False
 
 # ========== SUPABASE SETUP ==========
 SUPABASE_URL = os.getenv("SUPABASE_URL", "your-supabase-url")
@@ -118,6 +126,21 @@ def verify_password(password: str, hashed_password: str) -> bool:
     return test_hash == hash_value
 
 # ========== DISCORD BOT FUNCTIONS ==========
+def get_discord_user_info(user_id: str):
+    """Get Discord user info"""
+    try:
+        headers = {'Authorization': f'Bot {DISCORD_BOT_TOKEN}'}
+        response = requests.get(
+            f'https://discord.com/api/users/{user_id}',
+            headers=headers
+        )
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except Exception as e:
+        print(f"Error getting Discord user: {e}")
+        return None
+
 def get_discord_user_roles(guild_id: str, user_id: str):
     """Get user's roles in a Discord server"""
     try:
@@ -163,6 +186,33 @@ def check_host_permission(guild_id: str, user_id: str):
         print(f"Permission check error: {e}")
         return False
 
+def send_discord_message(channel_id: str, content: str, embed: dict = None, components: list = None):
+    """Send message to Discord channel"""
+    try:
+        if not DISCORD_BOT_TOKEN:
+            return False
+            
+        headers = {
+            'Authorization': f'Bot {DISCORD_BOT_TOKEN}',
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {"content": content}
+        if embed:
+            payload["embeds"] = [embed]
+        if components:
+            payload["components"] = components
+            
+        response = requests.post(
+            f'https://discord.com/api/channels/{channel_id}/messages',
+            headers=headers,
+            json=payload
+        )
+        return response.status_code == 200
+    except Exception as e:
+        print(f"Send Discord message error: {e}")
+        return False
+
 # ========== JWT AUTH ==========
 def create_jwt_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -187,7 +237,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
 # ========== HEALTH CHECK ==========
 @app.get("/")
 async def root():
-    return {"message": "XTourney API", "status": "running"}
+    return {"message": "XTourney API", "status": "running", "version": "2.0.0"}
 
 @app.get("/api/health")
 async def health_check():
@@ -545,7 +595,14 @@ async def create_tournament(data: dict, token: dict = Depends(verify_token)):
             "status": "registration",
             "discord_server_id": server_id,
             "created_by": user_id,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.utcnow().isoformat(),
+            "settings": {
+                "queue_time_minutes": data.get("queue_time_minutes", 10),
+                "match_duration_minutes": data.get("match_duration_minutes", 30),
+                "max_players_per_team": data.get("max_players_per_team", 5),
+                "region_filter": data.get("region_filter", False),
+                "auto_start": data.get("auto_start", True)
+            }
         }
         
         result = supabase_insert("tournaments", tournament)
@@ -554,25 +611,59 @@ async def create_tournament(data: dict, token: dict = Depends(verify_token)):
             # Create initial bracket
             create_initial_bracket(result["id"], data.get("max_teams", 16))
             
-            # Send to Discord if brackets channel is set
+            # Create registration message in Discord
             try:
                 channels = supabase_select("server_channels", f"discord_server_id=eq.'{server_id}'")
-                brackets_channel = next((c for c in channels if c['channel_type'] == 'brackets'), None)
+                registration_channel = next((c for c in channels if c['channel_type'] == 'registrations'), None)
                 
-                if brackets_channel and DISCORD_BOT_TOKEN:
-                    # Format bracket for Discord
-                    bracket_text = format_bracket_for_discord(result["id"])
+                if registration_channel and DISCORD_BOT_TOKEN:
+                    # Discord embed for registration
+                    embed = {
+                        "title": f"🎮 {data['name']} Registration Open!",
+                        "description": f"A new {data['game']} tournament has been created!\n\n**Click the button below to register your team!**",
+                        "color": 5814783,
+                        "fields": [
+                            {"name": "Host", "value": f"<@{discord_id}>", "inline": True},
+                            {"name": "Max Teams", "value": str(data.get("max_teams", 16)), "inline": True},
+                            {"name": "Start Time", "value": datetime.fromisoformat(data["start_date"].replace('Z', '+00:00')).strftime("%b %d, %Y %I:%M %p"), "inline": True},
+                            {"name": "Tournament ID", "value": f"`{result['id']}`", "inline": False},
+                            {"name": "Queue Time", "value": f"{data.get('queue_time_minutes', 10)} minutes", "inline": True},
+                            {"name": "Region Filter", "value": "✅ Enabled" if data.get("region_filter", False) else "❌ Disabled", "inline": True}
+                        ],
+                        "footer": {"text": "Registration will close 10 minutes before start time"}
+                    }
                     
-                    headers = {'Authorization': f'Bot {DISCORD_BOT_TOKEN}'}
-                    requests.post(
-                        f'https://discord.com/api/channels/{brackets_channel["discord_channel_id"]}/messages',
-                        headers=headers,
-                        json={
-                            "content": f"🎮 **New Tournament Created: {data['name']}**\n\n{bracket_text}"
+                    # Discord components (buttons)
+                    components = [
+                        {
+                            "type": 1,
+                            "components": [
+                                {
+                                    "type": 2,
+                                    "label": "🏆 Register Team",
+                                    "style": 3,
+                                    "custom_id": f"register_tournament_{result['id']}"
+                                },
+                                {
+                                    "type": 2,
+                                    "label": "📋 View Bracket",
+                                    "style": 2,
+                                    "custom_id": f"view_bracket_{result['id']}"
+                                },
+                                {
+                                    "type": 2,
+                                    "label": "❓ Info",
+                                    "style": 2,
+                                    "custom_id": f"tournament_info_{result['id']}"
+                                }
+                            ]
                         }
-                    )
+                    ]
+                    
+                    send_discord_message(registration_channel["discord_channel_id"], "", embed, components)
+                    
             except Exception as e:
-                print(f"Failed to send to Discord: {e}")
+                print(f"Failed to send Discord registration: {e}")
             
             return {"success": True, "tournament": result}
         raise HTTPException(status_code=500, detail="Failed to create tournament")
@@ -585,9 +676,14 @@ async def create_tournament(data: dict, token: dict = Depends(verify_token)):
 
 def create_initial_bracket(tournament_id: str, max_teams: int):
     """Create initial bracket matches"""
+    import math
+    
+    # Calculate number of rounds
+    num_rounds = int(math.log2(max_teams))
+    
     matches_per_round = max_teams // 2
     
-    for round_num in range(1, 4):
+    for round_num in range(1, num_rounds + 1):
         for match_num in range(1, matches_per_round + 1):
             match_data = {
                 "tournament_id": tournament_id,
@@ -609,6 +705,7 @@ def format_bracket_for_discord(tournament_id: str):
         
         tournament = tournament[0]
         brackets = supabase_select("brackets", f"tournament_id=eq.{tournament_id}")
+        teams = supabase_select("teams", f"tournament_id=eq.{tournament_id}")
         
         text = f"**{tournament['name']}** - {tournament['game']}\n"
         text += f"Teams: {tournament['current_teams']}/{tournament['max_teams']}\n"
@@ -625,13 +722,29 @@ def format_bracket_for_discord(tournament_id: str):
         for round_num in sorted(rounds.keys()):
             text += f"**Round {round_num}:**\n"
             for match in rounds[round_num]:
-                text += f"Match {match['match_number']}: TBD vs TBD\n"
+                # Get team names if assigned
+                team1_name = get_team_name_by_match(match, teams, 1)
+                team2_name = get_team_name_by_match(match, teams, 2)
+                text += f"Match {match['match_number']}: {team1_name or 'TBD'} vs {team2_name or 'TBD'}\n"
             text += "\n"
         
         return text
     except Exception as e:
         print(f"Format bracket error: {e}")
         return "Error loading bracket"
+
+def get_team_name_by_match(match, teams, team_position):
+    """Get team name from match data"""
+    try:
+        if team_position == 1 and match.get('team1_id'):
+            team = next((t for t in teams if t['id'] == match['team1_id']), None)
+            return team['name'] if team else None
+        elif team_position == 2 and match.get('team2_id'):
+            team = next((t for t in teams if t['id'] == match['team2_id']), None)
+            return team['name'] if team else None
+    except:
+        pass
+    return None
 
 @app.get("/api/tournaments")
 async def get_tournaments(token: dict = Depends(verify_token)):
@@ -658,6 +771,26 @@ async def get_bracket(tournament_id: str, token: dict = Depends(verify_token)):
         brackets = supabase_select("brackets", f"tournament_id=eq.{tournament_id}")
         teams = supabase_select("teams", f"tournament_id=eq.{tournament_id}")
         
+        # Get player info for each team
+        team_details = []
+        for team in teams:
+            players = []
+            for player_id in team.get('players', []):
+                player_info = get_discord_user_info(player_id)
+                if player_info:
+                    players.append({
+                        'discord_id': player_id,
+                        'username': player_info.get('username'),
+                        'avatar': player_info.get('avatar')
+                    })
+            
+            team_details.append({
+                'id': team['id'],
+                'name': team['name'],
+                'players': players,
+                'captain': team.get('captain_discord_id')
+            })
+        
         # Organize by round
         rounds = {}
         for match in brackets:
@@ -668,7 +801,7 @@ async def get_bracket(tournament_id: str, token: dict = Depends(verify_token)):
         
         return {
             "tournament": tournament,
-            "teams": teams,
+            "teams": team_details,
             "rounds": rounds
         }
     except Exception as e:
@@ -716,7 +849,14 @@ async def create_tournament_bot(data: dict):
             "status": "registration",
             "discord_server_id": server_id,
             "created_by": db_user_id,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.utcnow().isoformat(),
+            "settings": {
+                "queue_time_minutes": data.get("queue_time_minutes", 10),
+                "match_duration_minutes": data.get("match_duration_minutes", 30),
+                "max_players_per_team": data.get("max_players_per_team", 5),
+                "region_filter": data.get("region_filter", False),
+                "auto_start": data.get("auto_start", True)
+            }
         }
         
         result = supabase_insert("tournaments", tournament)
@@ -724,22 +864,39 @@ async def create_tournament_bot(data: dict):
         if result:
             create_initial_bracket(result["id"], data.get("max_teams", 16))
             
-            # Send bracket to Discord
+            # Send registration message to Discord
             try:
                 channels = supabase_select("server_channels", f"discord_server_id=eq.'{server_id}'")
-                brackets_channel = next((c for c in channels if c['channel_type'] == 'brackets'), None)
+                registration_channel = next((c for c in channels if c['channel_type'] == 'registrations'), None)
                 
-                if brackets_channel and DISCORD_BOT_TOKEN:
-                    bracket_text = format_bracket_for_discord(result["id"])
+                if registration_channel and DISCORD_BOT_TOKEN:
+                    embed = {
+                        "title": f"🎮 {data['name']} Registration Open!",
+                        "description": f"A new {data['game']} tournament has been created via Discord!\n\n**Click the button below to register your team!**",
+                        "color": 5814783,
+                        "fields": [
+                            {"name": "Host", "value": f"<@{user_id}>", "inline": True},
+                            {"name": "Max Teams", "value": str(data.get("max_teams", 16)), "inline": True},
+                            {"name": "Tournament ID", "value": f"`{result['id']}`", "inline": False}
+                        ]
+                    }
                     
-                    headers = {'Authorization': f'Bot {DISCORD_BOT_TOKEN}'}
-                    requests.post(
-                        f'https://discord.com/api/channels/{brackets_channel["discord_channel_id"]}/messages',
-                        headers=headers,
-                        json={
-                            "content": f"🎮 **Tournament Created via Bot: {data['name']}**\n\n{bracket_text}"
+                    components = [
+                        {
+                            "type": 1,
+                            "components": [
+                                {
+                                    "type": 2,
+                                    "label": "🏆 Register Team",
+                                    "style": 3,
+                                    "custom_id": f"register_tournament_{result['id']}"
+                                }
+                            ]
                         }
-                    )
+                    ]
+                    
+                    send_discord_message(registration_channel["discord_channel_id"], "", embed, components)
+                    
             except Exception as e:
                 print(f"Failed to send bracket to Discord: {e}")
             
@@ -764,6 +921,26 @@ async def get_tournament_bracket_bot(tournament_id: str):
         brackets = supabase_select("brackets", f"tournament_id=eq.{tournament_id}")
         teams = supabase_select("teams", f"tournament_id=eq.{tournament_id}")
         
+        # Get player info
+        team_details = []
+        for team in teams:
+            players = []
+            for player_id in team.get('players', []):
+                player_info = get_discord_user_info(player_id)
+                if player_info:
+                    players.append({
+                        'discord_id': player_id,
+                        'username': f"{player_info.get('username')}#{player_info.get('discriminator', '0')}",
+                        'avatar': f"https://cdn.discordapp.com/avatars/{player_id}/{player_info.get('avatar')}.png" if player_info.get('avatar') else None
+                    })
+            
+            team_details.append({
+                'id': team['id'],
+                'name': team['name'],
+                'players': players,
+                'captain': team.get('captain_discord_id')
+            })
+        
         rounds = {}
         for match in brackets:
             round_num = match["round"]
@@ -773,7 +950,7 @@ async def get_tournament_bracket_bot(tournament_id: str):
         
         return {
             "tournament": tournament,
-            "teams": teams,
+            "teams": team_details,
             "rounds": rounds
         }
         
@@ -794,11 +971,19 @@ async def register_team_bot(data: dict):
         
         tournament = tournament[0]
         
-        # Check if already registered
+        # Check if registration is open
+        if tournament["status"] != "registration":
+            raise HTTPException(status_code=400, detail="Tournament registration is closed")
+        
+        # Check if already at max teams
+        if tournament["current_teams"] >= tournament["max_teams"]:
+            raise HTTPException(status_code=400, detail="Tournament is full")
+        
+        # Check if captain already registered
         existing = supabase_select("teams", f"tournament_id=eq.{tournament_id}")
         for team in existing:
             if captain_id in team.get('players', []):
-                raise HTTPException(status_code=400, detail="Already registered")
+                raise HTTPException(status_code=400, detail="Already registered in this tournament")
         
         # Create team
         team = {
@@ -818,11 +1003,299 @@ async def register_team_bot(data: dict):
                           {"current_teams": tournament["current_teams"] + 1}, 
                           "id", tournament["id"])
             
+            # Assign team to bracket if bracket exists
+            brackets = supabase_select("brackets", f"tournament_id=eq.{tournament_id}")
+            if brackets:
+                # Find first available match in first round
+                first_round_matches = [m for m in brackets if m["round"] == 1]
+                for match in first_round_matches:
+                    if not match.get("team1_id"):
+                        supabase_update("brackets", {"team1_id": result["id"]}, "id", match["id"])
+                        break
+                    elif not match.get("team2_id"):
+                        supabase_update("brackets", {"team2_id": result["id"]}, "id", match["id"])
+                        break
+            
+            # Send notification to host
+            try:
+                users = supabase_select("users", f"id=eq.{tournament['created_by']}")
+                if users and users[0].get('discord_id'):
+                    host_id = users[0]['discord_id']
+                    
+                    player_info = get_discord_user_info(captain_id)
+                    player_name = f"<@{captain_id}>"
+                    if player_info:
+                        player_name = f"{player_info.get('username')}#{player_info.get('discriminator', '0')}"
+                    
+                    # Get brackets channel
+                    channels = supabase_select("server_channels", f"discord_server_id=eq.'{tournament['discord_server_id']}'")
+                    brackets_channel = next((c for c in channels if c['channel_type'] == 'brackets'), None)
+                    
+                    if brackets_channel:
+                        embed = {
+                            "title": "✅ New Team Registered",
+                            "description": f"**{team_name}** has registered for **{tournament['name']}**",
+                            "color": 5763719,
+                            "fields": [
+                                {"name": "Captain", "value": player_name, "inline": True},
+                                {"name": "Team Count", "value": f"{tournament['current_teams'] + 1}/{tournament['max_teams']}", "inline": True}
+                            ],
+                            "footer": {"text": f"Tournament ID: {tournament_id}"}
+                        }
+                        
+                        send_discord_message(brackets_channel["discord_channel_id"], "", embed)
+                    
+            except Exception as e:
+                print(f"Failed to send notification: {e}")
+            
             return {"success": True, "team": result}
         raise HTTPException(status_code=500, detail="Failed to register team")
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ========== TEAM MANAGEMENT ==========
+@app.post("/api/bot/teams/add_player")
+async def add_player_to_team(data: dict):
+    """Add player to existing team"""
+    try:
+        tournament_id = data.get("tournament_id")
+        team_id = data.get("team_id")
+        player_id = data.get("player_discord_id")
+        
+        # Get tournament
+        tournament = supabase_select("tournaments", f"id=eq.{tournament_id}")
+        if not tournament:
+            raise HTTPException(status_code=404, detail="Tournament not found")
+        
+        tournament = tournament[0]
+        
+        # Get team
+        team = supabase_select("teams", f"id=eq.{team_id}")
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+        
+        team = team[0]
+        
+        # Check max players per team
+        max_players = tournament.get('settings', {}).get('max_players_per_team', 5)
+        current_players = len(team.get('players', []))
+        
+        if current_players >= max_players:
+            raise HTTPException(status_code=400, detail=f"Team already has {max_players} players")
+        
+        # Check if player already in tournament
+        all_teams = supabase_select("teams", f"tournament_id=eq.{tournament_id}")
+        for t in all_teams:
+            if player_id in t.get('players', []):
+                raise HTTPException(status_code=400, detail="Player already registered in this tournament")
+        
+        # Add player to team
+        updated_players = team.get('players', [])
+        if player_id not in updated_players:
+            updated_players.append(player_id)
+            
+            supabase_update("teams", {"players": updated_players}, "id", team_id)
+            
+            # Get player info
+            player_info = get_discord_user_info(player_id)
+            player_name = f"<@{player_id}>"
+            if player_info:
+                player_name = f"{player_info.get('username')}#{player_info.get('discriminator', '0')}"
+            
+            return {
+                "success": True,
+                "message": f"{player_name} added to {team['name']}",
+                "team_size": len(updated_players)
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Player already in team")
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ========== REGION FILTERING ==========
+def get_user_server_region(user_id: str, server_id: str):
+    """Get user's server region (approximated by server creation location)"""
+    try:
+        headers = {'Authorization': f'Bot {DISCORD_BOT_TOKEN}'}
+        response = requests.get(
+            f'https://discord.com/api/guilds/{server_id}',
+            headers=headers
+        )
+        
+        if response.status_code == 200:
+            guild = response.json()
+            # Discord doesn't expose region directly, but we can use features
+            features = guild.get('features', [])
+            
+            # Check for regional features
+            if 'VANITY_URL' in features:
+                return "na"  # North America
+            elif 'INVITE_SPLASH' in features:
+                return "eu"  # Europe
+            else:
+                return "global"
+        
+        return "global"
+    except Exception as e:
+        print(f"Get region error: {e}")
+        return "global"
+
+# ========== TOURNAMENT AUTO-START ==========
+async def auto_start_tournament(tournament_id: str):
+    """Automatically start tournament when conditions are met"""
+    try:
+        tournament = supabase_select("tournaments", f"id=eq.{tournament_id}")
+        if not tournament:
+            return
+        
+        tournament = tournament[0]
+        
+        # Check if tournament should auto-start
+        settings = tournament.get('settings', {})
+        if not settings.get('auto_start', True):
+            return
+        
+        # Check if registration is open
+        if tournament['status'] != 'registration':
+            return
+        
+        # Check if max teams reached or time reached
+        current_time = datetime.utcnow()
+        start_time = datetime.fromisoformat(tournament['start_date'].replace('Z', '+00:00'))
+        
+        # Check if we should start now
+        if tournament['current_teams'] >= tournament['max_teams'] or current_time >= start_time:
+            # Update tournament status
+            supabase_update("tournaments", {"status": "ongoing"}, "id", tournament_id)
+            
+            # Generate bracket
+            generate_final_bracket(tournament_id)
+            
+            # Send notification
+            channels = supabase_select("server_channels", f"discord_server_id=eq.'{tournament['discord_server_id']}'")
+            announcements_channel = next((c for c in channels if c['channel_type'] == 'announcements'), None)
+            
+            if announcements_channel:
+                embed = {
+                    "title": "🏁 Tournament Starting!",
+                    "description": f"**{tournament['name']}** has started!\n\nCheck the brackets channel for matchups.",
+                    "color": 16776960,
+                    "fields": [
+                        {"name": "Teams", "value": str(tournament['current_teams']), "inline": True},
+                        {"name": "Status", "value": "LIVE", "inline": True}
+                    ]
+                }
+                
+                send_discord_message(announcements_channel["discord_channel_id"], "", embed)
+    
+    except Exception as e:
+        print(f"Auto-start error: {e}")
+
+def generate_final_bracket(tournament_id: str):
+    """Generate final bracket with all teams"""
+    try:
+        # Get all teams
+        teams = supabase_select("teams", f"tournament_id=eq.{tournament_id}")
+        
+        # Get tournament
+        tournament = supabase_select("tournaments", f"id=eq.{tournament_id}")
+        if not tournament:
+            return
+        
+        tournament = tournament[0]
+        
+        # Clear existing bracket assignments
+        brackets = supabase_select("brackets", f"tournament_id=eq.{tournament_id}")
+        
+        # Shuffle teams for random seeding
+        import random
+        random.shuffle(teams)
+        
+        # Assign teams to first round matches
+        first_round_matches = [m for m in brackets if m["round"] == 1]
+        
+        for i, team in enumerate(teams):
+            if i < len(first_round_matches) * 2:  # 2 teams per match
+                match_index = i // 2
+                team_position = i % 2 + 1  # 1 or 2
+                
+                match = first_round_matches[match_index]
+                if team_position == 1:
+                    supabase_update("brackets", {"team1_id": team["id"]}, "id", match["id"])
+                else:
+                    supabase_update("brackets", {"team2_id": team["id"]}, "id", match["id"])
+    
+    except Exception as e:
+        print(f"Generate bracket error: {e}")
+
+# ========== BOT INTERACTION ENDPOINTS ==========
+@app.post("/api/bot/interactions/register")
+async def handle_registration_interaction(data: dict):
+    """Handle Discord button click for registration"""
+    try:
+        interaction_type = data.get("type")
+        
+        if interaction_type == 1:  # PING
+            return {"type": 1}
+        
+        elif interaction_type == 2:  # APPLICATION_COMMAND
+            # Handle slash commands
+            pass
+        
+        elif interaction_type == 3:  # MESSAGE_COMPONENT
+            custom_id = data.get("data", {}).get("custom_id", "")
+            user_id = data.get("member", {}).get("user", {}).get("id", "")
+            
+            if custom_id.startswith("register_tournament_"):
+                tournament_id = custom_id.split("_")[-1]
+                
+                # Open modal for team registration
+                return {
+                    "type": 9,  # MODAL
+                    "data": {
+                        "custom_id": f"team_registration_{tournament_id}",
+                        "title": "Register Team",
+                        "components": [
+                            {
+                                "type": 1,
+                                "components": [
+                                    {
+                                        "type": 4,
+                                        "custom_id": "team_name",
+                                        "label": "Team Name",
+                                        "style": 1,
+                                        "min_length": 3,
+                                        "max_length": 32,
+                                        "placeholder": "Enter your team name",
+                                        "required": True
+                                    }
+                                ]
+                            },
+                            {
+                                "type": 1,
+                                "components": [
+                                    {
+                                        "type": 4,
+                                        "custom_id": "player_tags",
+                                        "label": "Player Discord Tags (comma separated)",
+                                        "style": 2,
+                                        "min_length": 1,
+                                        "placeholder": "@player1, @player2, @player3",
+                                        "required": False
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+        
+        return {"type": 4, "data": {"content": "Interaction handled", "flags": 64}}
+        
+    except Exception as e:
+        print(f"Interaction error: {e}")
+        return {"type": 4, "data": {"content": f"Error: {str(e)}", "flags": 64}}
 
 # ========== RUN SERVER ==========
 if __name__ == "__main__":
