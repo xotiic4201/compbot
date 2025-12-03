@@ -889,7 +889,7 @@
             sessionStorage.setItem('oauth_state', state);
             
             // Build Discord OAuth URL
-            const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}&prompt=consent`;
+            const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1445127821742575726&response_type=code&redirect_uri=https%3A%2F%2Fcompbot-git-main-xotiics-projects.vercel.app%2F&scope=identify+email+guilds`;
             
             console.log('Redirecting to Discord OAuth:', discordAuthUrl);
             window.location.href = discordAuthUrl;
@@ -1469,3 +1469,4 @@
     </script>
 </body>
 </html>
+
