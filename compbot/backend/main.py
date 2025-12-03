@@ -6,6 +6,7 @@ import os
 import requests
 import secrets
 import hashlib
+import jwt  # ADD THIS IMPORT
 from typing import Optional
 from pydantic import BaseModel, EmailStr
 
@@ -462,6 +463,48 @@ async def get_channels(server_id: str):
         print(f"Get channels error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ========== BOT CHANNEL MANAGEMENT ==========
+@app.post("/api/bot/channels/set")
+async def bot_set_channel(data: dict):
+    """Set channel via Discord bot"""
+    try:
+        channel_data = {
+            "discord_server_id": data.get("discord_server_id"),
+            "channel_type": data.get("channel_type"),
+            "discord_channel_id": data.get("discord_channel_id"),
+            "channel_name": data.get("channel_name"),
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        # Check if exists
+        existing = supabase_select("server_channels", 
+                                 f"discord_server_id=eq.'{channel_data['discord_server_id']}' AND channel_type=eq.'{channel_data['channel_type']}'")
+        
+        if existing:
+            result = supabase_update("server_channels", channel_data, 
+                                   "discord_server_id", channel_data['discord_server_id'])
+        else:
+            channel_data["created_at"] = datetime.utcnow().isoformat()
+            result = supabase_insert("server_channels", channel_data)
+        
+        if result:
+            return {"success": True}
+        raise HTTPException(status_code=500, detail="Failed to save channel")
+            
+    except Exception as e:
+        print(f"Bot set channel error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/bot/channels/{server_id}")
+async def bot_get_channels(server_id: str):
+    """Get all channels for a server - bot version"""
+    try:
+        channels = supabase_select("server_channels", f"discord_server_id=eq.'{server_id}'")
+        return channels
+    except Exception as e:
+        print(f"Bot get channels error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ========== TOURNAMENT MANAGEMENT ==========
 @app.post("/api/tournaments")
 async def create_tournament(data: dict, token: dict = Depends(verify_token)):
@@ -786,4 +829,3 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
-
