@@ -10,7 +10,7 @@ import base64
 from datetime import datetime, timedelta
 from typing import Optional
 from pydantic import BaseModel, EmailStr
-import jwt  # Changed from python-jose to pyjwt
+import jwt
 
 app = FastAPI(title="XTourney API", version="7.0.0")
 
@@ -27,7 +27,6 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "https://your-project.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "your-anon-key")
 DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "1445127821742575726")
 DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET", "your-client-secret")
-# IMPORTANT: This must match EXACTLY what's in Discord Developer Portal
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://www.xotiicsplaza.us/")
 JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_urlsafe(32))
 
@@ -293,14 +292,15 @@ async def discord_auth_token(request: DiscordAuthRequest):
         if existing:
             user = existing[0]
             user_id = user['id']
-            # Update user
+            # Update user - AUTO LOGIN (no new user created)
             supabase_update("users", {
                 "last_login": datetime.utcnow().isoformat(),
                 "username": discord_username,
                 "avatar_url": f"https://cdn.discordapp.com/avatars/{user_data['id']}/{user_data.get('avatar', '')}.png" if user_data.get('avatar') else None
             }, "id", user_id)
+            print(f"User already exists, auto-login: {user_id}")
         else:
-            # Create new user
+            # Create new user (only if first time)
             user_db = {
                 "discord_id": user_data["id"],
                 "username": discord_username,
@@ -315,6 +315,7 @@ async def discord_auth_token(request: DiscordAuthRequest):
             if not result:
                 raise HTTPException(status_code=500, detail="Failed to create user")
             user_id = result['id']
+            print(f"New user created: {user_id}")
         
         # Get user's Discord servers
         servers = []
@@ -361,6 +362,71 @@ async def discord_auth_token(request: DiscordAuthRequest):
         print(f"Discord auth error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ========== DIRECT LOGIN ENDPOINT (For Returning Users) ==========
+@app.post("/api/auth/discord/refresh")
+async def discord_refresh_login(request: Request):
+    """Direct login for returning users using stored token"""
+    try:
+        data = await request.json()
+        user_token = data.get("token")
+        
+        if not user_token:
+            raise HTTPException(status_code=400, detail="No token provided")
+        
+        # Verify the JWT token
+        payload = verify_jwt_token(user_token)
+        
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        
+        user_id = payload.get("sub")
+        discord_id = payload.get("discord_id")
+        
+        # Check if user exists
+        existing = supabase_select("users", f"id=eq.{user_id}")
+        
+        if not existing:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user = existing[0]
+        
+        # Get user's Discord servers (we need a fresh token for this)
+        # For now, return cached servers or empty
+        servers = []
+        
+        # Update last login
+        supabase_update("users", {
+            "last_login": datetime.utcnow().isoformat()
+        }, "id", user_id)
+        
+        # Create new JWT token (refresh expiration)
+        jwt_token = create_jwt_token({
+            "sub": user_id,
+            "username": user['username'],
+            "discord_id": discord_id,
+            "account_type": "discord"
+        })
+        
+        return {
+            "success": True,
+            "user": {
+                "id": user_id,
+                "username": user['username'],
+                "avatar": user.get('avatar_url'),
+                "discord_id": discord_id,
+                "email": user.get("email")
+            },
+            "access_token": jwt_token,
+            "servers": servers,
+            "message": "Auto-login successful"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Refresh login error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ========== PROTECTED ENDPOINTS ==========
 @app.get("/api/auth/me")
 async def get_current_user(request: Request):
@@ -402,7 +468,7 @@ async def create_tournament(request: Request):
     
     print(f"Creating tournament: {data.get('name')}")
     
-    # Create tournament WITHOUT settings column (we'll add individual columns)
+    # Create tournament with individual columns
     tournament = {
         "name": data.get("name"),
         "game": data.get("game"),
@@ -415,7 +481,6 @@ async def create_tournament(request: Request):
         "discord_server_id": data.get("discord_server_id"),
         "created_by": user_id,
         "created_at": datetime.utcnow().isoformat(),
-        # Add individual columns instead of settings JSON
         "max_players_per_team": data.get("max_players_per_team", 5),
         "region_filter": data.get("region_filter", False),
         "prize_pool": data.get("prize_pool", "")
@@ -524,7 +589,7 @@ async def create_tournament_bot(request: Request):
     try:
         data = await request.json()
         
-        # Create tournament WITHOUT settings column
+        # Create tournament
         tournament = {
             "name": data.get("name"),
             "game": data.get("game"),
@@ -535,9 +600,8 @@ async def create_tournament_bot(request: Request):
             "start_date": data.get("start_date"),
             "status": "registration",
             "discord_server_id": data.get("discord_server_id"),
-            "created_by": 0,  # Bot user
+            "created_by": "00000000-0000-0000-0000-000000000000",  # Bot user UUID
             "created_at": datetime.utcnow().isoformat(),
-            # Add individual columns instead of settings JSON
             "max_players_per_team": data.get("max_players_per_team", 5),
             "region_filter": data.get("region_filter", False)
         }
