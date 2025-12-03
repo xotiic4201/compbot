@@ -27,7 +27,8 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "https://your-project.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "your-anon-key")
 DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "1445127821742575726")
 DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET", "your-client-secret")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://compbot-ik5bayp8r-xotiics-projects.vercel.app")
+# IMPORTANT: This must match EXACTLY what's in Discord Developer Portal
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://www.xotiicsplaza.us/")
 JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_urlsafe(32))
 
 headers = {
@@ -224,10 +225,12 @@ async def get_tournament_public(tournament_id: str):
 @app.get("/api/auth/discord")
 async def discord_auth():
     """Start Discord OAuth flow"""
+    redirect_uri = f"{FRONTEND_URL}/auth/callback"
+    
     discord_auth_url = (
         f"https://discord.com/api/oauth2/authorize?"
         f"client_id={DISCORD_CLIENT_ID}&"
-        f"redirect_uri={FRONTEND_URL}&"
+        f"redirect_uri={redirect_uri}&"
         f"response_type=code&"
         f"scope=identify%20email%20guilds&"
         f"prompt=consent"
@@ -239,6 +242,10 @@ async def discord_auth_token(request: DiscordAuthRequest):
     """Exchange Discord code for token"""
     try:
         print(f"Discord auth with code: {request.code[:20]}...")
+        print(f"Using redirect_uri: {request.redirect_uri}")
+        
+        # Use the redirect_uri from frontend, fallback to FRONTEND_URL
+        redirect_uri = request.redirect_uri or FRONTEND_URL
         
         # Exchange code for token
         data = {
@@ -246,14 +253,17 @@ async def discord_auth_token(request: DiscordAuthRequest):
             'client_secret': DISCORD_CLIENT_SECRET,
             'grant_type': 'authorization_code',
             'code': request.code,
-            'redirect_uri': request.redirect_uri or FRONTEND_URL
+            'redirect_uri': redirect_uri
         }
+        
+        print(f"Sending to Discord: {data}")
         
         response = requests.post('https://discord.com/api/oauth2/token', data=data)
         
         if response.status_code != 200:
             error_text = response.text[:200]
             print(f"Discord token error: {error_text}")
+            print(f"Request data: {data}")
             raise HTTPException(status_code=400, detail=f"Discord auth failed: {error_text}")
         
         token_data = response.json()
@@ -266,6 +276,8 @@ async def discord_auth_token(request: DiscordAuthRequest):
         user_response = requests.get('https://discord.com/api/users/@me', 
                                    headers={'Authorization': f'Bearer {access_token}'})
         user_data = user_response.json()
+        
+        print(f"Got user data: {user_data.get('id')} - {user_data.get('username')}")
         
         if 'id' not in user_data:
             raise HTTPException(status_code=400, detail="Invalid user data from Discord")
@@ -346,7 +358,7 @@ async def discord_auth_token(request: DiscordAuthRequest):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Discord auth error: {str(e)[:200]}")
+        print(f"Discord auth error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ========== PROTECTED ENDPOINTS ==========
@@ -390,7 +402,7 @@ async def create_tournament(request: Request):
     
     print(f"Creating tournament: {data.get('name')}")
     
-    # Create tournament
+    # Create tournament WITHOUT settings column (we'll add individual columns)
     tournament = {
         "name": data.get("name"),
         "game": data.get("game"),
@@ -403,11 +415,10 @@ async def create_tournament(request: Request):
         "discord_server_id": data.get("discord_server_id"),
         "created_by": user_id,
         "created_at": datetime.utcnow().isoformat(),
-        "settings": {
-            "max_players_per_team": data.get("max_players_per_team", 5),
-            "region_filter": data.get("region_filter", False),
-            "prize_pool": data.get("prize_pool", "")
-        }
+        # Add individual columns instead of settings JSON
+        "max_players_per_team": data.get("max_players_per_team", 5),
+        "region_filter": data.get("region_filter", False),
+        "prize_pool": data.get("prize_pool", "")
     }
     
     result = supabase_insert("tournaments", tournament)
@@ -513,7 +524,7 @@ async def create_tournament_bot(request: Request):
     try:
         data = await request.json()
         
-        # Create tournament
+        # Create tournament WITHOUT settings column
         tournament = {
             "name": data.get("name"),
             "game": data.get("game"),
@@ -526,10 +537,9 @@ async def create_tournament_bot(request: Request):
             "discord_server_id": data.get("discord_server_id"),
             "created_by": 0,  # Bot user
             "created_at": datetime.utcnow().isoformat(),
-            "settings": {
-                "max_players_per_team": data.get("max_players_per_team", 5),
-                "region_filter": data.get("region_filter", False)
-            }
+            # Add individual columns instead of settings JSON
+            "max_players_per_team": data.get("max_players_per_team", 5),
+            "region_filter": data.get("region_filter", False)
         }
         
         result = supabase_insert("tournaments", tournament)
