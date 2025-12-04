@@ -1222,7 +1222,7 @@
                     <button class="btn btn-secondary" onclick="showSection('tournaments')" style="padding: 1.2rem 2.5rem;">
                         <i class="fas fa-trophy"></i> BROWSE TOURNAMENTS
                     </button>
-                    <button class="btn btn-discord" onclick="showLoginModal()" style="padding: 1.2rem 2.5rem;">
+                    <button class="btn btn-discord" onclick="loginWithDiscord()" style="padding: 1.2rem 2.5rem;">
                         <i class="fab fa-discord"></i> CONNECT DISCORD
                     </button>
                 </div>
@@ -1275,7 +1275,7 @@
                         <i class="fas fa-bolt"></i> QUICK START
                     </h3>
                     <div style="display: flex; flex-direction: column; gap: 1.2rem;">
-                        <button class="btn btn-primary" onclick="showLoginModal()">
+                        <button class="btn btn-primary" onclick="loginWithDiscord()">
                             <i class="fab fa-discord"></i> CONNECT ACCOUNT
                         </button>
                         <button class="btn btn-secondary" onclick="showSection('servers')" id="quickCreateBtn" style="display: none;">
@@ -1437,6 +1437,7 @@
         </div>
     </section>
 
+    <!-- Login Modal -->
     <div id="loginModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <div class="modal-title">WELCOME CHAMPION</div>
@@ -1471,6 +1472,7 @@
         </div>
     </div>
 
+    <!-- Email Login Modal -->
     <div id="emailLoginModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <div class="modal-title">EMAIL LOGIN</div>
@@ -1503,6 +1505,7 @@
         </div>
     </div>
 
+    <!-- Email Register Modal -->
     <div id="emailRegisterModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <div class="modal-title">CREATE ACCOUNT</div>
@@ -1537,6 +1540,32 @@
                     ← BACK TO LOGIN OPTIONS
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Link Email Modal -->
+    <div id="linkEmailModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-title">LINK EMAIL ADDRESS</div>
+            <div class="modal-subtitle">Link your email to avoid re-authentication</div>
+            
+            <div id="linkEmailAlert" class="alert" style="display: none;"></div>
+            
+            <form id="linkEmailForm" onsubmit="event.preventDefault(); linkEmailToAccount();">
+                <div class="form-group">
+                    <input type="email" id="linkEmailInput" class="form-input" 
+                           placeholder="your.email@example.com" required>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">
+                        <i class="fas fa-link"></i> LINK EMAIL
+                    </button>
+                    <button type="button" onclick="hideLinkEmailModal()" class="btn btn-secondary" style="flex: 1;">
+                        SKIP FOR NOW
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -1589,18 +1618,90 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('XTourney Platform Initializing...');
             
-            // Clean URL immediately - NO AUTO-REDIRECTS
-            if (window.location.search.includes('code=') || window.location.search.includes('error=')) {
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
+            // Check for OAuth callback in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const error = urlParams.get('error');
             
+            if (code) {
+                // We have an auth code, process it
+                processOAuthCallback(code);
+            } else if (error) {
+                console.error('OAuth error:', error);
+                showError('Authentication failed: ' + error);
+                // Clean URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                hideLoaderAndInitialize();
+            } else {
+                // Normal initialization
+                hideLoaderAndInitialize();
+            }
+        });
+
+        async function processOAuthCallback(code) {
+            showDiscordRedirect();
+            
+            try {
+                console.log('Processing OAuth callback with code:', code);
+                
+                const response = await fetch(`${CONFIG.API_URL}/api/auth/discord/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        code: code,
+                        redirect_uri: CONFIG.REDIRECT_URI
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    console.log('OAuth successful:', data.user);
+                    
+                    localStorage.setItem('xtourney_token', data.access_token);
+                    localStorage.setItem('xtourney_user', JSON.stringify(data.user));
+                    localStorage.setItem('xtourney_last_login', Date.now().toString());
+                    
+                    if (data.servers) {
+                        localStorage.setItem('xtourney_servers', JSON.stringify(data.servers));
+                        userServers = data.servers;
+                    }
+                    
+                    currentUser = data.user;
+                    userToken = data.access_token;
+                    
+                    // Clean URL and update UI
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    
+                    hideDiscordRedirect();
+                    updateUIAfterLogin();
+                    
+                    // Show email linking modal if no email
+                    if (!currentUser.email) {
+                        setTimeout(() => showLinkEmailModal(), 1500);
+                    }
+                    
+                    showAlert('✅ Successfully connected Discord!', 'success');
+                } else {
+                    throw new Error(data.detail || 'Authentication failed');
+                }
+            } catch (error) {
+                console.error('OAuth processing error:', error);
+                hideDiscordRedirect();
+                showError('Failed to authenticate with Discord');
+                window.history.replaceState({}, document.title, window.location.pathname);
+                hideLoaderAndInitialize();
+            }
+        }
+
+        function hideLoaderAndInitialize() {
             // Hide loader
             setTimeout(() => {
                 document.getElementById('pageLoader').classList.add('hidden');
                 setTimeout(() => {
                     document.getElementById('pageLoader').style.display = 'none';
                 }, 500);
-            }, 1500);
+            }, 500);
             
             // Set up animations
             setupIntersectionObserver();
@@ -1625,7 +1726,7 @@
             if (document.getElementById('startDate')) {
                 document.getElementById('startDate').min = today.toISOString().slice(0, 16);
             }
-        });
+        }
 
         function setupIntersectionObserver() {
             const observer = new IntersectionObserver((entries) => {
@@ -1654,6 +1755,17 @@
             const storedToken = localStorage.getItem('xtourney_token');
             const storedUser = localStorage.getItem('xtourney_user');
             const storedServers = localStorage.getItem('xtourney_servers');
+            const lastLogin = localStorage.getItem('xtourney_last_login');
+            
+            // Check if session is expired (30 days)
+            if (lastLogin) {
+                const daysSinceLogin = (Date.now() - parseInt(lastLogin)) / (1000 * 60 * 60 * 24);
+                if (daysSinceLogin > 30) {
+                    console.log('Session expired');
+                    logout();
+                    return;
+                }
+            }
             
             if (storedToken && storedUser) {
                 try {
@@ -1669,6 +1781,7 @@
                         updateStats();
                     }
                     
+                    // Try to refresh token silently
                     refreshUserToken();
                     
                 } catch (e) {
@@ -1732,15 +1845,28 @@
             document.getElementById('emailRegisterAlert').style.display = 'none';
         }
 
+        function showLinkEmailModal() {
+            if (!currentUser || currentUser.email) return;
+            
+            document.getElementById('linkEmailModal').style.display = 'flex';
+            document.getElementById('linkEmailAlert').style.display = 'none';
+        }
+
+        function hideLinkEmailModal() {
+            document.getElementById('linkEmailModal').style.display = 'none';
+        }
+
         // ========== DISCORD AUTH ==========
         function loginWithDiscord() {
             console.log('Starting Discord OAuth...');
-            const scope = 'identify email guilds';
             
+            // Force web browser flow and prevent app opening
+            const scope = 'identify email guilds';
             const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${scope}&prompt=consent`;
             
             showDiscordRedirect();
             
+            // Direct redirect after short delay
             setTimeout(() => {
                 window.location.href = discordAuthUrl;
             }, 500);
@@ -1779,6 +1905,7 @@
                 if (response.ok && data.success) {
                     localStorage.setItem('xtourney_token', data.access_token);
                     localStorage.setItem('xtourney_user', JSON.stringify(data.user));
+                    localStorage.setItem('xtourney_last_login', Date.now().toString());
                     currentUser = data.user;
                     userToken = data.access_token;
                     
@@ -1814,6 +1941,7 @@
                 if (response.ok && data.success) {
                     localStorage.setItem('xtourney_token', data.access_token);
                     localStorage.setItem('xtourney_user', JSON.stringify(data.user));
+                    localStorage.setItem('xtourney_last_login', Date.now().toString());
                     currentUser = data.user;
                     userToken = data.access_token;
                     
@@ -1825,6 +1953,47 @@
                 }
             } catch (error) {
                 showErrorInModal('emailLoginAlert', error.message);
+            }
+        }
+
+        // ========== EMAIL LINKING ==========
+        async function linkEmailToAccount() {
+            const email = document.getElementById('linkEmailInput').value.trim().toLowerCase();
+            
+            if (!email || !isValidEmail(email)) {
+                showErrorInModal('linkEmailAlert', 'Please enter a valid email address');
+                return;
+            }
+            
+            if (!userToken || !currentUser) {
+                showErrorInModal('linkEmailAlert', 'Please login first');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${CONFIG.API_URL}/api/auth/link-email`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${userToken}`
+                    },
+                    body: JSON.stringify({ email })
+                });
+                
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    // Update user with email
+                    currentUser.email = email;
+                    localStorage.setItem('xtourney_user', JSON.stringify(currentUser));
+                    
+                    hideLinkEmailModal();
+                    updateUIAfterLogin();
+                    showAlert('✅ Email linked successfully!', 'success');
+                } else {
+                    throw new Error(data.detail || 'Failed to link email');
+                }
+            } catch (error) {
+                showErrorInModal('linkEmailAlert', error.message);
             }
         }
 
@@ -1850,7 +2019,15 @@
             authButtons.innerHTML = `
                 <div class="user-profile" onclick="showSection('servers')">
                     <img src="${avatarUrl}" alt="Avatar" class="user-avatar">
-                    <div style="font-weight: 700; font-family: 'Orbitron';">${currentUser.username}</div>
+                    <div>
+                        <div style="font-weight: 700; font-family: 'Orbitron';">${currentUser.username}</div>
+                        ${currentUser.email ? 
+                            `<div style="font-size: 0.8rem; color: var(--gray);">${currentUser.email}</div>` : 
+                            `<div style="font-size: 0.8rem; color: var(--warning); cursor: pointer;" onclick="showLinkEmailModal()">
+                                <i class="fas fa-exclamation-circle"></i> Add email to avoid re-login
+                            </div>`
+                        }
+                    </div>
                     <button onclick="logout(); event.stopPropagation();" style="margin-left: 10px; padding: 0.4rem 0.8rem; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-family: 'Orbitron';">
                         LOGOUT
                     </button>
@@ -2277,7 +2454,7 @@
                     <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">NO LIVE MATCHES</h3>
                     <p>Create a tournament on your Discord server to get started!</p>
                     ${!userToken ? `
-                    <button class="btn btn-primary" onclick="showLoginModal()" style="margin-top: 2rem;">
+                    <button class="btn btn-primary" onclick="loginWithDiscord()" style="margin-top: 2rem;">
                         <i class="fab fa-discord"></i> CONNECT DISCORD TO CREATE
                     </button>
                     ` : ''}
@@ -2295,7 +2472,7 @@
                     <i class="fas fa-trophy" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
                     <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">NO TOURNAMENTS AVAILABLE</h3>
                     <p>Connect your Discord account to create tournaments</p>
-                    <button class="btn btn-primary" onclick="showLoginModal()" style="margin-top: 2rem;">
+                    <button class="btn btn-primary" onclick="loginWithDiscord()" style="margin-top: 2rem;">
                         <i class="fab fa-discord"></i> CONNECT DISCORD
                     </button>
                 </div>
@@ -2334,6 +2511,7 @@
             localStorage.removeItem('xtourney_token');
             localStorage.removeItem('xtourney_user');
             localStorage.removeItem('xtourney_servers');
+            localStorage.removeItem('xtourney_last_login');
             
             currentUser = null;
             userToken = null;
@@ -2387,4 +2565,3 @@
     </script>
 </body>
 </html>
-
