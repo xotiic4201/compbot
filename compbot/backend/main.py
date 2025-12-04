@@ -591,19 +591,24 @@ async def discord_auth_token(request: DiscordAuthRequest):
 # ========== EMAIL AUTH - FIXED ==========
 @app.post("/api/auth/email/register")
 async def email_register(request: EmailRegisterRequest):
-    """Register with email and password"""
+    """Register with email and password - FIXED"""
     try:
         # Validate username
         if not re.match(r'^[a-zA-Z0-9_]{3,20}$', request.username):
             raise HTTPException(status_code=400, detail="Username must be 3-20 characters, letters, numbers, and underscores only")
         
+        # Validate email format
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, request.email):
+            raise HTTPException(status_code=400, detail="Invalid email format")
+        
         # Check if email already exists
-        existing_email = supabase_select("users", f"email=eq.'{request.email}'")
+        existing_email = supabase_select("users", f"email=ilike.'{request.email}'")
         if existing_email:
             raise HTTPException(status_code=400, detail="Email already registered")
         
         # Check if username already exists
-        existing_username = supabase_select("users", f"username=eq.'{request.username}'")
+        existing_username = supabase_select("users", f"username=ilike.'{request.username}'")
         if existing_username:
             raise HTTPException(status_code=400, detail="Username already taken")
         
@@ -616,18 +621,22 @@ async def email_register(request: EmailRegisterRequest):
         user_db = {
             "id": user_uuid,
             "username": request.username,
-            "email": request.email,
+            "email": request.email.lower(),  # Store email in lowercase
             "password_hash": hashed_password,
             "account_type": "email",
             "created_at": datetime.utcnow().isoformat(),
             "last_login": datetime.utcnow().isoformat(),
             "is_verified": False,
-            "avatar_url": f"https://ui-avatars.com/api/?name={request.username.replace(' ', '+')}&background=5865F2&color=fff"
+            "avatar_url": f"https://ui-avatars.com/api/?name={request.username.replace(' ', '+')}&background=DC2626&color=fff"
         }
+        
+        print(f"Attempting to create user: {user_db['email']}")
         
         result = supabase_insert("users", user_db, admin=True)
         
         if result:
+            print(f"User created successfully: {user_uuid}")
+            
             # Create JWT token
             jwt_token = create_jwt_token({
                 "sub": user_uuid,
@@ -644,18 +653,21 @@ async def email_register(request: EmailRegisterRequest):
                     "username": request.username,
                     "email": request.email,
                     "account_type": "email",
-                    "avatar": f"https://ui-avatars.com/api/?name={request.username.replace(' ', '+')}&background=5865F2&color=fff"
+                    "avatar": f"https://ui-avatars.com/api/?name={request.username.replace(' ', '+')}&background=DC2626&color=fff"
                 },
                 "access_token": jwt_token,
                 "message": "Account created successfully"
             }
         else:
-            raise HTTPException(status_code=500, detail="Failed to create user")
+            print(f"Failed to create user in database")
+            raise HTTPException(status_code=500, detail="Failed to create user in database")
         
     except HTTPException:
         raise
     except Exception as e:
         print(f"Email registration error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Registration error: {str(e)}")
 
 @app.post("/api/auth/email/login")
@@ -807,3 +819,4 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
