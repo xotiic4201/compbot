@@ -1652,22 +1652,52 @@
                 document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
             }
             
-            // Check for OAuth callback in URL
+            // Check for OAuth callback in URL - but don't auto-process
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
             const error = urlParams.get('error');
-            
-            if (code && !isProcessingDiscord) {
-                console.log('Processing Discord OAuth callback...');
-                isProcessingDiscord = true;
-                showDiscordRedirect();
+            const oauthState = urlParams.get('state');
+
+            if (code && oauthState) {
+                // We have an OAuth callback, but wait for user to confirm
+                console.log('Discord OAuth callback detected. Storing code for processing...');
+                
+                // Store the code temporarily
+                sessionStorage.setItem('pending_oauth_code', code);
+                sessionStorage.setItem('pending_oauth_state', oauthState);
+                
+                // Clean URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                // Show login modal to let user continue
                 setTimeout(() => {
-                    processDiscordCallback(code);
+                    showLoginModal();
+                    const loginAlert = document.getElementById('loginAlert');
+                    loginAlert.innerHTML = `
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>Discord authentication detected!</strong><br>
+                            Click "Continue with Discord" to complete the login process.
+                        </div>
+                    `;
+                    loginAlert.className = 'alert alert-success';
+                    loginAlert.style.display = 'flex';
                 }, 1000);
+                
             } else if (error) {
                 console.error('OAuth error:', error);
-                showError('Discord authentication failed: ' + error);
+                
+                // Clean URL
                 window.history.replaceState({}, document.title, window.location.pathname);
+                
+                // Show error in login modal
+                setTimeout(() => {
+                    showLoginModal();
+                    const loginAlert = document.getElementById('loginAlert');
+                    loginAlert.textContent = 'Discord authentication failed: ' + error;
+                    loginAlert.className = 'alert alert-error';
+                    loginAlert.style.display = 'flex';
+                }, 1000);
             }
         });
 
@@ -1771,6 +1801,21 @@
             console.log('Showing login modal');
             document.getElementById('loginModal').style.display = 'flex';
             document.getElementById('loginAlert').style.display = 'none';
+            
+            // Check if we have a pending OAuth code
+            const pendingCode = sessionStorage.getItem('pending_oauth_code');
+            if (pendingCode) {
+                const loginAlert = document.getElementById('loginAlert');
+                loginAlert.innerHTML = `
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Discord authentication detected!</strong><br>
+                        Click "Continue with Discord" to complete the login process.
+                    </div>
+                `;
+                loginAlert.className = 'alert alert-success';
+                loginAlert.style.display = 'flex';
+            }
         }
 
         function hideLoginModal() {
@@ -1795,12 +1840,35 @@
         function loginWithDiscord() {
             console.log('Starting Discord OAuth...');
             
+            // Check if we have a pending OAuth code
+            const pendingCode = sessionStorage.getItem('pending_oauth_code');
+            const pendingState = sessionStorage.getItem('pending_oauth_state');
+            
+            if (pendingCode && pendingState) {
+                console.log('Found pending Discord OAuth. Processing...');
+                
+                // Show redirect screen
+                showDiscordRedirect();
+                
+                // Process the pending code
+                setTimeout(() => {
+                    processDiscordCallback(pendingCode);
+                    
+                    // Clear pending data
+                    sessionStorage.removeItem('pending_oauth_code');
+                    sessionStorage.removeItem('pending_oauth_state');
+                }, 500);
+                
+                return;
+            }
+            
+            // Otherwise, start new OAuth flow
             const scope = 'identify email guilds';
             const state = generateState();
             
             sessionStorage.setItem('oauth_state', state);
             
-            const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${scope}&prompt=none`;
+            const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${scope}&prompt=none&state=${state}`;
             
             console.log('Redirecting to Discord OAuth:', discordAuthUrl);
             
@@ -2598,6 +2666,10 @@
             localStorage.removeItem('xtourney_token');
             localStorage.removeItem('xtourney_user');
             localStorage.removeItem('xtourney_servers');
+            
+            // Clear any pending OAuth data
+            sessionStorage.removeItem('pending_oauth_code');
+            sessionStorage.removeItem('pending_oauth_state');
             
             // Reset state
             currentUser = null;
