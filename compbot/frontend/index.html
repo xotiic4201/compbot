@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XTourney - Esports Tournament Platform</title>
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="XTourney.png">
+    <link rel="icon" type="image/x-icon" href="https://img.icons8.com/color/96/000000/trophy--v1.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -1652,24 +1652,20 @@
                 document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
             }
             
-            // Check for OAuth callback in URL - but don't auto-process
+            // Check for OAuth callback in URL
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
             const error = urlParams.get('error');
-            const oauthState = urlParams.get('state');
-
-            if (code && oauthState) {
-                // We have an OAuth callback, but wait for user to confirm
-                console.log('Discord OAuth callback detected. Storing code for processing...');
-                
-                // Store the code temporarily
+            
+            // Clean URL immediately to prevent any redirects
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            if (code) {
+                console.log('Discord OAuth callback detected. Code stored in URL.');
+                // Store the code but don't process it automatically
                 sessionStorage.setItem('pending_oauth_code', code);
-                sessionStorage.setItem('pending_oauth_state', oauthState);
                 
-                // Clean URL
-                window.history.replaceState({}, document.title, window.location.pathname);
-                
-                // Show login modal to let user continue
+                // Show login modal with instruction
                 setTimeout(() => {
                     showLoginModal();
                     const loginAlert = document.getElementById('loginAlert');
@@ -1686,10 +1682,6 @@
                 
             } else if (error) {
                 console.error('OAuth error:', error);
-                
-                // Clean URL
-                window.history.replaceState({}, document.title, window.location.pathname);
-                
                 // Show error in login modal
                 setTimeout(() => {
                     showLoginModal();
@@ -1800,7 +1792,6 @@
         function showLoginModal() {
             console.log('Showing login modal');
             document.getElementById('loginModal').style.display = 'flex';
-            document.getElementById('loginAlert').style.display = 'none';
             
             // Check if we have a pending OAuth code
             const pendingCode = sessionStorage.getItem('pending_oauth_code');
@@ -1815,6 +1806,8 @@
                 `;
                 loginAlert.className = 'alert alert-success';
                 loginAlert.style.display = 'flex';
+            } else {
+                document.getElementById('loginAlert').style.display = 'none';
             }
         }
 
@@ -1842,9 +1835,8 @@
             
             // Check if we have a pending OAuth code
             const pendingCode = sessionStorage.getItem('pending_oauth_code');
-            const pendingState = sessionStorage.getItem('pending_oauth_state');
             
-            if (pendingCode && pendingState) {
+            if (pendingCode) {
                 console.log('Found pending Discord OAuth. Processing...');
                 
                 // Show redirect screen
@@ -1856,7 +1848,6 @@
                     
                     // Clear pending data
                     sessionStorage.removeItem('pending_oauth_code');
-                    sessionStorage.removeItem('pending_oauth_state');
                 }, 500);
                 
                 return;
@@ -1864,11 +1855,8 @@
             
             // Otherwise, start new OAuth flow
             const scope = 'identify email guilds';
-            const state = generateState();
             
-            sessionStorage.setItem('oauth_state', state);
-            
-            const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${scope}&prompt=none&state=${state}`;
+            const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${scope}&prompt=none`;
             
             console.log('Redirecting to Discord OAuth:', discordAuthUrl);
             
@@ -1928,7 +1916,7 @@
                     userToken = data.access_token;
                     userServers = data.servers || [];
                     
-                    // Clean URL
+                    // Clean URL if somehow there's still code
                     window.history.replaceState({}, document.title, window.location.pathname);
                     
                     // Hide redirect screen
@@ -1963,8 +1951,6 @@
                 loginAlert.style.display = 'flex';
                 
                 showLoginModal();
-                
-                window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
 
@@ -2669,7 +2655,6 @@
             
             // Clear any pending OAuth data
             sessionStorage.removeItem('pending_oauth_code');
-            sessionStorage.removeItem('pending_oauth_state');
             
             // Reset state
             currentUser = null;
@@ -2734,10 +2719,6 @@
         function showError(message) {
             console.error('Showing error:', message);
             showAlert(message, 'error');
-        }
-
-        function generateState() {
-            return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         }
     </script>
 </body>
