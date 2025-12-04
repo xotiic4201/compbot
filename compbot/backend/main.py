@@ -203,6 +203,55 @@ async def get_public_tournaments():
         print(f"Get tournaments error: {str(e)}")
         return {"success": False, "tournaments": [], "count": 0}
 
+# In your backend code, update or add this endpoint:
+@app.post("/api/bot/tournaments")
+async def create_tournament_bot(request: Request):
+    """Create tournament via Discord bot"""
+    try:
+        data = await request.json()
+        
+        print(f"Bot creating tournament: {data.get('name')}")
+        
+        # SIMPLIFIED: Only use columns that definitely exist
+        tournament = {
+            "name": data.get("name"),
+            "game": data.get("game"),
+            "description": data.get("description", ""),
+            "max_teams": data.get("max_teams", 16),
+            "current_teams": 0,
+            "bracket_type": data.get("bracket_type", "single_elimination"),
+            "start_date": data.get("start_date"),
+            "status": "registration",
+            "discord_server_id": data.get("discord_server_id"),
+            "created_by": str(data.get("created_by", "0")),  # Bot or user ID
+            "created_at": datetime.utcnow().isoformat()
+            # REMOVED: settings and extra columns
+        }
+        
+        # Try to add optional fields if they exist in your table
+        if "max_players_per_team" in data:
+            tournament["max_players_per_team"] = data.get("max_players_per_team")
+        if "region_filter" in data:
+            tournament["region_filter"] = data.get("region_filter")
+        if "prize_pool" in data:
+            tournament["prize_pool"] = data.get("prize_pool")
+        
+        print(f"Sending to database: {tournament}")
+        
+        result = supabase_insert("tournaments", tournament)
+        
+        if result:
+            return {
+                "success": True, 
+                "tournament": result,
+                "message": "Tournament created via bot!"
+            }
+        raise HTTPException(status_code=500, detail="Failed to create tournament")
+        
+    except Exception as e:
+        print(f"Bot tournament creation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/tournaments/{tournament_id}/public")
 async def get_tournament_public(tournament_id: str):
     """Get tournament details - Public"""
@@ -632,3 +681,4 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
