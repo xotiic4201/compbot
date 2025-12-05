@@ -842,6 +842,402 @@ async def get_bot_servers():
         logger.error(f"Error getting bot servers: {str(e)}")
         return {"success": False, "servers": [], "count": 0}
 
+# Add to your backend after the existing code
+
+# ========== BRACKET GENERATION SERVICE ==========
+class BracketService:
+    """Service for generating and managing tournament brackets"""
+    
+    @staticmethod
+    def generate_single_elimination_bracket(teams: List[Dict], tournament_id: str) -> List[Dict]:
+        """Generate single elimination bracket matches"""
+        matches = []
+        
+        # Seed teams (simple random seeding for now)
+        import random
+        random.shuffle(teams)
+        
+        # Calculate number of rounds
+        team_count = len(teams)
+        max_teams = 16  # Default, should come from tournament
+        total_rounds = 1
+        while (2 ** total_rounds) < max_teams:
+            total_rounds += 1
+        
+        # First round matches
+        round_num = 1
+        matches_in_round = max_teams // 2
+        
+        for i in range(matches_in_round):
+            team1 = teams[i * 2] if i * 2 < len(teams) else None
+            team2 = teams[i * 2 + 1] if i * 2 + 1 < len(teams) else None
+            
+            # Create bye if odd number of teams
+            if team1 and not team2:
+                match_data = {
+                    "id": str(uuid4()),
+                    "tournament_id": tournament_id,
+                    "round_number": round_num,
+                    "match_number": i + 1,
+                    "team1_id": team1['id'],
+                    "team2_id": None,
+                    "team1_score": 1,  # Auto-win for bye
+                    "team2_score": 0,
+                    "winner_id": team1['id'],
+                    "status": "completed",
+                    "is_live": False,
+                    "created_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+            elif team1 and team2:
+                match_data = {
+                    "id": str(uuid4()),
+                    "tournament_id": tournament_id,
+                    "round_number": round_num,
+                    "match_number": i + 1,
+                    "team1_id": team1['id'],
+                    "team2_id": team2['id'],
+                    "team1_score": 0,
+                    "team2_score": 0,
+                    "winner_id": None,
+                    "status": "scheduled",
+                    "is_live": False,
+                    "created_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+            else:
+                # Empty match slot
+                match_data = {
+                    "id": str(uuid4()),
+                    "tournament_id": tournament_id,
+                    "round_number": round_num,
+                    "match_number": i + 1,
+                    "team1_id": None,
+                    "team2_id": None,
+                    "team1_score": 0,
+                    "team2_score": 0,
+                    "winner_id": None,
+                    "status": "empty",
+                    "is_live": False,
+                    "created_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+            
+            matches.append(match_data)
+        
+        # Generate subsequent rounds (empty for now, will be filled as winners progress)
+        current_matches = matches_in_round
+        for round_num in range(2, total_rounds + 1):
+            matches_in_round = current_matches // 2
+            for i in range(matches_in_round):
+                match_data = {
+                    "id": str(uuid4()),
+                    "tournament_id": tournament_id,
+                    "round_number": round_num,
+                    "match_number": i + 1,
+                    "team1_id": None,  # Will be filled by winner of previous round
+                    "team2_id": None,  # Will be filled by winner of previous round
+                    "team1_score": 0,
+                    "team2_score": 0,
+                    "winner_id": None,
+                    "status": "pending",
+                    "is_live": False,
+                    "created_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+                matches.append(match_data)
+            current_matches = matches_in_round
+        
+        return matches
+    
+    @staticmethod
+    def get_bracket_structure(tournament: Dict, teams: List[Dict], matches: List[Dict]) -> Dict:
+        """Generate bracket structure for frontend display"""
+        bracket_type = tournament.get('bracket_type', 'single_elimination')
+        max_teams = tournament.get('max_teams', 16)
+        
+        # Calculate rounds
+        total_rounds = 1
+        while (2 ** total_rounds) < max_teams:
+            total_rounds += 1
+        
+        rounds = []
+        
+        for round_num in range(1, total_rounds + 1):
+            round_matches = [m for m in matches if m.get('round_number') == round_num]
+            round_data = {
+                "round_number": round_num,
+                "name": BracketService.get_round_name(round_num, total_rounds),
+                "matches": []
+            }
+            
+            for match in round_matches:
+                # Get team details
+                team1 = next((t for t in teams if t.get('id') == match.get('team1_id')), None)
+                team2 = next((t for t in teams if t.get('id') == match.get('team2_id')), None)
+                
+                match_data = {
+                    "id": match.get('id'),
+                    "match_number": match.get('match_number'),
+                    "team1": {
+                        "id": team1.get('id') if team1 else None,
+                        "name": team1.get('name') if team1 else "TBD",
+                        "captain": team1.get('captain_name') if team1 else None,
+                        "score": match.get('team1_score', 0)
+                    } if team1 else {"name": "TBD", "score": 0},
+                    "team2": {
+                        "id": team2.get('id') if team2 else None,
+                        "name": team2.get('name') if team2 else "TBD",
+                        "captain": team2.get('captain_name') if team2 else None,
+                        "score": match.get('team2_score', 0)
+                    } if team2 else {"name": "TBD", "score": 0},
+                    "winner_id": match.get('winner_id'),
+                    "status": match.get('status'),
+                    "is_live": match.get('is_live', False),
+                    "round": round_num
+                }
+                
+                round_data["matches"].append(match_data)
+            
+            rounds.append(round_data)
+        
+        return {
+            "type": bracket_type,
+            "total_rounds": total_rounds,
+            "current_round": BracketService.get_current_round(matches),
+            "rounds": rounds,
+            "teams": teams,
+            "tournament_id": tournament.get('id'),
+            "tournament_name": tournament.get('name')
+        }
+    
+    @staticmethod
+    def get_round_name(round_num: int, total_rounds: int) -> str:
+        """Get human-readable round name"""
+        if total_rounds == 1:
+            return "Finals"
+        elif total_rounds == 2:
+            return "Semifinals" if round_num == 1 else "Finals"
+        elif total_rounds == 3:
+            if round_num == 1:
+                return "Quarterfinals"
+            elif round_num == 2:
+                return "Semifinals"
+            else:
+                return "Finals"
+        elif total_rounds >= 4:
+            if round_num == 1:
+                return "Round of 16"
+            elif round_num == 2:
+                return "Quarterfinals"
+            elif round_num == 3:
+                return "Semifinals"
+            elif round_num == total_rounds:
+                return "Finals"
+            else:
+                return f"Round {round_num}"
+        return f"Round {round_num}"
+    
+    @staticmethod
+    def get_current_round(matches: List[Dict]) -> int:
+        """Get current round number"""
+        if not matches:
+            return 1
+        
+        completed_matches = [m for m in matches if m.get('status') == 'completed']
+        if not completed_matches:
+            return 1
+        
+        max_round = max([m.get('round_number', 1) for m in completed_matches])
+        ongoing_matches = [m for m in matches if m.get('status') in ['scheduled', 'ongoing'] and m.get('round_number') == max_round]
+        
+        if ongoing_matches:
+            return max_round
+        return max_round + 1
+
+# ========== BRACKET ENDPOINTS ==========
+@app.post("/api/tournaments/{tournament_id}/generate-bracket")
+async def generate_tournament_bracket(
+    tournament_id: str,
+    current_user: Dict = Depends(AuthService.get_current_user)
+):
+    """Generate bracket for a tournament"""
+    try:
+        # Get tournament
+        tournaments = DatabaseService.select("tournaments", f"id=eq.'{tournament_id}'")
+        if not tournaments:
+            raise HTTPException(status_code=404, detail="Tournament not found")
+        
+        tournament = tournaments[0]
+        
+        # Get teams
+        teams = DatabaseService.select("teams", f"tournament_id=eq.'{tournament_id}'")
+        
+        if len(teams) < 2:
+            raise HTTPException(status_code=400, detail="Need at least 2 teams to generate bracket")
+        
+        # Check if bracket already exists
+        existing_matches = DatabaseService.select("matches", f"tournament_id=eq.'{tournament_id}'")
+        if existing_matches:
+            raise HTTPException(status_code=400, detail="Bracket already generated")
+        
+        # Generate matches
+        bracket_type = tournament.get('bracket_type', 'single_elimination')
+        
+        if bracket_type == 'single_elimination':
+            matches = BracketService.generate_single_elimination_bracket(teams, tournament_id)
+        
+        # Save matches to database
+        for match in matches:
+            DatabaseService.insert("matches", match, admin=True)
+        
+        # Update tournament status
+        DatabaseService.update("tournaments", {"status": "ongoing"}, "id", tournament_id)
+        
+        # Get updated bracket
+        updated_matches = DatabaseService.select("matches", f"tournament_id=eq.'{tournament_id}'")
+        bracket = BracketService.get_bracket_structure(tournament, teams, updated_matches)
+        
+        return {
+            "success": True,
+            "message": "Bracket generated successfully",
+            "bracket": bracket,
+            "match_count": len(matches)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating bracket: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error generating bracket")
+
+@app.get("/api/tournaments/{tournament_id}/bracket")
+async def get_tournament_bracket(tournament_id: str):
+    """Get tournament bracket"""
+    try:
+        # Get tournament
+        tournaments = DatabaseService.select("tournaments", f"id=eq.'{tournament_id}'")
+        if not tournaments:
+            raise HTTPException(status_code=404, detail="Tournament not found")
+        
+        tournament = tournaments[0]
+        
+        # Get teams
+        teams = DatabaseService.select("teams", f"tournament_id=eq.'{tournament_id}'")
+        
+        # Get matches
+        matches = DatabaseService.select("matches", f"tournament_id=eq.'{tournament_id}'&order=round_number.asc,match_number.asc")
+        
+        # Generate bracket structure
+        bracket = BracketService.get_bracket_structure(tournament, teams, matches)
+        
+        return {
+            "success": True,
+            "bracket": bracket,
+            "tournament": {
+                "id": tournament.get('id'),
+                "name": tournament.get('name'),
+                "game": tournament.get('game'),
+                "status": tournament.get('status'),
+                "start_date": tournament.get('start_date')
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting bracket: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error getting bracket")
+
+@app.post("/api/matches/{match_id}/update-score")
+async def update_match_score(
+    match_id: str,
+    request: Dict,
+    current_user: Dict = Depends(AuthService.get_current_user)
+):
+    """Update match score and progress bracket"""
+    try:
+        team1_score = request.get('team1_score')
+        team2_score = request.get('team2_score')
+        
+        if team1_score is None or team2_score is None:
+            raise HTTPException(status_code=400, detail="Both scores required")
+        
+        # Get match
+        matches = DatabaseService.select("matches", f"id=eq.'{match_id}'")
+        if not matches:
+            raise HTTPException(status_code=404, detail="Match not found")
+        
+        match = matches[0]
+        tournament_id = match.get('tournament_id')
+        
+        # Determine winner
+        winner_id = None
+        if team1_score > team2_score:
+            winner_id = match.get('team1_id')
+        elif team2_score > team1_score:
+            winner_id = match.get('team2_id')
+        else:
+            raise HTTPException(status_code=400, detail="Ties not allowed in tournament play")
+        
+        # Update match
+        update_data = {
+            "team1_score": team1_score,
+            "team2_score": team2_score,
+            "winner_id": winner_id,
+            "status": "completed",
+            "is_live": False,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        DatabaseService.update("matches", update_data, "id", match_id)
+        
+        # Progress winner to next round if applicable
+        await progress_winner_to_next_round(match, winner_id)
+        
+        return {
+            "success": True,
+            "message": "Match score updated",
+            "winner_id": winner_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating match score: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error updating match score")
+
+async def progress_winner_to_next_round(match: Dict, winner_id: str):
+    """Progress winner to next round in bracket"""
+    try:
+        tournament_id = match.get('tournament_id')
+        round_number = match.get('round_number')
+        match_number = match.get('match_number')
+        
+        # Determine next round match
+        next_round = round_number + 1
+        next_match_number = (match_number + 1) // 2  # Math for bracket progression
+        
+        # Find next match
+        next_matches = DatabaseService.select(
+            "matches", 
+            f"tournament_id=eq.'{tournament_id}'&round_number=eq.{next_round}&match_number=eq.{next_match_number}"
+        )
+        
+        if next_matches:
+            next_match = next_matches[0]
+            
+            # Determine which team slot to fill (odd match numbers go to team1, even to team2)
+            slot = "team1_id" if match_number % 2 == 1 else "team2_id"
+            
+            update_data = {slot: winner_id}
+            if next_match.get('team1_id') and next_match.get('team2_id'):
+                # Both teams filled, match can start
+                update_data["status"] = "scheduled"
+            
+            DatabaseService.update("matches", update_data, "id", next_match['id'])
+            
+    except Exception as e:
+        logger.error(f"Error progressing winner: {str(e)}")
+
 # ========== ERROR HANDLERS ==========
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -890,3 +1286,4 @@ if __name__ == "__main__":
             workers=int(os.getenv("WORKERS", 4)),
             log_level="warning"
         )
+
