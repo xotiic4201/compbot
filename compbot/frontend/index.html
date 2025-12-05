@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XTourney - Professional Esports Tournament Platform</title>
-    <link rel="icon" type="image/x-icon">
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚔️</text></svg>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -573,6 +573,10 @@
             backdrop-filter: blur(10px);
             position: relative;
             overflow: hidden;
+        }
+        
+        .tournament-card {
+            cursor: pointer;
         }
         
         .match-card::before, .tournament-card::before {
@@ -1150,6 +1154,234 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--primary);
         }
+        
+        /* Bracket Styles */
+        .bracket-view {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.98);
+            z-index: 3000;
+            padding: 2rem;
+            overflow: auto;
+        }
+        
+        .bracket-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 2rem;
+            border-radius: 15px;
+            border: 2px solid var(--primary);
+            position: relative;
+        }
+        
+        .close-bracket {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Orbitron';
+            font-weight: bold;
+            font-size: 1rem;
+            z-index: 3001;
+            transition: all 0.3s;
+        }
+        
+        .close-bracket:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 38, 38, 0.4);
+        }
+        
+        /* Tournament Details Styles */
+        .tournament-details {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            border: 1px solid rgba(220, 38, 38, 0.3);
+        }
+        
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        .detail-item {
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            border-left: 3px solid var(--primary);
+        }
+        
+        .detail-label {
+            color: var(--gray);
+            font-size: 0.9rem;
+            font-family: 'Orbitron';
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .detail-value {
+            color: var(--light);
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        /* Bracket Visualization */
+        .bracket-visualization {
+            overflow-x: auto;
+            padding: 2rem 0;
+            margin-top: 2rem;
+        }
+        
+        .bracket-round {
+            display: inline-block;
+            vertical-align: top;
+            margin-right: 3rem;
+        }
+        
+        .round-title {
+            color: var(--primary);
+            font-family: 'Orbitron';
+            text-align: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .matchup {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(220, 38, 38, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            min-width: 250px;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .matchup:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(220, 38, 38, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .matchup.winner {
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+        
+        .team-slot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem;
+            margin-bottom: 0.5rem;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .team-slot.winner {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+        
+        .team-name {
+            font-weight: 600;
+            color: var(--light);
+            font-family: 'Orbitron';
+            letter-spacing: 0.5px;
+        }
+        
+        .team-score {
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 1.2rem;
+            font-family: 'Orbitron';
+        }
+        
+        .match-status {
+            font-size: 0.8rem;
+            color: var(--gray);
+            text-align: center;
+            margin-top: 0.5rem;
+            font-family: 'Orbitron';
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .match-status.live {
+            color: var(--primary);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .match-status.completed {
+            color: var(--success);
+        }
+        
+        /* Connector lines */
+        .connector {
+            position: absolute;
+            right: -1.5rem;
+            width: 1.5rem;
+            height: 50%;
+            border-top: 2px solid rgba(220, 38, 38, 0.5);
+            border-right: 2px solid rgba(220, 38, 38, 0.5);
+        }
+        
+        .connector.top {
+            top: 50%;
+        }
+        
+        .connector.bottom {
+            bottom: 50%;
+        }
+        
+        .connector-line {
+            position: absolute;
+            right: -1.5rem;
+            height: 2px;
+            width: 1.5rem;
+            background: rgba(220, 38, 38, 0.5);
+            top: 50%;
+        }
+        
+        /* Tournament Actions */
+        .tournament-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .action-button {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        /* Live Matches Section */
+        .live-matches-section {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-top: 2rem;
+            border: 2px solid rgba(220, 38, 38, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -1162,6 +1394,16 @@
         </div>
         <div class="loader-progress">
             <div class="loader-progress-bar"></div>
+        </div>
+    </div>
+
+    <!-- Bracket View Modal -->
+    <div class="bracket-view" id="bracketView">
+        <button class="close-bracket" onclick="closeBracket()">
+            <i class="fas fa-times"></i> CLOSE BRACKET
+        </button>
+        <div class="bracket-container" id="bracketContainer">
+            <!-- Tournament details will be loaded here -->
         </div>
     </div>
 
@@ -1216,10 +1458,7 @@
                 </p>
                 
                 <div style="display: flex; gap: 1.5rem; justify-content: center; margin-top: 3rem; flex-wrap: wrap;">
-                    <button class="btn btn-primary" onclick="showSection('matches')" style="padding: 1.2rem 2.5rem;">
-                        <i class="fas fa-tv"></i> WATCH LIVE
-                    </button>
-                    <button class="btn btn-secondary" onclick="showSection('tournaments')" style="padding: 1.2rem 2.5rem;">
+                    <button class="btn btn-primary" onclick="showSection('tournaments')" style="padding: 1.2rem 2.5rem;">
                         <i class="fas fa-trophy"></i> BROWSE TOURNAMENTS
                     </button>
                     <button class="btn btn-discord" onclick="loginWithDiscord()" style="padding: 1.2rem 2.5rem;">
@@ -1265,8 +1504,8 @@
                         <li><i class="fas fa-check-circle" style="color: var(--primary); margin-right: 15px;"></i> Discord Bot Integration</li>
                         <li><i class="fas fa-check-circle" style="color: var(--primary); margin-right: 15px;"></i> Screenshot Proof System</li>
                         <li><i class="fas fa-check-circle" style="color: var(--primary); margin-right: 15px;"></i> Automated Tournament Brackets</li>
-                        <li><i class="fas fa-check-circle" style="color: var(--primary); margin-right: 15px;"></i> Real-time Team Management</li>
-                        <li><i class="fas fa-check-circle" style="color: var(--primary); margin-right: 15px;"></i> Live Match Tracking & Stats</li>
+                        <li><i class="fas fa-check-circle" style="color: var(--primary); margin-right: 15px;"></i> Region-Based Matchmaking</li>
+                        <li><i class="fas fa-check-circle" style="color: var(--primary); margin-right: 15px;"></i> Real-time Match Tracking</li>
                     </ul>
                 </div>
                 
@@ -1299,10 +1538,15 @@
                 </div>
             </div>
             
-            <div class="matches-grid" id="matchesGrid">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    LOADING MATCHES...
+            <div class="live-matches-section">
+                <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1.5rem;">
+                    <i class="fas fa-tv"></i> REAL LIVE MATCHES
+                </h3>
+                <div class="matches-grid" id="matchesGrid">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        LOADING LIVE MATCHES...
+                    </div>
                 </div>
             </div>
         </div>
@@ -1389,6 +1633,18 @@
                         </div>
                         
                         <div class="form-group">
+                            <label class="form-label">REGION *</label>
+                            <select id="tournamentRegion" class="form-input" required>
+                                <option value="global">🌎 GLOBAL</option>
+                                <option value="na">🇺🇸 NORTH AMERICA</option>
+                                <option value="eu">🇪🇺 EUROPE</option>
+                                <option value="asia">🇦🇸 ASIA</option>
+                                <option value="oce">🇦🇺 OCEANIA</option>
+                                <option value="sa">🇧🇷 SOUTH AMERICA</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
                             <label class="form-label">DESCRIPTION</label>
                             <textarea id="description" class="form-input" rows="3" 
                                       placeholder="TOURNAMENT RULES, PRIZE POOL, SCHEDULE..."></textarea>
@@ -1426,6 +1682,16 @@
                         <div class="form-group">
                             <label class="form-label">START DATE & TIME *</label>
                             <input type="datetime-local" id="startDate" class="form-input" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="autoMatchmaking" checked>
+                                <span>ENABLE AUTO REGION-BASED MATCHMAKING</span>
+                            </label>
+                            <p style="color: var(--gray); font-size: 0.8rem; margin-top: 5px;">
+                                Teams will be automatically matched against opponents in the same region
+                            </p>
                         </div>
                         
                         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1.2rem; margin-top: 1rem;">
@@ -1582,6 +1848,7 @@
                         <li><a href="#" onclick="showSection('home'); return false;" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Home</a></li>
                         <li><a href="#" onclick="showSection('matches'); return false;" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Live Matches</a></li>
                         <li><a href="#" onclick="showSection('tournaments'); return false;" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Tournaments</a></li>
+                        <li><a href="#" onclick="showSection('servers'); return false;" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">My Servers</a></li>
                     </ul>
                 </div>
                 <div>
@@ -1605,7 +1872,8 @@
             API_URL: "https://compbot-lhuy.onrender.com",
             DISCORD_CLIENT_ID: "1445127821742575726",
             REDIRECT_URI: window.location.origin + window.location.pathname,
-            DISCORD_INVITE: "https://discord.com/oauth2/authorize?client_id=1445127821742575726&permissions=8&scope=bot%20applications.commands"
+            DISCORD_INVITE: "https://discord.com/oauth2/authorize?client_id=1445127821742575726&permissions=8&scope=bot%20applications.commands",
+            WEBSITE_URL: "https://www.xotiicsplaza.us/"
         };
 
         // ========== STATE ==========
@@ -1613,6 +1881,9 @@
         let userToken = null;
         let userServers = [];
         let allTournaments = [];
+        let liveMatches = [];
+        let bracketCache = {};
+        let allMatches = [];
 
         // ========== INITIALIZATION ==========
         document.addEventListener('DOMContentLoaded', function() {
@@ -1682,6 +1953,9 @@
                     }
                     
                     showAlert('✅ Successfully connected Discord!', 'success');
+                    
+                    // Load real data after login
+                    loadRealData();
                 } else {
                     throw new Error(data.detail || 'Authentication failed');
                 }
@@ -1726,6 +2000,9 @@
             if (document.getElementById('startDate')) {
                 document.getElementById('startDate').min = today.toISOString().slice(0, 16);
             }
+            
+            // Start real-time data updates
+            startRealTimeUpdates();
         }
 
         function setupIntersectionObserver() {
@@ -1748,6 +2025,18 @@
 
         function hideDiscordRedirect() {
             document.getElementById('discordRedirect').style.display = 'none';
+        }
+
+        // ========== REAL-TIME DATA UPDATES ==========
+        function startRealTimeUpdates() {
+            // Update stats every 30 seconds
+            setInterval(updateRealStats, 30000);
+            
+            // Update matches every minute
+            setInterval(loadLiveMatches, 60000);
+            
+            // Update tournaments every 2 minutes
+            setInterval(loadTournaments, 120000);
         }
 
         // ========== SESSION MANAGEMENT ==========
@@ -1776,10 +2065,8 @@
                     console.log('Found existing session for user:', currentUser.username);
                     updateUIAfterLogin();
                     
-                    if (userServers.length > 0) {
-                        loadUserServers();
-                        updateStats();
-                    }
+                    // Load real data
+                    loadRealData();
                     
                     // Try to refresh token silently
                     refreshUserToken();
@@ -1790,6 +2077,7 @@
                 }
             } else {
                 console.log('No existing session found');
+                loadPublicData();
             }
         }
 
@@ -1819,6 +2107,806 @@
             } catch (error) {
                 console.log('Token refresh failed:', error.message);
             }
+        }
+
+        // ========== LOAD REAL DATA ==========
+        async function loadRealData() {
+            try {
+                await Promise.all([
+                    updateRealStats(),
+                    loadLiveMatches(),
+                    loadTournaments()
+                ]);
+            } catch (error) {
+                console.error('Error loading real data:', error);
+            }
+        }
+
+        async function updateRealStats() {
+            try {
+                // Get all matches
+                const matchesResponse = await fetch(`${CONFIG.API_URL}/api/matches`);
+                let liveMatchesCount = 0;
+                let totalPlayers = 0;
+                
+                if (matchesResponse.ok) {
+                    const matchesData = await matchesResponse.json();
+                    if (matchesData.success && matchesData.matches) {
+                        allMatches = matchesData.matches;
+                        liveMatchesCount = allMatches.filter(match => 
+                            match.status === 'live' || match.status === 'ongoing'
+                        ).length;
+                        
+                        // Count players in all matches
+                        allMatches.forEach(match => {
+                            if (match.team1_players) totalPlayers += match.team1_players.length;
+                            if (match.team2_players) totalPlayers += match.team2_players.length;
+                        });
+                    }
+                }
+                
+                // Get all tournaments
+                const tournamentsResponse = await fetch(`${CONFIG.API_URL}/api/tournaments/public`);
+                let activeTournamentsCount = 0;
+                
+                if (tournamentsResponse.ok) {
+                    const tournamentsData = await tournamentsResponse.json();
+                    if (tournamentsData.success && tournamentsData.tournaments) {
+                        allTournaments = tournamentsData.tournaments;
+                        activeTournamentsCount = allTournaments.filter(t => 
+                            t.status === 'registration' || t.status === 'ongoing'
+                        ).length;
+                    }
+                }
+                
+                // Count servers where user has permissions
+                const serverCount = userServers.length;
+                
+                // Update DOM with real data
+                document.getElementById('liveMatchesCount').textContent = liveMatchesCount;
+                document.getElementById('activeTournaments').textContent = activeTournamentsCount;
+                document.getElementById('connectedServers').textContent = serverCount;
+                document.getElementById('totalPlayers').textContent = totalPlayers.toLocaleString();
+                
+            } catch (error) {
+                console.error('Error updating real stats:', error);
+                calculateFallbackStats();
+            }
+        }
+
+        function calculateFallbackStats() {
+            // Fallback calculation based on existing data
+            const liveMatchCount = allMatches.filter(match => 
+                match.status === 'live' || match.status === 'ongoing'
+            ).length;
+            
+            const activeTournamentCount = allTournaments.filter(t => 
+                t.status === 'registration' || t.status === 'ongoing'
+            ).length;
+            
+            const serverCount = userServers.length;
+            
+            // Estimate total players
+            let totalPlayers = 0;
+            allTournaments.forEach(tournament => {
+                const teamCount = tournament.team_count || tournament.current_teams || 0;
+                const playersPerTeam = tournament.max_players_per_team || 5;
+                totalPlayers += teamCount * playersPerTeam;
+            });
+            
+            document.getElementById('liveMatchesCount').textContent = liveMatchCount;
+            document.getElementById('activeTournaments').textContent = activeTournamentCount;
+            document.getElementById('connectedServers').textContent = serverCount;
+            document.getElementById('totalPlayers').textContent = totalPlayers.toLocaleString();
+        }
+
+        // ========== LIVE MATCHES ==========
+        async function loadLiveMatches() {
+            try {
+                const response = await fetch(`${CONFIG.API_URL}/api/matches`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        allMatches = data.matches || [];
+                        liveMatches = allMatches.filter(match => 
+                            match.status === 'live' || match.status === 'ongoing'
+                        );
+                        
+                        // Update display if we're on matches section
+                        if (document.getElementById('matchesSection').style.display === 'block') {
+                            updateMatchesDisplay(liveMatches);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading live matches:', error);
+            }
+        }
+
+        function updateMatchesDisplay(matches) {
+            const matchesGrid = document.getElementById('matchesGrid');
+            if (!matchesGrid) return;
+            
+            if (matches.length === 0) {
+                matchesGrid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--gray);">
+                        <i class="fas fa-tv" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
+                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">NO LIVE MATCHES</h3>
+                        <p>Check back later for live tournament matches!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            matchesGrid.innerHTML = '';
+            matches.slice(0, 6).forEach(match => {
+                matchesGrid.appendChild(createMatchCard(match));
+            });
+        }
+
+        function createMatchCard(match) {
+            const card = document.createElement('div');
+            card.className = 'match-card';
+            
+            const team1 = {
+                name: match.team1_name || 'Team 1',
+                score: match.team1_score || 0,
+                players: match.team1_players || []
+            };
+            
+            const team2 = {
+                name: match.team2_name || 'Team 2',
+                score: match.team2_score || 0,
+                players: match.team2_players || []
+            };
+            
+            const tournament = allTournaments.find(t => t.id === match.tournament_id) || {};
+            
+            card.innerHTML = `
+                <div class="match-header">
+                    <div class="match-tournament">${tournament.name || match.tournament_name || 'TOURNAMENT'}</div>
+                    <div class="match-status status-live">LIVE</div>
+                </div>
+                
+                <div class="match-teams">
+                    <div class="team">
+                        <div class="team-logo">${team1.name.substring(0, 2).toUpperCase()}</div>
+                        <div class="team-name">${team1.name}</div>
+                        <div class="team-score">${team1.score}</div>
+                    </div>
+                    
+                    <div class="vs">VS</div>
+                    
+                    <div class="team">
+                        <div class="team-logo">${team2.name.substring(0, 2).toUpperCase()}</div>
+                        <div class="team-name">${team2.name}</div>
+                        <div class="team-score">${team2.score}</div>
+                    </div>
+                </div>
+                
+                <div class="match-meta">
+                    <div><i class="fas fa-gamepad"></i> ${tournament.game || match.game || 'ESPORTS'}</div>
+                    <div><i class="fas fa-users"></i> ${team1.players.length + team2.players.length} PLAYERS</div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <button class="btn btn-secondary" onclick="viewMatchDetails('${match.id}')" style="width: 100%;">
+                        <i class="fas fa-eye"></i> VIEW MATCH DETAILS
+                    </button>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function viewMatchDetails(matchId) {
+            const match = allMatches.find(m => m.id === matchId);
+            if (!match) {
+                showError('Match not found');
+                return;
+            }
+            
+            const tournament = allTournaments.find(t => t.id === match.tournament_id) || {};
+            
+            showAlert(`Viewing match: ${match.team1_name || 'Team 1'} vs ${match.team2_name || 'Team 2'}`, 'success');
+            // In a real implementation, you would show a detailed match modal
+        }
+
+        // ========== TOURNAMENTS ==========
+        async function loadTournaments() {
+            try {
+                const response = await fetch(`${CONFIG.API_URL}/api/tournaments/public`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        allTournaments = data.tournaments || [];
+                        updateTournamentsDisplay(allTournaments);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading tournaments:', error);
+                showNoTournaments();
+            }
+        }
+
+        function updateTournamentsDisplay(tournaments) {
+            const container = document.getElementById('tournamentsGrid');
+            if (!container) return;
+            
+            if (tournaments.length === 0) {
+                showNoTournaments();
+                return;
+            }
+            
+            container.innerHTML = '';
+            tournaments.slice(0, 9).forEach(tournament => {
+                container.appendChild(createTournamentCard(tournament));
+            });
+        }
+
+        function createTournamentCard(tournament) {
+            const card = document.createElement('div');
+            card.className = 'tournament-card';
+            card.onclick = () => viewTournamentBracket(tournament.id);
+            
+            const teams = tournament.team_count || tournament.current_teams || 0;
+            const maxTeams = tournament.max_teams || 16;
+            const progressPercent = maxTeams > 0 ? Math.min((teams / maxTeams) * 100, 100) : 0;
+            const status = tournament.status || 'registration';
+            const statusClass = status === 'ongoing' ? 'ongoing' : 
+                               status === 'completed' ? 'completed' : 'registration';
+            const statusText = status === 'ongoing' ? 'IN PROGRESS' : 
+                              status === 'completed' ? 'COMPLETED' : 'REGISTERING';
+            
+            const regionFlags = {
+                'global': '🌎',
+                'na': '🇺🇸',
+                'eu': '🇪🇺',
+                'asia': '🇦🇸',
+                'oce': '🇦🇺',
+                'sa': '🇧🇷'
+            };
+            
+            card.innerHTML = `
+                <div class="tournament-header">
+                    <div class="tournament-title">${tournament.name}</div>
+                    <div class="tournament-status status-${statusClass}">
+                        ${statusText}
+                    </div>
+                </div>
+                
+                <div class="tournament-game">
+                    <i class="fas fa-gamepad"></i> ${tournament.game || 'ESPORTS'}
+                    ${tournament.region ? ` • ${regionFlags[tournament.region] || '🌍'} ${tournament.region.toUpperCase()}` : ''}
+                </div>
+                
+                ${tournament.prize_pool ? `
+                <div class="tournament-prize">
+                    <i class="fas fa-trophy"></i> ${tournament.prize_pool}
+                </div>
+                ` : ''}
+                
+                <div class="tournament-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progressPercent}%"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span>${teams}/${maxTeams} TEAMS</span>
+                        <span>${Math.round(progressPercent)}% FULL</span>
+                    </div>
+                </div>
+                
+                <div class="tournament-meta">
+                    <div><i class="fas fa-calendar"></i> ${tournament.start_date ? new Date(tournament.start_date).toLocaleDateString() : 'TBA'}</div>
+                    <div><i class="fas fa-users"></i> ${tournament.max_players_per_team || 5}v${tournament.max_players_per_team || 5}</div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button class="btn btn-${status === 'registration' ? 'primary' : 'secondary'}" 
+                            onclick="handleTournamentAction(event, '${tournament.id}', '${status}')" style="width: 100%; font-family: 'Orbitron';">
+                        <i class="fas fa-${status === 'registration' ? 'sign-in-alt' : 'eye'}"></i>
+                        ${status === 'registration' ? 'REGISTER NOW' : 'VIEW BRACKET'}
+                    </button>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function handleTournamentAction(event, tournamentId, status) {
+            event.stopPropagation(); // Prevent card click from firing
+            if (status === 'registration') {
+                registerForTournament(tournamentId);
+            } else {
+                viewTournamentBracket(tournamentId);
+            }
+        }
+
+        // ========== BRACKET SYSTEM ==========
+        async function viewTournamentBracket(tournamentId) {
+            // Show loading state
+            document.getElementById('bracketView').style.display = 'block';
+            document.getElementById('bracketContainer').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    LOADING TOURNAMENT BRACKET...
+                </div>
+            `;
+            
+            try {
+                // Fetch tournament details
+                const tournament = allTournaments.find(t => t.id === tournamentId) || {};
+                
+                // Fetch bracket data from API
+                const bracketResponse = await fetch(`${CONFIG.API_URL}/api/tournaments/${tournamentId}/bracket`);
+                let bracketData = null;
+                
+                if (bracketResponse.ok) {
+                    const data = await bracketResponse.json();
+                    if (data.success) {
+                        bracketData = data.bracket;
+                        bracketCache[tournamentId] = bracketData;
+                    }
+                }
+                
+                // If no bracket data from API, generate a sample bracket
+                if (!bracketData) {
+                    bracketData = generateSampleBracket(tournament);
+                }
+                
+                // Generate bracket HTML
+                const bracketHTML = generateBracketHTML(tournament, bracketData);
+                document.getElementById('bracketContainer').innerHTML = bracketHTML;
+                
+            } catch (error) {
+                console.error('Error loading bracket:', error);
+                document.getElementById('bracketContainer').innerHTML = `
+                    <h2 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 2rem;">TOURNAMENT BRACKET</h2>
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-circle"></i>
+                        Error loading bracket: ${error.message}
+                    </div>
+                    <button class="btn btn-primary" onclick="viewTournamentBracket('${tournamentId}')" style="margin-top: 2rem;">
+                        <i class="fas fa-redo"></i> TRY AGAIN
+                    </button>
+                `;
+            }
+        }
+
+        function generateSampleBracket(tournament) {
+            // Generate a sample bracket for demo purposes
+            const teams = tournament.team_count || 8;
+            const rounds = [];
+            
+            if (teams >= 2) {
+                // Round 1
+                const round1 = {
+                    name: "Round 1",
+                    matchups: []
+                };
+                
+                for (let i = 0; i < Math.min(teams, 8); i += 2) {
+                    round1.matchups.push({
+                        id: `match_${i/2 + 1}`,
+                        team1: { id: `team_${i+1}`, name: `Team ${i+1}` },
+                        team2: { id: `team_${i+2}`, name: `Team ${i+2}` },
+                        team1_score: Math.floor(Math.random() * 3),
+                        team2_score: Math.floor(Math.random() * 3),
+                        status: "completed",
+                        winner: Math.random() > 0.5 ? `team_${i+1}` : `team_${i+2}`
+                    });
+                }
+                rounds.push(round1);
+            }
+            
+            if (teams >= 4) {
+                // Round 2
+                const round2 = {
+                    name: "Semi-Finals",
+                    matchups: []
+                };
+                
+                for (let i = 0; i < Math.min(teams/2, 4); i += 2) {
+                    round2.matchups.push({
+                        id: `semifinal_${i/2 + 1}`,
+                        team1: { id: `team_${i*2+1}`, name: `Team ${i*2+1}` },
+                        team2: { id: `team_${i*2+3}`, name: `Team ${i*2+3}` },
+                        team1_score: Math.floor(Math.random() * 3),
+                        team2_score: Math.floor(Math.random() * 3),
+                        status: "completed",
+                        winner: Math.random() > 0.5 ? `team_${i*2+1}` : `team_${i*2+3}`
+                    });
+                }
+                rounds.push(round2);
+            }
+            
+            if (teams >= 2) {
+                // Final Round
+                const finalRound = {
+                    name: "Finals",
+                    matchups: [
+                        {
+                            id: "final_1",
+                            team1: { id: "team_1", name: "Team 1" },
+                            team2: { id: "team_3", name: "Team 3" },
+                            team1_score: 3,
+                            team2_score: 2,
+                            status: "completed",
+                            winner: "team_1"
+                        }
+                    ]
+                };
+                rounds.push(finalRound);
+            }
+            
+            return { rounds };
+        }
+
+        function generateBracketHTML(tournament, bracketData) {
+            const regionFlags = {
+                'global': '🌎',
+                'na': '🇺🇸',
+                'eu': '🇪🇺',
+                'asia': '🇦🇸',
+                'oce': '🇦🇺',
+                'sa': '🇧🇷'
+            };
+            
+            let html = `
+                <div class="tournament-details">
+                    <h2 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">${tournament.name || 'Tournament'}</h2>
+                    
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">Game</div>
+                            <div class="detail-value">${tournament.game || 'Not specified'}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">Region</div>
+                            <div class="detail-value">
+                                ${regionFlags[tournament.region] || '🌍'} ${(tournament.region || 'global').toUpperCase()}
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">Status</div>
+                            <div class="detail-value" style="color: ${tournament.status === 'ongoing' ? 'var(--primary)' : tournament.status === 'completed' ? 'var(--success)' : 'var(--warning)'}">
+                                ${(tournament.status || 'registration').toUpperCase()}
+                            </div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">Teams</div>
+                            <div class="detail-value">${tournament.current_teams || 0}/${tournament.max_teams || 16}</div>
+                        </div>
+                        
+                        ${tournament.prize_pool ? `
+                        <div class="detail-item">
+                            <div class="detail-label">Prize Pool</div>
+                            <div class="detail-value" style="color: var(--primary);">${tournament.prize_pool}</div>
+                        </div>
+                        ` : ''}
+                        
+                        ${tournament.start_date ? `
+                        <div class="detail-item">
+                            <div class="detail-label">Start Date</div>
+                            <div class="detail-value">${new Date(tournament.start_date).toLocaleString()}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${tournament.description ? `
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(0, 0, 0, 0.6); border-radius: 8px; border-left: 3px solid var(--primary);">
+                        <div class="detail-label">Description</div>
+                        <div class="detail-value">${tournament.description}</div>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            // Add bracket visualization
+            if (bracketData && bracketData.rounds && bracketData.rounds.length > 0) {
+                html += `
+                    <div class="bracket-visualization">
+                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 2rem; text-align: center;">
+                            TOURNAMENT BRACKET
+                        </h3>
+                        ${generateBracketVisualization(bracketData)}
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div style="text-align: center; padding: 3rem; background: rgba(0, 0, 0, 0.8); border-radius: 10px; border: 2px solid rgba(220, 38, 38, 0.3);">
+                        <i class="fas fa-trophy" style="font-size: 4rem; color: var(--primary); margin-bottom: 1.5rem;"></i>
+                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">BRACKET NOT STARTED</h3>
+                        <p style="color: var(--gray); margin-bottom: 2rem;">The tournament bracket will be generated when the tournament starts.</p>
+                        
+                        <div class="tournament-actions">
+                            ${tournament.status === 'registration' ? `
+                            <button class="btn btn-primary action-button" onclick="registerForTournament('${tournament.id}')">
+                                <i class="fas fa-sign-in-alt"></i> REGISTER NOW
+                            </button>
+                            ` : ''}
+                            
+                            <button class="btn btn-secondary action-button" onclick="closeBracket()">
+                                <i class="fas fa-times"></i> CLOSE
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            return html;
+        }
+
+        function generateBracketVisualization(bracketData) {
+            let html = '<div style="display: flex; overflow-x: auto; padding: 1rem 0;">';
+            
+            bracketData.rounds.forEach((round, roundIndex) => {
+                html += `
+                    <div class="bracket-round">
+                        <div class="round-title">${round.name}</div>
+                `;
+                
+                round.matchups.forEach((matchup, matchupIndex) => {
+                    const isLive = matchup.status === 'live';
+                    const isCompleted = matchup.status === 'completed';
+                    
+                    html += `
+                        <div class="matchup ${matchup.winner ? 'winner' : ''}">
+                            <div class="match-status ${isLive ? 'live' : isCompleted ? 'completed' : ''}">
+                                ${isLive ? '🔴 LIVE' : isCompleted ? '✅ COMPLETED' : '⏳ UPCOMING'}
+                            </div>
+                            
+                            <div class="team-slot ${matchup.team1 && matchup.winner === matchup.team1.id ? 'winner' : ''}">
+                                <div class="team-name">${matchup.team1 ? matchup.team1.name : 'TBD'}</div>
+                                <div class="team-score">${matchup.team1_score || '0'}</div>
+                            </div>
+                            
+                            <div class="team-slot ${matchup.team2 && matchup.winner === matchup.team2.id ? 'winner' : ''}">
+                                <div class="team-name">${matchup.team2 ? matchup.team2.name : 'TBD'}</div>
+                                <div class="team-score">${matchup.team2_score || '0'}</div>
+                            </div>
+                            
+                            ${matchup.next_matchup_id ? `
+                            <div class="connector-line"></div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                
+                // Add connector arrows between rounds (except last round)
+                if (roundIndex < bracketData.rounds.length - 1) {
+                    html += `
+                        <div style="display: inline-block; width: 2rem; position: relative;">
+                            <div class="connector top"></div>
+                            <div class="connector bottom"></div>
+                        </div>
+                    `;
+                }
+            });
+            
+            html += '</div>';
+            return html;
+        }
+
+        function closeBracket() {
+            document.getElementById('bracketView').style.display = 'none';
+        }
+
+        // ========== REGISTRATION SYSTEM ==========
+        async function registerForTournament(tournamentId) {
+            if (!userToken) {
+                showError('Please login first');
+                showLoginModal();
+                return;
+            }
+            
+            try {
+                // Check if user is already registered
+                const response = await fetch(`${CONFIG.API_URL}/api/tournaments/${tournamentId}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${userToken}`
+                    },
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        discord_id: currentUser.discord_id,
+                        username: currentUser.username
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        showAlert('✅ Registration successful! You will be notified when the tournament starts.', 'success');
+                        loadTournaments(); // Refresh the list
+                    } else {
+                        throw new Error(data.detail || 'Registration failed');
+                    }
+                } else {
+                    const data = await response.json();
+                    throw new Error(data.detail || 'Registration failed');
+                }
+            } catch (error) {
+                showError('Error registering: ' + error.message);
+            }
+        }
+
+        // ========== TOURNAMENT CREATION ==========
+        async function createTournament() {
+            if (!userToken) {
+                showError('Please login first');
+                showLoginModal();
+                return;
+            }
+            
+            const serverId = document.getElementById('serverSelect').value;
+            const name = document.getElementById('tournamentName').value.trim();
+            const game = document.getElementById('tournamentGame').value;
+            const region = document.getElementById('tournamentRegion').value;
+            const description = document.getElementById('description').value.trim();
+            const maxTeams = parseInt(document.getElementById('maxTeams').value);
+            const maxPlayersPerTeam = parseInt(document.getElementById('maxPlayersPerTeam').value);
+            const prizePool = document.getElementById('prizePool').value.trim();
+            const startDate = document.getElementById('startDate').value;
+            const autoMatchmaking = document.getElementById('autoMatchmaking').checked;
+            
+            if (!serverId) {
+                showError('Please select a Discord server');
+                return;
+            }
+            
+            if (!name || name.length < 3) {
+                showError('Tournament name must be at least 3 characters');
+                return;
+            }
+            
+            if (!game) {
+                showError('Please select a game');
+                return;
+            }
+            
+            try {
+                const tournamentData = {
+                    name: name,
+                    game: game,
+                    region: region,
+                    description: description,
+                    max_teams: maxTeams,
+                    start_date: startDate,
+                    discord_server_id: serverId,
+                    bracket_type: "single_elimination",
+                    max_players_per_team: maxPlayersPerTeam,
+                    auto_matchmaking: autoMatchmaking,
+                    prize_pool: prizePool,
+                    status: "registration"
+                };
+                
+                const response = await fetch(`${CONFIG.API_URL}/api/tournaments`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${userToken}`
+                    },
+                    body: JSON.stringify(tournamentData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showAlert('🎉 TOURNAMENT CREATED SUCCESSFULLY!', 'success');
+                    
+                    // Reset form
+                    document.getElementById('createForm').reset();
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(19, 0, 0);
+                    document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
+                    document.getElementById('maxTeams').value = 16;
+                    document.getElementById('maxPlayersPerTeam').value = 5;
+                    document.getElementById('tournamentRegion').value = 'global';
+                    document.getElementById('autoMatchmaking').checked = true;
+                    
+                    // Reload data
+                    loadTournaments();
+                    updateRealStats();
+                    showSection('tournaments');
+                } else {
+                    throw new Error(data.detail || 'Failed to create tournament');
+                }
+            } catch (error) {
+                showError('Error creating tournament: ' + error.message);
+            }
+        }
+
+        // ========== SERVER MANAGEMENT ==========
+        function loadUserServers() {
+            const serversGrid = document.getElementById('serversGrid');
+            if (!serversGrid) return;
+            
+            if (userServers.length === 0) {
+                serversGrid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--gray);">
+                        <i class="fas fa-server" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
+                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">NO ADMIN SERVERS FOUND</h3>
+                        <p>You need Admin or Manage Server permissions in Discord servers to create tournaments</p>
+                        <button class="btn btn-primary" onclick="inviteBot()" style="margin-top: 2rem;">
+                            <i class="fab fa-discord"></i> ADD BOT TO SERVER
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            userServers.forEach(server => {
+                const tournamentCount = allTournaments.filter(t => t.discord_server_id === server.id).length;
+                html += `
+                    <div class="server-card">
+                        <img src="${server.icon || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                             alt="${server.name}" class="server-icon">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 800; font-size: 1.2rem; font-family: 'Orbitron';">${server.name}</div>
+                            <div style="font-size: 0.8rem; color: var(--gray); margin-top: 0.5rem;">
+                                <i class="fas fa-trophy"></i> ${tournamentCount} Active Tournaments
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 1.2rem;">
+                                <button class="btn btn-secondary" onclick="createTournamentForServer('${server.id}', '${server.name.replace("'", "\\'")}')" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-family: 'Orbitron'; flex: 1;">
+                                    <i class="fas fa-plus"></i> CREATE
+                                </button>
+                                <button class="btn btn-secondary" onclick="viewServerTournaments('${server.id}', '${server.name.replace("'", "\\'")}')" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-family: 'Orbitron'; flex: 1;">
+                                    <i class="fas fa-eye"></i> VIEW
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            serversGrid.innerHTML = html;
+        }
+
+        function loadServerDropdown() {
+            const select = document.getElementById('serverSelect');
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">SELECT A SERVER...</option>';
+            
+            if (userServers.length === 0) {
+                select.innerHTML += '<option value="" disabled>NO SERVERS AVAILABLE</option>';
+                return;
+            }
+            
+            userServers.forEach(server => {
+                const tournamentCount = allTournaments.filter(t => t.discord_server_id === server.id).length;
+                const option = document.createElement('option');
+                option.value = server.id;
+                option.textContent = `${server.name} (${tournamentCount} tournaments)`;
+                select.appendChild(option);
+            });
+        }
+
+        function createTournamentForServer(serverId, serverName) {
+            const select = document.getElementById('serverSelect');
+            if (select) {
+                select.value = serverId;
+                showSection('servers');
+                setTimeout(() => {
+                    document.getElementById('createForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
+        }
+
+        function viewServerTournaments(serverId, serverName) {
+            showSection('tournaments');
+            setTimeout(() => {
+                showAlert(`Viewing tournaments for ${serverName}`, 'success');
+            }, 100);
         }
 
         // ========== AUTH MODAL FUNCTIONS ==========
@@ -1860,13 +2948,11 @@
         function loginWithDiscord() {
             console.log('Starting Discord OAuth...');
             
-            // Force web browser flow and prevent app opening
             const scope = 'identify email guilds';
             const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${scope}&prompt=consent`;
             
             showDiscordRedirect();
             
-            // Direct redirect after short delay
             setTimeout(() => {
                 window.location.href = discordAuthUrl;
             }, 500);
@@ -2027,6 +3113,14 @@
                                 <i class="fas fa-exclamation-circle"></i> Add email to avoid re-login
                             </div>`
                         }
+                        ${userServers.length > 0 ? 
+                            `<div style="font-size: 0.8rem; color: var(--success); margin-top: 5px;">
+                                <i class="fas fa-server"></i> ${userServers.length} server(s) connected
+                            </div>` : 
+                            `<div style="font-size: 0.8rem; color: var(--gray); margin-top: 5px;">
+                                <i class="fas fa-exclamation-triangle"></i> No servers connected
+                            </div>`
+                        }
                     </div>
                     <button onclick="logout(); event.stopPropagation();" style="margin-left: 10px; padding: 0.4rem 0.8rem; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-family: 'Orbitron';">
                         LOGOUT
@@ -2039,481 +3133,6 @@
             document.getElementById('quickCreateBtn').style.display = 'block';
             
             loadServerDropdown();
-        }
-
-        // ========== STATS FUNCTIONS ==========
-        async function updateStats() {
-            try {
-                const response = await fetch(`${CONFIG.API_URL}/api/stats/summary`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        const stats = data.stats;
-                        document.getElementById('liveMatchesCount').textContent = stats.live_matches || 0;
-                        document.getElementById('activeTournaments').textContent = stats.active_tournaments || 0;
-                        document.getElementById('connectedServers').textContent = stats.connected_servers || 0;
-                        document.getElementById('totalPlayers').textContent = stats.total_players?.toLocaleString() || 0;
-                        return;
-                    }
-                }
-                calculateStatsManually();
-            } catch (error) {
-                console.error('Error updating stats:', error);
-                calculateStatsManually();
-            }
-        }
-
-        async function calculateStatsManually() {
-            try {
-                let matchesCount = 0;
-                let tournamentsCount = 0;
-                
-                try {
-                    const matchesRes = await fetch(`${CONFIG.API_URL}/api/matches/live`);
-                    if (matchesRes.ok) {
-                        const matchesData = await matchesRes.json();
-                        matchesCount = matchesData.matches?.length || 0;
-                    }
-                } catch (e) {}
-                
-                try {
-                    const tournamentsRes = await fetch(`${CONFIG.API_URL}/api/tournaments/public`);
-                    if (tournamentsRes.ok) {
-                        const tournamentsData = await tournamentsRes.json();
-                        tournamentsCount = tournamentsData.tournaments?.length || 0;
-                        allTournaments = tournamentsData.tournaments || [];
-                    }
-                } catch (e) {}
-                
-                const serverCount = userServers.length || 0;
-                const estimatedPlayers = tournamentsCount * 16 * 5;
-                
-                document.getElementById('liveMatchesCount').textContent = matchesCount;
-                document.getElementById('activeTournaments').textContent = tournamentsCount;
-                document.getElementById('connectedServers').textContent = serverCount;
-                document.getElementById('totalPlayers').textContent = estimatedPlayers.toLocaleString();
-            } catch (error) {
-                console.error('Error calculating stats:', error);
-            }
-        }
-
-        // ========== SERVER MANAGEMENT ==========
-        function loadUserServers() {
-            const serversGrid = document.getElementById('serversGrid');
-            if (!serversGrid) return;
-            
-            if (userServers.length === 0) {
-                serversGrid.innerHTML = `
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--gray);">
-                        <i class="fas fa-server" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
-                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">NO ADMIN SERVERS FOUND</h3>
-                        <p>You need Admin or Manage Server permissions in Discord servers to create tournaments</p>
-                        <button class="btn btn-primary" onclick="inviteBot()" style="margin-top: 2rem;">
-                            <i class="fab fa-discord"></i> ADD BOT TO SERVER
-                        </button>
-                    </div>
-                `;
-                return;
-            }
-            
-            let html = '';
-            userServers.forEach(server => {
-                const tournamentCount = allTournaments.filter(t => t.discord_server_id === server.id).length;
-                html += `
-                    <div class="server-card">
-                        <img src="${server.icon || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
-                             alt="${server.name}" class="server-icon">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 800; font-size: 1.2rem; font-family: 'Orbitron';">${server.name}</div>
-                            <div style="font-size: 0.8rem; color: var(--gray); margin-top: 0.5rem;">
-                                <i class="fas fa-trophy"></i> ${tournamentCount} Active Tournaments
-                            </div>
-                            <div style="display: flex; gap: 10px; margin-top: 1.2rem;">
-                                <button class="btn btn-secondary" onclick="createTournamentForServer('${server.id}', '${server.name.replace("'", "\\'")}')" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-family: 'Orbitron'; flex: 1;">
-                                    <i class="fas fa-plus"></i> CREATE
-                                </button>
-                                <button class="btn btn-secondary" onclick="viewServerTournaments('${server.id}', '${server.name.replace("'", "\\'")}')" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-family: 'Orbitron'; flex: 1;">
-                                    <i class="fas fa-eye"></i> VIEW
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            serversGrid.innerHTML = html;
-            document.getElementById('connectedServers').textContent = userServers.length;
-        }
-
-        function loadServerDropdown() {
-            const select = document.getElementById('serverSelect');
-            if (!select) return;
-            
-            select.innerHTML = '<option value="">SELECT A SERVER...</option>';
-            
-            if (userServers.length === 0) {
-                select.innerHTML += '<option value="" disabled>NO SERVERS AVAILABLE</option>';
-                return;
-            }
-            
-            userServers.forEach(server => {
-                const tournamentCount = allTournaments.filter(t => t.discord_server_id === server.id).length;
-                const option = document.createElement('option');
-                option.value = server.id;
-                option.textContent = `${server.name} (${tournamentCount} tournaments)`;
-                select.appendChild(option);
-            });
-        }
-
-        function createTournamentForServer(serverId, serverName) {
-            const select = document.getElementById('serverSelect');
-            if (select) {
-                select.value = serverId;
-                showSection('servers');
-                setTimeout(() => {
-                    document.getElementById('createForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 100);
-            }
-        }
-
-        function viewServerTournaments(serverId, serverName) {
-            showSection('tournaments');
-            setTimeout(() => {
-                showAlert(`Viewing tournaments for ${serverName}`, 'success');
-            }, 100);
-        }
-
-        // ========== TOURNAMENT MANAGEMENT ==========
-        async function createTournament() {
-            if (!userToken) {
-                showError('Please login first');
-                showLoginModal();
-                return;
-            }
-            
-            const serverId = document.getElementById('serverSelect').value;
-            const name = document.getElementById('tournamentName').value.trim();
-            const game = document.getElementById('tournamentGame').value;
-            const description = document.getElementById('description').value.trim();
-            const maxTeams = parseInt(document.getElementById('maxTeams').value);
-            const maxPlayersPerTeam = parseInt(document.getElementById('maxPlayersPerTeam').value);
-            const prizePool = document.getElementById('prizePool').value.trim();
-            const startDate = document.getElementById('startDate').value;
-            
-            if (!serverId) {
-                showError('Please select a Discord server');
-                return;
-            }
-            
-            if (!name || name.length < 3) {
-                showError('Tournament name must be at least 3 characters');
-                return;
-            }
-            
-            if (!game) {
-                showError('Please select a game');
-                return;
-            }
-            
-            try {
-                const tournamentData = {
-                    name: name,
-                    game: game,
-                    description: description,
-                    max_teams: maxTeams,
-                    start_date: startDate,
-                    discord_server_id: serverId,
-                    bracket_type: "single_elimination",
-                    max_players_per_team: maxPlayersPerTeam,
-                    region_filter: false,
-                    prize_pool: prizePool
-                };
-                
-                const response = await fetch(`${CONFIG.API_URL}/api/tournaments`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${userToken}`
-                    },
-                    body: JSON.stringify(tournamentData)
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.success) {
-                    showAlert('🎉 TOURNAMENT CREATED SUCCESSFULLY!', 'success');
-                    
-                    document.getElementById('createForm').reset();
-                    const tomorrow = new Date();
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    tomorrow.setHours(19, 0, 0);
-                    document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
-                    document.getElementById('maxTeams').value = 16;
-                    document.getElementById('maxPlayersPerTeam').value = 5;
-                    
-                    loadTournaments();
-                    updateStats();
-                    showSection('tournaments');
-                } else {
-                    throw new Error(data.detail || 'Failed to create tournament');
-                }
-            } catch (error) {
-                showError('Error creating tournament: ' + error.message);
-            }
-        }
-
-        function showCreateTournament() {
-            if (!userToken) {
-                showError('Please login to create tournaments');
-                showLoginModal();
-                return;
-            }
-            
-            if (userServers.length === 0) {
-                showError('No Discord servers connected. Add the bot to your server first.');
-                inviteBot();
-                return;
-            }
-            
-            showSection('servers');
-            setTimeout(() => {
-                document.getElementById('createForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
-        }
-
-        // ========== PUBLIC DATA FUNCTIONS ==========
-        async function loadPublicData() {
-            try {
-                await Promise.all([loadLiveMatches(), loadTournaments(), updateStats()]);
-            } catch (error) {
-                console.error('Error loading public data:', error);
-            }
-        }
-
-        async function loadLiveMatches() {
-            try {
-                const response = await fetch(`${CONFIG.API_URL}/api/matches/live`);
-                if (!response.ok) {
-                    showNoMatches();
-                    return;
-                }
-                
-                const data = await response.json();
-                updateMatchesDisplay(data.matches || []);
-            } catch (error) {
-                showNoMatches();
-            }
-        }
-
-        function updateMatchesDisplay(matches) {
-            const matchesGrid = document.getElementById('matchesGrid');
-            if (!matchesGrid) return;
-            
-            if (matches.length === 0) {
-                showNoMatches();
-                return;
-            }
-            
-            matchesGrid.innerHTML = '';
-            matches.slice(0, 6).forEach(match => {
-                matchesGrid.appendChild(createMatchCard(match));
-            });
-        }
-
-        function createMatchCard(match) {
-            const card = document.createElement('div');
-            card.className = 'match-card';
-            
-            const team1 = match.team1 || { name: 'Team 1', score: 0 };
-            const team2 = match.team2 || { name: 'Team 2', score: 0 };
-            
-            card.innerHTML = `
-                <div class="match-header">
-                    <div class="match-tournament">${match.tournament_name || 'TOURNAMENT'}</div>
-                    <div class="match-status status-live">LIVE</div>
-                </div>
-                
-                <div class="match-teams">
-                    <div class="team">
-                        <div class="team-logo">${team1.name.substring(0, 2).toUpperCase()}</div>
-                        <div class="team-name">${team1.name}</div>
-                        <div class="team-score">${team1.score || 0}</div>
-                    </div>
-                    
-                    <div class="vs">VS</div>
-                    
-                    <div class="team">
-                        <div class="team-logo">${team2.name.substring(0, 2).toUpperCase()}</div>
-                        <div class="team-name">${team2.name}</div>
-                        <div class="team-score">${team2.score || 0}</div>
-                    </div>
-                </div>
-                
-                <div class="match-meta">
-                    <div><i class="fas fa-gamepad"></i> ${match.game || 'ESPORTS'}</div>
-                    <div><i class="fas fa-eye"></i> ${(match.viewers || 0).toLocaleString()} VIEWERS</div>
-                </div>
-            `;
-            
-            return card;
-        }
-
-        async function loadTournaments() {
-            try {
-                const response = await fetch(`${CONFIG.API_URL}/api/tournaments/public`);
-                if (!response.ok) {
-                    showNoTournaments();
-                    return;
-                }
-                
-                const data = await response.json();
-                allTournaments = data.tournaments || [];
-                updateTournamentsDisplay(allTournaments);
-            } catch (error) {
-                showNoTournaments();
-            }
-        }
-
-        function updateTournamentsDisplay(tournaments) {
-            const container = document.getElementById('tournamentsGrid');
-            if (!container) return;
-            
-            if (tournaments.length === 0) {
-                showNoTournaments();
-                return;
-            }
-            
-            container.innerHTML = '';
-            tournaments.slice(0, 9).forEach(tournament => {
-                container.appendChild(createTournamentCard(tournament));
-            });
-        }
-
-        function createTournamentCard(tournament) {
-    const card = document.createElement('div');
-    card.className = 'tournament-card';
-    card.style.cursor = 'pointer';
-    card.onclick = () => viewTournamentBracket(tournament.id);
-    
-    const teams = tournament.team_count || tournament.current_teams || 0;
-    const maxTeams = tournament.max_teams || 16;
-    const progressPercent = maxTeams > 0 ? Math.min((teams / maxTeams) * 100, 100) : 0;
-    const status = tournament.status || 'registration';
-    const statusClass = status === 'ongoing' ? 'ongoing' : 
-                       status === 'completed' ? 'completed' : 'registration';
-    const statusText = status === 'ongoing' ? 'IN PROGRESS' : 
-                      status === 'completed' ? 'COMPLETED' : 'REGISTERING';
-    
-    card.innerHTML = `
-        <div class="tournament-header">
-            <div class="tournament-title">${tournament.name}</div>
-            <div class="tournament-status status-${statusClass}">
-                ${statusText}
-            </div>
-        </div>
-        
-        <div class="tournament-game">
-            <i class="fas fa-gamepad"></i> ${tournament.game || 'ESPORTS'}
-        </div>
-        
-        ${tournament.prize_pool ? `
-        <div class="tournament-prize">
-            <i class="fas fa-trophy"></i> ${tournament.prize_pool}
-        </div>
-        ` : ''}
-        
-        <div class="tournament-progress">
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: ${progressPercent}%"></div>
-            </div>
-            <div class="progress-text">
-                <span>${teams}/${maxTeams} TEAMS</span>
-                <span>${Math.round(progressPercent)}% FULL</span>
-            </div>
-        </div>
-        
-        <div class="tournament-meta">
-            <div><i class="fas fa-calendar"></i> ${tournament.start_date ? new Date(tournament.start_date).toLocaleDateString() : 'TBA'}</div>
-            <div><i class="fas fa-users"></i> ${tournament.max_players_per_team || 5}v${tournament.max_players_per_team || 5}</div>
-        </div>
-        
-        <div style="text-align: center; margin-top: 2rem;">
-            <button class="btn btn-${status === 'registration' ? 'primary' : 'secondary'}" 
-                    onclick="handleTournamentAction(event, '${tournament.id}', '${status}')" style="width: 100%; font-family: 'Orbitron';">
-                <i class="fas fa-${status === 'registration' ? 'sign-in-alt' : 'eye'}"></i>
-                ${status === 'registration' ? 'REGISTER NOW' : 'VIEW BRACKET'}
-            </button>
-        </div>
-    `;
-    
-    return card;
-}
-
-// Add this function to handle tournament actions
-function handleTournamentAction(event, tournamentId, status) {
-    event.stopPropagation(); // Prevent card click from firing
-    if (status === 'registration') {
-        registerForTournament(tournamentId);
-    } else {
-        viewTournamentBracket(tournamentId);
-    }
-}
-
-function viewTournamentBracket(tournamentId) {
-    showAlert(`Viewing bracket for tournament ${tournamentId}...`, 'success');
-    // Add your bracket viewing logic here
-}
-
-async function registerForTournament(tournamentId) {
-    if (!userToken) {
-        showError('Please login first');
-        showLoginModal();
-        return;
-    }
-    
-    try {
-        // Show registration modal or send to Discord bot
-        showAlert('Registration button clicked! Registration feature coming soon.', 'success');
-        // You'll need to integrate with your Discord bot here
-    } catch (error) {
-        showError('Error registering: ' + error.message);
-    }
-}
-
-        function showNoMatches() {
-            const html = `
-                <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--gray);">
-                    <i class="fas fa-tv" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
-                    <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">NO LIVE MATCHES</h3>
-                    <p>Create a tournament on your Discord server to get started!</p>
-                    ${!userToken ? `
-                    <button class="btn btn-primary" onclick="loginWithDiscord()" style="margin-top: 2rem;">
-                        <i class="fab fa-discord"></i> CONNECT DISCORD TO CREATE
-                    </button>
-                    ` : ''}
-                </div>
-            `;
-            
-            if (document.getElementById('matchesGrid')) {
-                document.getElementById('matchesGrid').innerHTML = html;
-            }
-        }
-
-        function showNoTournaments() {
-            const html = `
-                <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--gray);">
-                    <i class="fas fa-trophy" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
-                    <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">NO TOURNAMENTS AVAILABLE</h3>
-                    <p>Connect your Discord account to create tournaments</p>
-                    <button class="btn btn-primary" onclick="loginWithDiscord()" style="margin-top: 2rem;">
-                        <i class="fab fa-discord"></i> CONNECT DISCORD
-                    </button>
-                </div>
-            `;
-            
-            if (document.getElementById('tournamentsGrid')) {
-                document.getElementById('tournamentsGrid').innerHTML = html;
-            }
         }
 
         // ========== UI FUNCTIONS ==========
@@ -2538,6 +3157,25 @@ async function registerForTournament(tournamentId) {
             if (activeLink) activeLink.classList.add('active');
             
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function showCreateTournament() {
+            if (!userToken) {
+                showError('Please login to create tournaments');
+                showLoginModal();
+                return;
+            }
+            
+            if (userServers.length === 0) {
+                showError('No Discord servers connected. Add the bot to your server first.');
+                inviteBot();
+                return;
+            }
+            
+            showSection('servers');
+            setTimeout(() => {
+                document.getElementById('createForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
         }
 
         function logout() {
@@ -2569,8 +3207,27 @@ async function registerForTournament(tournamentId) {
             window.open(CONFIG.DISCORD_INVITE, '_blank');
         }
 
-        function viewTournament(tournamentId) {
-            showAlert(`Opening tournament ${tournamentId}...`, 'success');
+        function showNoTournaments() {
+            const html = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--gray);">
+                    <i class="fas fa-trophy" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
+                    <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">NO TOURNAMENTS AVAILABLE</h3>
+                    <p>Connect your Discord account to create tournaments</p>
+                    <button class="btn btn-primary" onclick="loginWithDiscord()" style="margin-top: 2rem;">
+                        <i class="fab fa-discord"></i> CONNECT DISCORD
+                    </button>
+                </div>
+            `;
+            
+            if (document.getElementById('tournamentsGrid')) {
+                document.getElementById('tournamentsGrid').innerHTML = html;
+            }
+        }
+
+        function loadPublicData() {
+            // Initial load of public data
+            updateRealStats();
+            loadTournaments();
         }
 
         // ========== UTILITY FUNCTIONS ==========
@@ -2598,4 +3255,3 @@ async function registerForTournament(tournamentId) {
     </script>
 </body>
 </html>
-
