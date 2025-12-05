@@ -2390,62 +2390,95 @@
         }
 
         function createTournamentCard(tournament) {
-            const card = document.createElement('div');
-            card.className = 'tournament-card';
-            
-            const teams = tournament.team_count || tournament.current_teams || 0;
-            const maxTeams = tournament.max_teams || 16;
-            const progressPercent = maxTeams > 0 ? Math.min((teams / maxTeams) * 100, 100) : 0;
-            const status = tournament.status || 'registration';
-            const statusClass = status === 'ongoing' ? 'ongoing' : 
-                               status === 'completed' ? 'completed' : 'registration';
-            const statusText = status === 'ongoing' ? 'IN PROGRESS' : 
-                              status === 'completed' ? 'COMPLETED' : 'REGISTERING';
-            
-            card.innerHTML = `
-                <div class="tournament-header">
-                    <div class="tournament-title">${tournament.name}</div>
-                    <div class="tournament-status status-${statusClass}">
-                        ${statusText}
-                    </div>
-                </div>
-                
-                <div class="tournament-game">
-                    <i class="fas fa-gamepad"></i> ${tournament.game || 'ESPORTS'}
-                </div>
-                
-                ${tournament.prize_pool ? `
-                <div class="tournament-prize">
-                    <i class="fas fa-trophy"></i> ${tournament.prize_pool}
-                </div>
-                ` : ''}
-                
-                <div class="tournament-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${progressPercent}%"></div>
-                    </div>
-                    <div class="progress-text">
-                        <span>${teams}/${maxTeams} TEAMS</span>
-                        <span>${Math.round(progressPercent)}% FULL</span>
-                    </div>
-                </div>
-                
-                <div class="tournament-meta">
-                    <div><i class="fas fa-calendar"></i> ${tournament.start_date ? new Date(tournament.start_date).toLocaleDateString() : 'TBA'}</div>
-                    <div><i class="fas fa-users"></i> ${tournament.max_players_per_team || 5}v${tournament.max_players_per_team || 5}</div>
-                </div>
-                
-                <div style="text-align: center; margin-top: 2rem;">
-                    <button class="btn btn-${status === 'registration' ? 'primary' : 'secondary'}" 
-                            onclick="viewTournament('${tournament.id}')" style="width: 100%; font-family: 'Orbitron';">
-                        <i class="fas fa-${status === 'registration' ? 'sign-in-alt' : 'eye'}"></i>
-                        ${status === 'registration' ? 'REGISTER NOW' : 'VIEW TOURNAMENT'}
-                    </button>
-                </div>
-            `;
-            
-            return card;
-        }
+    const card = document.createElement('div');
+    card.className = 'tournament-card';
+    card.style.cursor = 'pointer';
+    card.onclick = () => viewTournamentBracket(tournament.id);
+    
+    const teams = tournament.team_count || tournament.current_teams || 0;
+    const maxTeams = tournament.max_teams || 16;
+    const progressPercent = maxTeams > 0 ? Math.min((teams / maxTeams) * 100, 100) : 0;
+    const status = tournament.status || 'registration';
+    const statusClass = status === 'ongoing' ? 'ongoing' : 
+                       status === 'completed' ? 'completed' : 'registration';
+    const statusText = status === 'ongoing' ? 'IN PROGRESS' : 
+                      status === 'completed' ? 'COMPLETED' : 'REGISTERING';
+    
+    card.innerHTML = `
+        <div class="tournament-header">
+            <div class="tournament-title">${tournament.name}</div>
+            <div class="tournament-status status-${statusClass}">
+                ${statusText}
+            </div>
+        </div>
+        
+        <div class="tournament-game">
+            <i class="fas fa-gamepad"></i> ${tournament.game || 'ESPORTS'}
+        </div>
+        
+        ${tournament.prize_pool ? `
+        <div class="tournament-prize">
+            <i class="fas fa-trophy"></i> ${tournament.prize_pool}
+        </div>
+        ` : ''}
+        
+        <div class="tournament-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: ${progressPercent}%"></div>
+            </div>
+            <div class="progress-text">
+                <span>${teams}/${maxTeams} TEAMS</span>
+                <span>${Math.round(progressPercent)}% FULL</span>
+            </div>
+        </div>
+        
+        <div class="tournament-meta">
+            <div><i class="fas fa-calendar"></i> ${tournament.start_date ? new Date(tournament.start_date).toLocaleDateString() : 'TBA'}</div>
+            <div><i class="fas fa-users"></i> ${tournament.max_players_per_team || 5}v${tournament.max_players_per_team || 5}</div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 2rem;">
+            <button class="btn btn-${status === 'registration' ? 'primary' : 'secondary'}" 
+                    onclick="handleTournamentAction(event, '${tournament.id}', '${status}')" style="width: 100%; font-family: 'Orbitron';">
+                <i class="fas fa-${status === 'registration' ? 'sign-in-alt' : 'eye'}"></i>
+                ${status === 'registration' ? 'REGISTER NOW' : 'VIEW BRACKET'}
+            </button>
+        </div>
+    `;
+    
+    return card;
+}
+
+// Add this function to handle tournament actions
+function handleTournamentAction(event, tournamentId, status) {
+    event.stopPropagation(); // Prevent card click from firing
+    if (status === 'registration') {
+        registerForTournament(tournamentId);
+    } else {
+        viewTournamentBracket(tournamentId);
+    }
+}
+
+function viewTournamentBracket(tournamentId) {
+    showAlert(`Viewing bracket for tournament ${tournamentId}...`, 'success');
+    // Add your bracket viewing logic here
+}
+
+async function registerForTournament(tournamentId) {
+    if (!userToken) {
+        showError('Please login first');
+        showLoginModal();
+        return;
+    }
+    
+    try {
+        // Show registration modal or send to Discord bot
+        showAlert('Registration button clicked! Registration feature coming soon.', 'success');
+        // You'll need to integrate with your Discord bot here
+    } catch (error) {
+        showError('Error registering: ' + error.message);
+    }
+}
 
         function showNoMatches() {
             const html = `
@@ -2565,3 +2598,4 @@
     </script>
 </body>
 </html>
+
