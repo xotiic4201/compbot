@@ -8,13 +8,13 @@ import hashlib
 import json
 import base64
 from datetime import datetime, timedelta
-from typing import Optional
-from pydantic import BaseModel, EmailStr
+from typing import Optional, List, Dict
+from pydantic import BaseModel, EmailStr, Field
 import jwt
 from uuid import uuid4
 import re
 
-app = FastAPI(title="XTourney API", version="9.0.0")
+app = FastAPI(title="XTourney API", version="10.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -56,8 +56,8 @@ class RefreshTokenRequest(BaseModel):
 
 class EmailRegisterRequest(BaseModel):
     email: EmailStr
-    username: str
-    password: str
+    username: str = Field(..., min_length=3, max_length=20)
+    password: str = Field(..., min_length=8)
 
 class EmailLoginRequest(BaseModel):
     email: EmailStr
@@ -67,21 +67,27 @@ class LinkEmailRequest(BaseModel):
     email: EmailStr
 
 class TournamentCreate(BaseModel):
-    name: str
-    game: str
-    description: Optional[str] = ""
-    max_teams: int = 16
+    name: str = Field(..., min_length=3, max_length=100)
+    game: str = Field(..., min_length=2, max_length=50)
+    description: Optional[str] = Field(default="", max_length=1000)
+    max_teams: int = Field(default=16, ge=2, le=128)
     start_date: str
     discord_server_id: Optional[str] = None
-    bracket_type: str = "single_elimination"
-    max_players_per_team: int = 5
-    region_filter: bool = False
-    prize_pool: Optional[str] = ""
+    bracket_type: str = Field(default="single_elimination")
+    max_players_per_team: int = Field(default=5, ge=1, le=10)
+    region_filter: bool = Field(default=False)
+    prize_pool: Optional[str] = Field(default="", max_length=200)
 
 class TeamRegister(BaseModel):
     tournament_id: str
-    name: str
+    name: str = Field(..., min_length=2, max_length=50)
     captain_discord_id: str
+
+class ProofSubmission(BaseModel):
+    tournament_id: str
+    match_id: str
+    description: Optional[str] = ""
+    image_url: Optional[str] = None
 
 # ========== DATABASE FUNCTIONS ==========
 def supabase_insert(table: str, data: dict, admin=False):
@@ -97,7 +103,7 @@ def supabase_insert(table: str, data: dict, admin=False):
             try:
                 return response.json()
             except:
-                return {"id": "unknown"}
+                return {"success": True}
         print(f"Insert error {response.status_code}: {response.text[:200]}")
         return None
     except Exception as e:
@@ -135,27 +141,16 @@ def supabase_update(table: str, data: dict, column: str, value: str, admin=False
         print(f"Update exception: {str(e)}")
         return []
 
-def supabase_upsert(table: str, data: dict, on_conflict: str = "discord_id", admin=False):
-    """Upsert data - insert or update on conflict"""
+def supabase_delete(table: str, column: str, value: str, admin=False):
     try:
-        response = requests.post(
-            f"{SUPABASE_URL}/rest/v1/{table}",
-            json=data,
-            headers=admin_headers if admin else headers,
-            params={
-                "on_conflict": on_conflict,
-                "select": "*"
-            }
+        response = requests.delete(
+            f"{SUPABASE_URL}/rest/v1/{table}?{column}=eq.{value}",
+            headers=admin_headers if admin else headers
         )
-        if response.status_code in [200, 201]:
-            try:
-                return response.json()
-            except:
-                return data
-        return None
+        return response.status_code == 204
     except Exception as e:
-        print(f"Upsert exception: {str(e)}")
-        return None
+        print(f"Delete exception: {str(e)}")
+        return False
 
 # ========== JWT FUNCTIONS ==========
 def create_jwt_token(data: dict):
@@ -176,38 +171,56 @@ def verify_jwt_token(token: str):
     except jwt.InvalidTokenError:
         return None
 
+def get_current_user(authorization: str):
+    """Get current user from authorization header"""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    
+    token = authorization.split(" ")[1]
+    payload = verify_jwt_token(token)
+    
+    if not payload:
+        return None
+    
+    user_id = payload.get("sub")
+    users = supabase_select("users", f"id=eq.'{user_id}'")
+    
+    if not users:
+        return None
+    
+    return users[0]
+
 # ========== PUBLIC ENDPOINTS ==========
 @app.get("/")
 async def root():
-    return {"message": "XTourney API", "status": "running", "version": "9.0.0"}
+    return {"message": "XTourney API", "status": "running", "version": "10.0.0"}
 
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
-# ========== STATS ENDPOINTS ==========
 @app.get("/api/stats/summary")
 async def get_stats_summary():
     """Get overall platform statistics"""
     try:
+        # Get tournaments count
         tournaments = supabase_select("tournaments", "status=in.(registration,ongoing)")
         active_tournaments = len(tournaments)
         
+        # Get total teams
         total_teams = 0
         total_players = 0
         for tournament in tournaments:
             teams = supabase_select("teams", f"tournament_id=eq.{tournament.get('id')}")
-            tournament_teams = len(teams)
-            total_teams += tournament_teams
-            total_players += tournament_teams * tournament.get('max_players_per_team', 5)
+            total_teams += len(teams)
+            total_players += len(teams) * tournament.get('max_players_per_team', 5)
         
-        tournament_creators = set(t.get('created_by') for t in tournaments if t.get('created_by'))
-        unique_organizers = len(tournament_creators)
+        # Get server count
+        servers = supabase_select("bot_servers", "is_active=eq.true")
+        connected_servers = len(servers)
         
+        # Estimate live matches
         live_matches = min(total_teams // 2, 10)
-        
-        server_stats = supabase_select("bot_servers", "is_active=eq.true")
-        connected_servers = len(server_stats)
         
         return {
             "success": True,
@@ -216,8 +229,7 @@ async def get_stats_summary():
                 "active_tournaments": active_tournaments,
                 "connected_servers": connected_servers,
                 "total_players": total_players,
-                "total_teams": total_teams,
-                "unique_organizers": unique_organizers
+                "total_teams": total_teams
             }
         }
     except Exception as e:
@@ -229,58 +241,24 @@ async def get_stats_summary():
                 "active_tournaments": 0,
                 "connected_servers": 0,
                 "total_players": 0,
-                "total_teams": 0,
-                "unique_organizers": 0
+                "total_teams": 0
             }
         }
 
-@app.post("/api/bot/server-stats")
-async def update_server_stats(request: Request):
-    """Update server statistics from bot"""
-    try:
-        data = await request.json()
-        server_id = data.get('server_id')
-        server_name = data.get('server_name')
-        member_count = data.get('member_count', 0)
-        is_active = data.get('is_active', True)
-        
-        if not server_id:
-            raise HTTPException(status_code=400, detail="Server ID required")
-        
-        server_data = {
-            "server_id": server_id,
-            "server_name": server_name[:100] if server_name else "Unknown Server",
-            "member_count": member_count,
-            "is_active": is_active,
-            "last_updated": datetime.utcnow().isoformat()
-        }
-        
-        result = supabase_upsert("bot_servers", server_data, on_conflict="server_id", admin=True)
-        
-        if result:
-            return {"success": True, "message": "Server stats updated"}
-        else:
-            return {"success": False, "message": "Failed to update stats"}
-            
-    except Exception as e:
-        print(f"Server stats error: {str(e)}")
-        return {"success": False, "message": str(e)}
-
-# ========== PUBLIC MATCHES ==========
 @app.get("/api/matches/live")
 async def get_live_matches():
-    """Get live matches - Public endpoint"""
+    """Get live matches"""
     try:
-        tournaments = supabase_select("tournaments", "status=eq.ongoing&limit=10")
+        tournaments = supabase_select("tournaments", "status=eq.ongoing&limit=5")
         
         matches = []
         for tournament in tournaments:
-            teams = supabase_select("teams", f"tournament_id=eq.{tournament['id']}&limit=8")
+            teams = supabase_select("teams", f"tournament_id=eq.{tournament.get('id')}&limit=8")
             
             if len(teams) >= 2:
                 for i in range(0, len(teams), 2):
                     if i + 1 < len(teams):
-                        match = {
+                        matches.append({
                             "id": f"{tournament['id']}_{i//2}",
                             "tournament_id": tournament['id'],
                             "tournament_name": tournament['name'],
@@ -299,14 +277,14 @@ async def get_live_matches():
                             "start_time": tournament.get('start_date'),
                             "viewers": 0,
                             "round": "Round 1"
-                        }
-                        matches.append(match)
+                        })
         
         if not matches:
+            # Sample data for demo
             matches = [
                 {
-                    "id": "sample_1",
-                    "tournament_id": "sample",
+                    "id": "demo_1",
+                    "tournament_id": "demo",
                     "tournament_name": "Valorant Championship",
                     "game": "Valorant",
                     "status": "live",
@@ -332,38 +310,36 @@ async def get_live_matches():
             "count": len(matches)
         }
     except Exception as e:
-        print(f"Get live matches error: {str(e)}")
+        print(f"Live matches error: {str(e)}")
         return {"success": False, "matches": [], "count": 0}
 
 @app.get("/api/tournaments/public")
 async def get_public_tournaments():
-    """Get public tournaments - No login required"""
+    """Get public tournaments"""
     try:
         tournaments = supabase_select("tournaments", "status=in.(registration,ongoing)&order=start_date.asc&limit=20")
         
         for tournament in tournaments:
-            teams = supabase_select("teams", f"tournament_id=eq.{tournament['id']}")
+            teams = supabase_select("teams", f"tournament_id=eq.{tournament.get('id')}")
             tournament['team_count'] = len(teams)
-            tournament['registered_teams'] = len(teams)
+            tournament['current_teams'] = len(teams)
             tournament['progress_percent'] = int((len(teams) / tournament.get('max_teams', 16)) * 100) if tournament.get('max_teams', 16) > 0 else 0
-            
+        
         return {
             "success": True,
             "tournaments": tournaments,
             "count": len(tournaments)
         }
     except Exception as e:
-        print(f"Get tournaments error: {str(e)}")
+        print(f"Public tournaments error: {str(e)}")
         return {"success": False, "tournaments": [], "count": 0}
 
-# ========== DISCORD AUTH ==========
+# ========== AUTH ENDPOINTS ==========
 @app.post("/api/auth/discord/token")
 async def discord_auth_token(request: DiscordAuthRequest):
     """Exchange Discord code for token"""
     try:
-        print(f"Discord auth with code: {request.code[:20]}...")
-        
-        redirect_uri = request.redirect_uri or f"{FRONTEND_URL}/auth/callback"
+        redirect_uri = request.redirect_uri or f"{FRONTEND_URL}"
         
         # Get Discord access token
         token_data = {
@@ -377,9 +353,7 @@ async def discord_auth_token(request: DiscordAuthRequest):
         token_response = requests.post('https://discord.com/api/oauth2/token', data=token_data)
         
         if token_response.status_code != 200:
-            error_text = token_response.text[:200]
-            print(f"Discord token error: {error_text}")
-            raise HTTPException(status_code=400, detail=f"Discord auth failed: {error_text}")
+            raise HTTPException(status_code=400, detail="Discord auth failed")
         
         discord_token = token_response.json()
         access_token = discord_token.get("access_token")
@@ -392,83 +366,52 @@ async def discord_auth_token(request: DiscordAuthRequest):
                                    headers={'Authorization': f'Bearer {access_token}'})
         user_data = user_response.json()
         
-        print(f"Got Discord user: {user_data.get('id')} - {user_data.get('username')}")
-        
         if 'id' not in user_data:
             raise HTTPException(status_code=400, detail="Invalid user data from Discord")
         
-        discord_username = user_data['username']
-        if user_data.get('global_name'):
-            discord_username = user_data['global_name']
+        discord_username = user_data.get('global_name') or user_data['username']
+        discord_id = user_data['id']
         
-        # Check if user exists by discord_id
-        existing_users = supabase_select("users", f"discord_id=eq.{user_data['id']}")
-        
-        user_id = None
-        user_record = None
+        # Check if user exists
+        existing_users = supabase_select("users", f"discord_id=eq.{discord_id}")
         
         if existing_users and len(existing_users) > 0:
-            # User exists - UPDATE
-            user_record = existing_users[0]
-            user_id = user_record.get('id')
-            print(f"Found existing user: {user_id}")
+            # Update existing user
+            user = existing_users[0]
+            user_id = user['id']
             
-            # Update user info
             update_data = {
                 "username": discord_username,
-                "last_login": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat()
+                "last_login": datetime.utcnow().isoformat()
             }
             
             if user_data.get('avatar'):
-                update_data["avatar_url"] = f"https://cdn.discordapp.com/avatars/{user_data['id']}/{user_data['avatar']}.png"
+                update_data["avatar_url"] = f"https://cdn.discordapp.com/avatars/{discord_id}/{user_data['avatar']}.png"
             
             if user_data.get('email'):
                 update_data["email"] = user_data.get('email')
             
-            # Update the user
             supabase_update("users", update_data, "id", user_id)
             
         else:
             # Create new user
-            print("Creating new user...")
             user_uuid = str(uuid4())
             user_db = {
                 "id": user_uuid,
-                "discord_id": user_data["id"],
+                "discord_id": discord_id,
                 "username": discord_username,
                 "email": user_data.get("email", ""),
-                "avatar_url": f"https://cdn.discordapp.com/avatars/{user_data['id']}/{user_data.get('avatar')}.png" if user_data.get('avatar') else None,
+                "avatar_url": f"https://cdn.discordapp.com/avatars/{discord_id}/{user_data.get('avatar')}.png" if user_data.get('avatar') else None,
                 "account_type": "discord",
                 "created_at": datetime.utcnow().isoformat(),
                 "last_login": datetime.utcnow().isoformat(),
                 "is_verified": True
             }
             
-            insert_result = supabase_insert("users", user_db, admin=True)
-            
-            if insert_result:
-                if isinstance(insert_result, list) and len(insert_result) > 0:
-                    user_record = insert_result[0]
-                    user_id = user_record.get('id')
-                elif isinstance(insert_result, dict):
-                    user_record = insert_result
-                    user_id = insert_result.get('id')
-                else:
-                    # Try to fetch the user we just created
-                    existing_users = supabase_select("users", f"discord_id=eq.{user_data['id']}")
-                    if existing_users and len(existing_users) > 0:
-                        user_record = existing_users[0]
-                        user_id = user_record.get('id')
-                    else:
-                        raise HTTPException(status_code=500, detail="User creation failed")
-            
-            print(f"Created new user with ID: {user_id}")
+            supabase_insert("users", user_db, admin=True)
+            user_id = user_uuid
         
-        if not user_id:
-            raise HTTPException(status_code=500, detail="User ID not found")
-        
-        # Get user's Discord servers (guilds)
+        # Get Discord servers
         servers = []
         try:
             guilds_response = requests.get('https://discord.com/api/users/@me/guilds', 
@@ -484,65 +427,50 @@ async def discord_auth_token(request: DiscordAuthRequest):
                             "icon": f"https://cdn.discordapp.com/icons/{guild['id']}/{guild.get('icon')}.png" if guild.get('icon') else None,
                             "permissions": permissions
                         })
-                print(f"Found {len(servers)} servers with admin permissions")
-        except Exception as e:
-            print(f"Error fetching guilds: {str(e)}")
+        except:
+            pass
         
         # Create JWT token
         jwt_token = create_jwt_token({
-            "sub": str(user_id),
+            "sub": user_id,
             "username": discord_username,
-            "discord_id": user_data["id"],
+            "discord_id": discord_id,
             "email": user_data.get("email"),
-            "avatar": f"https://cdn.discordapp.com/avatars/{user_data['id']}/{user_data.get('avatar')}.png" if user_data.get('avatar') else None,
-            "account_type": "discord",
-            "exp": (datetime.utcnow() + timedelta(days=30)).timestamp()
+            "account_type": "discord"
         })
         
-        print(f"Auth successful for user: {user_id}")
         return {
             "success": True,
             "user": {
                 "id": user_id,
                 "username": discord_username,
-                "avatar": f"https://cdn.discordapp.com/avatars/{user_data['id']}/{user_data.get('avatar')}.png" if user_data.get('avatar') else None,
-                "discord_id": user_data["id"],
+                "avatar": f"https://cdn.discordapp.com/avatars/{discord_id}/{user_data.get('avatar')}.png" if user_data.get('avatar') else None,
+                "discord_id": discord_id,
                 "email": user_data.get("email"),
                 "account_type": "discord"
             },
             "access_token": jwt_token,
-            "servers": servers,
-            "message": "Login successful"
+            "servers": servers
         }
         
-    except HTTPException:
-        raise
     except Exception as e:
         print(f"Discord auth error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Authentication error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# ========== EMAIL AUTH ==========
 @app.post("/api/auth/email/register")
 async def email_register(request: EmailRegisterRequest):
-    """Register with email and password"""
+    """Register with email"""
     try:
         # Validate username
         if not re.match(r'^[a-zA-Z0-9_]{3,20}$', request.username):
-            raise HTTPException(status_code=400, detail="Username must be 3-20 characters, letters, numbers, and underscores only")
+            raise HTTPException(status_code=400, detail="Invalid username format")
         
-        # Validate email format
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_pattern, request.email):
-            raise HTTPException(status_code=400, detail="Invalid email format")
-        
-        # Check if email already exists
+        # Check if email exists
         existing_email = supabase_select("users", f"email=ilike.'{request.email}'")
         if existing_email:
             raise HTTPException(status_code=400, detail="Email already registered")
         
-        # Check if username already exists
+        # Check if username exists
         existing_username = supabase_select("users", f"username=ilike.'{request.username}'")
         if existing_username:
             raise HTTPException(status_code=400, detail="Username already taken")
@@ -550,9 +478,8 @@ async def email_register(request: EmailRegisterRequest):
         # Hash password
         hashed_password = hashlib.sha256(request.password.encode()).hexdigest()
         
-        # Generate a UUID for the user
+        # Create user
         user_uuid = str(uuid4())
-        
         user_db = {
             "id": user_uuid,
             "username": request.username,
@@ -565,20 +492,14 @@ async def email_register(request: EmailRegisterRequest):
             "avatar_url": f"https://ui-avatars.com/api/?name={request.username.replace(' ', '+')}&background=DC2626&color=fff"
         }
         
-        print(f"Attempting to create user: {user_db['email']}")
-        
         result = supabase_insert("users", user_db, admin=True)
         
         if result:
-            print(f"User created successfully: {user_uuid}")
-            
-            # Create JWT token
             jwt_token = create_jwt_token({
                 "sub": user_uuid,
                 "username": request.username,
                 "email": request.email,
-                "account_type": "email",
-                "exp": (datetime.utcnow() + timedelta(days=30)).timestamp()
+                "account_type": "email"
             })
             
             return {
@@ -590,30 +511,26 @@ async def email_register(request: EmailRegisterRequest):
                     "account_type": "email",
                     "avatar": f"https://ui-avatars.com/api/?name={request.username.replace(' ', '+')}&background=DC2626&color=fff"
                 },
-                "access_token": jwt_token,
-                "message": "Account created successfully"
+                "access_token": jwt_token
             }
         else:
-            print(f"Failed to create user in database")
-            raise HTTPException(status_code=500, detail="Failed to create user in database")
+            raise HTTPException(status_code=500, detail="Failed to create user")
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Email registration error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Registration error: {str(e)}")
+        print(f"Email register error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/auth/email/login")
 async def email_login(request: EmailLoginRequest):
-    """Login with email and password"""
+    """Login with email"""
     try:
-        # Find user by email (case-insensitive)
+        # Find user
         users = supabase_select("users", f"email=ilike.'{request.email}'")
         
         if not users:
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+            raise HTTPException(status_code=401, detail="Invalid credentials")
         
         user = users[0]
         
@@ -622,7 +539,7 @@ async def email_login(request: EmailLoginRequest):
         stored_hash = user.get('password_hash')
         
         if not stored_hash or hashed_input != stored_hash:
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+            raise HTTPException(status_code=401, detail="Invalid credentials")
         
         # Update last login
         supabase_update("users", {
@@ -634,10 +551,7 @@ async def email_login(request: EmailLoginRequest):
             "sub": user['id'],
             "username": user['username'],
             "email": user['email'],
-            "account_type": user.get('account_type', 'email'),
-            "discord_id": user.get('discord_id'),
-            "avatar": user.get('avatar_url'),
-            "exp": (datetime.utcnow() + timedelta(days=30)).timestamp()
+            "account_type": user.get('account_type', 'email')
         })
         
         return {
@@ -647,25 +561,22 @@ async def email_login(request: EmailLoginRequest):
                 "username": user['username'],
                 "email": user['email'],
                 "account_type": user.get('account_type', 'email'),
-                "discord_id": user.get('discord_id'),
                 "avatar": user.get('avatar_url')
             },
-            "access_token": jwt_token,
-            "message": "Login successful"
+            "access_token": jwt_token
         }
         
     except HTTPException:
         raise
     except Exception as e:
         print(f"Email login error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Login error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# ========== EMAIL LINKING ==========
 @app.post("/api/auth/link-email")
 async def link_email(request: LinkEmailRequest, authorization: Optional[str] = Header(None)):
     """Link email to Discord account"""
     if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
+        raise HTTPException(status_code=401, detail="Invalid token")
     
     token = authorization.split(" ")[1]
     payload = verify_jwt_token(token)
@@ -675,51 +586,34 @@ async def link_email(request: LinkEmailRequest, authorization: Optional[str] = H
     
     user_id = payload.get("sub")
     
-    # Validate email format
-    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    if not re.match(email_pattern, request.email):
-        raise HTTPException(status_code=400, detail="Invalid email format")
-    
     # Check if email already exists
     existing_email = supabase_select("users", f"email=ilike.'{request.email}'")
     if existing_email:
-        raise HTTPException(status_code=400, detail="Email already registered to another account")
+        raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Update user with email
+    # Update user
     update_data = {
         "email": request.email.lower(),
-        "account_type": "both",  # User now has both Discord and email
-        "updated_at": datetime.utcnow().isoformat()
+        "account_type": "both"
     }
     
     result = supabase_update("users", update_data, "id", user_id)
     
     if result:
-        return {
-            "success": True,
-            "email": request.email,
-            "message": "Email linked successfully"
-        }
+        return {"success": True, "message": "Email linked successfully"}
     else:
         raise HTTPException(status_code=500, detail="Failed to link email")
 
-# ========== REFRESH TOKEN ==========
 @app.post("/api/auth/refresh")
 async def refresh_login(request: RefreshTokenRequest):
-    """Refresh user session"""
+    """Refresh token"""
     try:
-        user_token = request.token
-        
-        if not user_token:
-            raise HTTPException(status_code=400, detail="No token provided")
-        
-        payload = verify_jwt_token(user_token)
+        payload = verify_jwt_token(request.token)
         
         if not payload:
-            raise HTTPException(status_code=401, detail="Invalid or expired token")
+            raise HTTPException(status_code=401, detail="Invalid token")
         
         user_id = payload.get("sub")
-        
         users = supabase_select("users", f"id=eq.'{user_id}'")
         
         if not users:
@@ -727,55 +621,158 @@ async def refresh_login(request: RefreshTokenRequest):
         
         user = users[0]
         
-        # Update last login
-        supabase_update("users", {
-            "last_login": datetime.utcnow().isoformat()
-        }, "id", user_id)
-        
-        # Create new JWT token
+        # Create new token
         jwt_token = create_jwt_token({
             "sub": user_id,
             "username": user.get('username'),
             "email": user.get('email'),
-            "discord_id": user.get('discord_id'),
-            "account_type": user.get('account_type', 'email'),
-            "avatar": user.get('avatar_url'),
-            "exp": (datetime.utcnow() + timedelta(days=30)).timestamp()
+            "account_type": user.get('account_type', 'email')
         })
-        
-        # Get Discord servers if user has Discord connected
-        servers = []
-        if user.get('discord_id') and user.get('account_type') in ['discord', 'both']:
-            # Note: Can't get servers without Discord token
-            pass
         
         return {
             "success": True,
+            "access_token": jwt_token,
             "user": {
                 "id": user_id,
                 "username": user.get('username'),
                 "email": user.get('email'),
                 "account_type": user.get('account_type', 'email'),
-                "discord_id": user.get('discord_id'),
                 "avatar": user.get('avatar_url')
-            },
-            "access_token": jwt_token,
-            "servers": servers,
-            "message": "Session refreshed"
+            }
         }
+        
+    except Exception as e:
+        print(f"Refresh error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ========== TOURNAMENT ENDPOINTS ==========
+@app.post("/api/tournaments")
+async def create_tournament(request: TournamentCreate, authorization: Optional[str] = Header(None)):
+    """Create a tournament"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    token = authorization.split(" ")[1]
+    payload = verify_jwt_token(token)
+    
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    user_id = payload.get("sub")
+    
+    try:
+        # Create tournament ID
+        tournament_id = str(uuid4())
+        
+        # Validate start date
+        try:
+            start_date = datetime.fromisoformat(request.start_date.replace('Z', '+00:00'))
+            if start_date < datetime.utcnow():
+                raise HTTPException(status_code=400, detail="Start date must be in the future")
+        except:
+            raise HTTPException(status_code=400, detail="Invalid start date format")
+        
+        # Create tournament
+        tournament_data = {
+            "id": tournament_id,
+            "name": request.name,
+            "game": request.game,
+            "description": request.description,
+            "max_teams": request.max_teams,
+            "start_date": request.start_date,
+            "discord_server_id": request.discord_server_id,
+            "bracket_type": request.bracket_type,
+            "max_players_per_team": request.max_players_per_team,
+            "region_filter": request.region_filter,
+            "prize_pool": request.prize_pool,
+            "status": "registration",
+            "created_by": user_id,
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        result = supabase_insert("tournaments", tournament_data, admin=True)
+        
+        if result:
+            # Update server stats
+            if request.discord_server_id:
+                server_stats = {
+                    "server_id": request.discord_server_id,
+                    "server_name": f"Tournament: {request.name}",
+                    "last_updated": datetime.utcnow().isoformat(),
+                    "is_active": True
+                }
+                
+                # Check if server exists
+                existing_servers = supabase_select("bot_servers", f"server_id=eq.{request.discord_server_id}")
+                if not existing_servers:
+                    supabase_insert("bot_servers", server_stats, admin=True)
+            
+            return {
+                "success": True,
+                "tournament_id": tournament_id,
+                "message": "Tournament created successfully"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to create tournament")
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Refresh error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Refresh error: {str(e)}")
+        print(f"Create tournament error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# ========== PROTECTED ENDPOINTS ==========
-@app.get("/api/auth/me")
-async def get_current_user(authorization: Optional[str] = Header(None)):
-    """Get current user info"""
+@app.get("/api/tournaments/{tournament_id}")
+async def get_tournament(tournament_id: str, authorization: Optional[str] = Header(None)):
+    """Get tournament details"""
+    tournaments = supabase_select("tournaments", f"id=eq.{tournament_id}")
+    
+    if not tournaments:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+    
+    tournament = tournaments[0]
+    
+    # Get teams
+    teams = supabase_select("teams", f"tournament_id=eq.{tournament_id}")
+    
+    # Add team count
+    tournament['team_count'] = len(teams)
+    tournament['current_teams'] = len(teams)
+    tournament['progress_percent'] = int((len(teams) / tournament.get('max_teams', 16)) * 100) if tournament.get('max_teams', 16) > 0 else 0
+    
+    return {
+        "success": True,
+        "tournament": tournament,
+        "teams": teams
+    }
+
+@app.get("/api/tournaments/{tournament_id}/public")
+async def get_tournament_public(tournament_id: str):
+    """Get tournament details (public)"""
+    tournaments = supabase_select("tournaments", f"id=eq.{tournament_id}")
+    
+    if not tournaments:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+    
+    tournament = tournaments[0]
+    teams = supabase_select("teams", f"tournament_id=eq.{tournament_id}")
+    
+    tournament['team_count'] = len(teams)
+    tournament['current_teams'] = len(teams)
+    tournament['progress_percent'] = int((len(teams) / tournament.get('max_teams', 16)) * 100) if tournament.get('max_teams', 16) > 0 else 0
+    
+    return {
+        "success": True,
+        "tournament": tournament,
+        "teams": teams
+    }
+
+# ========== TEAM ENDPOINTS ==========
+@app.post("/api/teams")
+async def register_team(request: TeamRegister, authorization: Optional[str] = Header(None)):
+    """Register a team"""
     if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
+        raise HTTPException(status_code=401, detail="Invalid token")
     
     token = authorization.split(" ")[1]
     payload = verify_jwt_token(token)
@@ -783,70 +780,101 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
     
-    user_id = payload.get("sub")
-    users = supabase_select("users", f"id=eq.'{user_id}'")
+    # Check if tournament exists
+    tournaments = supabase_select("tournaments", f"id=eq.{request.tournament_id}")
     
-    if not users:
-        raise HTTPException(status_code=404, detail="User not found")
+    if not tournaments:
+        raise HTTPException(status_code=404, detail="Tournament not found")
     
-    user = users[0]
-    return {"success": True, "user": user}
-
-@app.post("/api/tournaments")
-async def create_tournament(request: TournamentCreate, authorization: Optional[str] = Header(None)):
-    """Create a new tournament"""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
+    tournament = tournaments[0]
     
-    token = authorization.split(" ")[1]
-    payload = verify_jwt_token(token)
+    # Check if tournament is accepting registrations
+    if tournament.get('status') != 'registration':
+        raise HTTPException(status_code=400, detail="Tournament is not accepting registrations")
     
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    # Check if team name is taken
+    existing_teams = supabase_select("teams", f"tournament_id=eq.{request.tournament_id}&name=ilike.'{request.name}'")
+    if existing_teams:
+        raise HTTPException(status_code=400, detail="Team name already taken in this tournament")
     
-    user_id = payload.get("sub")
+    # Check if captain already has a team
+    captain_teams = supabase_select("teams", f"captain_discord_id=eq.{request.captain_discord_id}&tournament_id=eq.{request.tournament_id}")
+    if captain_teams:
+        raise HTTPException(status_code=400, detail="Captain already has a team in this tournament")
     
-    # Validate required fields
-    if not request.name or len(request.name) < 3:
-        raise HTTPException(status_code=400, detail="Tournament name must be at least 3 characters")
+    # Check team limit
+    current_teams = supabase_select("teams", f"tournament_id=eq.{request.tournament_id}")
+    if len(current_teams) >= tournament.get('max_teams', 16):
+        raise HTTPException(status_code=400, detail="Tournament is full")
     
-    if not request.game:
-        raise HTTPException(status_code=400, detail="Game is required")
-    
-    if not request.start_date:
-        raise HTTPException(status_code=400, detail="Start date is required")
-    
-    # Generate tournament ID
-    tournament_id = str(uuid4())
-    
-    tournament_data = {
-        "id": tournament_id,
+    # Create team
+    team_id = str(uuid4())
+    team_data = {
+        "id": team_id,
+        "tournament_id": request.tournament_id,
         "name": request.name,
-        "game": request.game,
-        "description": request.description,
-        "max_teams": request.max_teams,
-        "start_date": request.start_date,
-        "discord_server_id": request.discord_server_id,
-        "bracket_type": request.bracket_type,
-        "max_players_per_team": request.max_players_per_team,
-        "region_filter": request.region_filter,
-        "prize_pool": request.prize_pool,
-        "status": "registration",
-        "created_by": user_id,
+        "captain_discord_id": request.captain_discord_id,
         "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat()
+        "status": "registered"
     }
     
-    result = supabase_insert("tournaments", tournament_data, admin=True)
+    result = supabase_insert("teams", team_data, admin=True)
     
     if result:
         return {
             "success": True,
-            "tournament_id": tournament_id,
-            "message": "Tournament created successfully"
+            "team_id": team_id,
+            "message": "Team registered successfully"
         }
     else:
-        raise HTTPException(status_code=500, detail="Failed to create tournament")
+        raise HTTPException(status_code=500, detail="Failed to register team")
+
+# ========== BOT ENDPOINTS ==========
+@app.post("/api/bot/server-stats")
+async def update_server_stats(request: Request):
+    """Update server stats from bot"""
+    try:
+        data = await request.json()
+        
+        server_id = data.get('server_id')
+        server_name = data.get('server_name')
+        member_count = data.get('member_count', 0)
+        is_active = data.get('is_active', True)
+        
+        if not server_id:
+            raise HTTPException(status_code=400, detail="Server ID required")
+        
+        # Check if server exists
+        existing_servers = supabase_select("bot_servers", f"server_id=eq.{server_id}")
+        
+        if existing_servers:
+            # Update
+            update_data = {
+                "server_name": server_name[:100] if server_name else "Unknown Server",
+                "member_count": member_count,
+                "is_active": is_active,
+                "last_updated": datetime.utcnow().isoformat()
+            }
+            
+            supabase_update("bot_servers", update_data, "server_id", server_id)
+        else:
+            # Create
+            server_data = {
+                "server_id": server_id,
+                "server_name": server_name[:100] if server_name else "Unknown Server",
+                "member_count": member_count,
+                "is_active": is_active,
+                "created_at": datetime.utcnow().isoformat(),
+                "last_updated": datetime.utcnow().isoformat()
+            }
+            
+            supabase_insert("bot_servers", server_data, admin=True)
+        
+        return {"success": True, "message": "Server stats updated"}
+        
+    except Exception as e:
+        print(f"Server stats error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ========== RUN SERVER ==========
 if __name__ == "__main__":
