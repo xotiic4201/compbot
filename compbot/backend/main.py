@@ -21,6 +21,7 @@ from fastapi_limiter import FastAPILimiter
 import redis.asyncio as redis
 import random
 from enum import Enum
+import asyncio
 
 # ========== SETUP LOGGING ==========
 logging.basicConfig(
