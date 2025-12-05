@@ -16,8 +16,9 @@ from uuid import uuid4
 import re
 import logging
 from contextlib import asynccontextmanager
+from fastapi import FastAPI
 from fastapi_limiter import FastAPILimiter
-await FastAPILimiter.init(redis)
+import redis.asyncio as redis
 # ========== SETUP LOGGING ==========
 logging.basicConfig(
     level=logging.INFO,
@@ -1287,5 +1288,6 @@ if __name__ == "__main__":
             workers=int(os.getenv("WORKERS", 4)),
             log_level="warning"
         )
+
 
 
