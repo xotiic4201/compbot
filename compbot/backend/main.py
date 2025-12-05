@@ -1,6 +1,7 @@
-from fastapi import FastAPI, HTTPException, Request, Header
+from fastapi import FastAPI, HTTPException, Request, Header, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
 import requests
 import secrets
@@ -8,42 +9,113 @@ import hashlib
 import json
 import base64
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict
-from pydantic import BaseModel, EmailStr, Field
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, EmailStr, Field, validator
 import jwt
 from uuid import uuid4
 import re
+import logging
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="XTourney API", version="10.0.0")
+# ========== SETUP LOGGING ==========
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# ========== LIFECYCLE MANAGEMENT ==========
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handle startup and shutdown events"""
+    # Startup
+    logger.info("🚀 Starting XTourney API")
+    logger.info(f"📊 Environment: {os.getenv('ENVIRONMENT', 'development')}")
+    yield
+    # Shutdown
+    logger.info("🛑 Shutting down XTourney API")
+
+# ========== APP INITIALIZATION ==========
+app = FastAPI(
+    title="XTourney API", 
+    version="10.0.0",
+    description="Professional Esports Tournament Platform",
+    lifespan=lifespan
+)
+
+# ========== SECURITY MIDDLEWARE ==========
+security = HTTPBearer()
+
+# CORS Configuration
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://www.xotiicsplaza.us",
+    "https://xotiicsplaza.us",
+    "https://*.xotiicsplaza.us"
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # ========== CONFIGURATION ==========
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://your-project.supabase.co")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "your-anon-key")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "your-service-key")
-DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "1445127821742575726")
-DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET", "your-client-secret")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://www.xotiicsplaza.us/")
-JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_urlsafe(32))
+class Config:
+    """Configuration management"""
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "https://your-project.supabase.co")
+    SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+    SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+    
+    DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "1445127821742575726")
+    DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
+    
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "https://www.xotiicsplaza.us/")
+    JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_urlsafe(32))
+    JWT_ALGORITHM = "HS256"
+    JWT_EXPIRE_DAYS = 30
+    
+    ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+    API_VERSION = "v1"
+    
+    # Rate limiting
+    RATE_LIMIT_PER_MINUTE = 60
+    
+    @classmethod
+    def validate(cls):
+        """Validate required environment variables"""
+        required = ["SUPABASE_URL", "SUPABASE_KEY", "DISCORD_CLIENT_SECRET"]
+        missing = [var for var in required if not getattr(cls, var, None)]
+        if missing:
+            raise ValueError(f"Missing required environment variables: {missing}")
+        
+        logger.info("✅ Configuration validated successfully")
+        return True
+
+# Validate config
+try:
+    Config.validate()
+except ValueError as e:
+    logger.error(f"❌ Configuration error: {e}")
+    raise
 
 # Headers for Supabase requests
 headers = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json"
+    "apikey": Config.SUPABASE_KEY,
+    "Authorization": f"Bearer {Config.SUPABASE_KEY}",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation"
 }
 
 admin_headers = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-    "Content-Type": "application/json"
+    "apikey": Config.SUPABASE_KEY,
+    "Authorization": f"Bearer {Config.SUPABASE_SERVICE_KEY}",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation"
 }
 
 # ========== PYDANTIC MODELS ==========
@@ -52,12 +124,18 @@ class DiscordAuthRequest(BaseModel):
     redirect_uri: Optional[str] = None
 
 class RefreshTokenRequest(BaseModel):
-    token: str
+    refresh_token: str
 
 class EmailRegisterRequest(BaseModel):
     email: EmailStr
     username: str = Field(..., min_length=3, max_length=20)
     password: str = Field(..., min_length=8)
+    
+    @validator('username')
+    def validate_username(cls, v):
+        if not re.match(r'^[a-zA-Z0-9_]{3,20}$', v):
+            raise ValueError('Username can only contain letters, numbers, and underscores')
+        return v
 
 class EmailLoginRequest(BaseModel):
     email: EmailStr
@@ -75,307 +153,388 @@ class TournamentCreate(BaseModel):
     discord_server_id: Optional[str] = None
     bracket_type: str = Field(default="single_elimination")
     max_players_per_team: int = Field(default=5, ge=1, le=10)
-    region_filter: bool = Field(default=False)
+    region: str = Field(default="global")
     prize_pool: Optional[str] = Field(default="", max_length=200)
+    
+    @validator('start_date')
+    def validate_start_date(cls, v):
+        try:
+            start_date = datetime.fromisoformat(v.replace('Z', '+00:00'))
+            if start_date < datetime.utcnow():
+                raise ValueError("Start date must be in the future")
+            return v
+        except:
+            raise ValueError("Invalid date format. Use ISO format")
 
 class TeamRegister(BaseModel):
     tournament_id: str
     name: str = Field(..., min_length=2, max_length=50)
     captain_discord_id: str
+    region: Optional[str] = Field(default="global")
+    members: Optional[List[str]] = Field(default_factory=list)
 
 class ProofSubmission(BaseModel):
     tournament_id: str
     match_id: str
     description: Optional[str] = ""
-    image_url: Optional[str] = None
+    image_url: str
 
-# ========== DATABASE FUNCTIONS ==========
-def supabase_insert(table: str, data: dict, admin=False):
-    """Insert data into Supabase"""
-    try:
-        response = requests.post(
-            f"{SUPABASE_URL}/rest/v1/{table}",
-            json=data,
-            headers=admin_headers if admin else headers,
-            params={"select": "*"}
-        )
-        if response.status_code in [200, 201, 409]:
+# ========== DATABASE SERVICE ==========
+class DatabaseService:
+    """Database service with retry logic and error handling"""
+    
+    @staticmethod
+    def execute_query(table: str, method: str = "GET", data: dict = None, 
+                     query: str = "", admin: bool = False):
+        """Execute a database query with retry logic"""
+        max_retries = 3
+        for attempt in range(max_retries):
             try:
-                return response.json()
-            except:
-                return {"success": True}
-        print(f"Insert error {response.status_code}: {response.text[:200]}")
-        return None
-    except Exception as e:
-        print(f"Insert exception: {str(e)}")
-        return None
+                url = f"{Config.SUPABASE_URL}/rest/v1/{table}"
+                if query:
+                    url += f"?{query}"
+                
+                headers_to_use = admin_headers if admin else headers
+                
+                if method == "GET":
+                    response = requests.get(url, headers=headers_to_use, timeout=10)
+                elif method == "POST":
+                    response = requests.post(url, json=data, headers=headers_to_use, timeout=10)
+                elif method == "PATCH":
+                    response = requests.patch(url, json=data, headers=headers_to_use, timeout=10)
+                elif method == "DELETE":
+                    response = requests.delete(url, headers=headers_to_use, timeout=10)
+                else:
+                    raise ValueError(f"Invalid method: {method}")
+                
+                if response.status_code in [200, 201]:
+                    try:
+                        return response.json()
+                    except:
+                        return {"success": True}
+                elif response.status_code == 404:
+                    return []
+                else:
+                    logger.error(f"Database error {response.status_code}: {response.text[:200]}")
+                    if attempt < max_retries - 1:
+                        continue
+                    return None
+                    
+            except requests.exceptions.Timeout:
+                logger.warning(f"Database timeout (attempt {attempt + 1}/{max_retries})")
+                if attempt < max_retries - 1:
+                    continue
+                raise HTTPException(status_code=504, detail="Database timeout")
+            except Exception as e:
+                logger.error(f"Database exception: {str(e)}")
+                if attempt < max_retries - 1:
+                    continue
+                raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    
+    @staticmethod
+    def insert(table: str, data: dict, admin: bool = False):
+        return DatabaseService.execute_query(table, "POST", data, admin=admin)
+    
+    @staticmethod
+    def select(table: str, query: str = "", admin: bool = False):
+        return DatabaseService.execute_query(table, "GET", query=query, admin=admin)
+    
+    @staticmethod
+    def update(table: str, data: dict, column: str, value: str, admin: bool = False):
+        query = f"{column}=eq.{value}"
+        return DatabaseService.execute_query(table, "PATCH", data, query=query, admin=admin)
+    
+    @staticmethod
+    def delete(table: str, column: str, value: str, admin: bool = False):
+        query = f"{column}=eq.{value}"
+        return DatabaseService.execute_query(table, "DELETE", query=query, admin=admin)
 
-def supabase_select(table: str, query: str = "", admin=False):
-    try:
-        url = f"{SUPABASE_URL}/rest/v1/{table}"
-        if query:
-            url += f"?{query}"
-        response = requests.get(url, headers=admin_headers if admin else headers)
-        if response.status_code == 200:
-            try:
-                return response.json()
-            except:
-                return []
-        return []
-    except Exception as e:
-        print(f"Select exception: {str(e)}")
-        return []
+# ========== AUTH SERVICE ==========
+class AuthService:
+    """Authentication and authorization service"""
+    
+    @staticmethod
+    def create_tokens(user_data: dict) -> Dict[str, str]:
+        """Create access and refresh tokens"""
+        access_payload = {
+            "sub": user_data.get("id"),
+            "username": user_data.get("username"),
+            "discord_id": user_data.get("discord_id"),
+            "email": user_data.get("email"),
+            "account_type": user_data.get("account_type"),
+            "iat": datetime.utcnow(),
+            "exp": datetime.utcnow() + timedelta(days=7)  # Short-lived access token
+        }
+        
+        refresh_payload = {
+            "sub": user_data.get("id"),
+            "type": "refresh",
+            "iat": datetime.utcnow(),
+            "exp": datetime.utcnow() + timedelta(days=Config.JWT_EXPIRE_DAYS)
+        }
+        
+        access_token = jwt.encode(access_payload, Config.JWT_SECRET, algorithm=Config.JWT_ALGORITHM)
+        refresh_token = jwt.encode(refresh_payload, Config.JWT_SECRET, algorithm=Config.JWT_ALGORITHM)
+        
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": 7 * 24 * 60 * 60  # 7 days in seconds
+        }
+    
+    @staticmethod
+    def verify_token(token: str) -> Optional[Dict]:
+        """Verify JWT token"""
+        try:
+            payload = jwt.decode(token, Config.JWT_SECRET, algorithms=[Config.JWT_ALGORITHM])
+            return payload
+        except jwt.ExpiredSignatureError:
+            logger.warning("Token expired")
+            return None
+        except jwt.InvalidTokenError:
+            logger.warning("Invalid token")
+            return None
+    
+    @staticmethod
+    async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict:
+        """Get current authenticated user"""
+        token = credentials.credentials
+        payload = AuthService.verify_token(token)
+        
+        if not payload or payload.get("type") == "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired token",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        
+        user_id = payload.get("sub")
+        users = DatabaseService.select("users", f"id=eq.'{user_id}'")
+        
+        if not users:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        
+        return users[0]
 
-def supabase_update(table: str, data: dict, column: str, value: str, admin=False):
-    try:
-        response = requests.patch(
-            f"{SUPABASE_URL}/rest/v1/{table}?{column}=eq.{value}",
-            json=data,
-            headers=admin_headers if admin else headers,
-            params={"select": "*"}
-        )
-        if response.status_code == 200:
+# ========== DISCORD API SERVICE ==========
+class DiscordAPIService:
+    """Discord API integration service"""
+    
+    @staticmethod
+    def exchange_code(code: str, redirect_uri: str) -> Dict:
+        """Exchange Discord authorization code for tokens"""
+        try:
+            token_data = {
+                'client_id': Config.DISCORD_CLIENT_ID,
+                'client_secret': Config.DISCORD_CLIENT_SECRET,
+                'grant_type': 'authorization_code',
+                'code': code,
+                'redirect_uri': redirect_uri
+            }
+            
+            response = requests.post(
+                'https://discord.com/api/oauth2/token',
+                data=token_data,
+                headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                timeout=10
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"Discord token exchange failed: {response.text}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Discord authentication failed"
+                )
+            
             return response.json()
-        return []
-    except Exception as e:
-        print(f"Update exception: {str(e)}")
-        return []
+        except requests.exceptions.Timeout:
+            logger.error("Discord API timeout")
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Discord API timeout"
+            )
+        except Exception as e:
+            logger.error(f"Discord API error: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Discord API error"
+            )
+    
+    @staticmethod
+    def get_user_info(access_token: str) -> Dict:
+        """Get Discord user information"""
+        try:
+            response = requests.get(
+                'https://discord.com/api/users/@me',
+                headers={'Authorization': f'Bearer {access_token}'},
+                timeout=10
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"Failed to get Discord user info: {response.text}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Failed to get Discord user information"
+                )
+            
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting Discord user info: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error getting Discord user information"
+            )
+    
+    @staticmethod
+    def get_user_guilds(access_token: str) -> List[Dict]:
+        """Get user's Discord guilds"""
+        try:
+            response = requests.get(
+                'https://discord.com/api/users/@me/guilds',
+                headers={'Authorization': f'Bearer {access_token}'},
+                timeout=10
+            )
+            
+            if response.status_code != 200:
+                logger.warning(f"Failed to get Discord guilds: {response.text}")
+                return []
+            
+            return response.json()
+        except Exception as e:
+            logger.warning(f"Error getting Discord guilds: {str(e)}")
+            return []
+    
+    @staticmethod
+    def get_guild_member(guild_id: str, user_id: str, access_token: str) -> Optional[Dict]:
+        """Get guild member information"""
+        try:
+            response = requests.get(
+                f'https://discord.com/api/guilds/{guild_id}/members/{user_id}',
+                headers={'Authorization': f'Bot {Config.DISCORD_CLIENT_SECRET}'},
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception as e:
+            logger.warning(f"Error getting guild member: {str(e)}")
+            return None
 
-def supabase_delete(table: str, column: str, value: str, admin=False):
+# ========== RATE LIMITING ==========
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter
+import redis.asyncio as redis
+
+async def init_redis():
+    """Initialize Redis for rate limiting"""
+    redis_client = redis.from_url(
+        "redis://localhost:6379",
+        encoding="utf-8",
+        decode_responses=True
+    )
+    await FastAPILimiter.init(redis_client)
+
+# ========== MIDDLEWARE ==========
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all requests"""
+    start_time = datetime.utcnow()
+    
     try:
-        response = requests.delete(
-            f"{SUPABASE_URL}/rest/v1/{table}?{column}=eq.{value}",
-            headers=admin_headers if admin else headers
+        response = await call_next(request)
+        process_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        
+        logger.info(
+            f"{request.method} {request.url.path} "
+            f"{response.status_code} {process_time:.2f}ms"
         )
-        return response.status_code == 204
+        
+        return response
     except Exception as e:
-        print(f"Delete exception: {str(e)}")
-        return False
+        logger.error(f"Request error: {str(e)}")
+        raise
 
-# ========== JWT FUNCTIONS ==========
-def create_jwt_token(data: dict):
-    """Create JWT token"""
-    payload = data.copy()
-    payload['exp'] = datetime.utcnow() + timedelta(days=30)
-    payload['iat'] = datetime.utcnow()
-    
-    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-
-def verify_jwt_token(token: str):
-    """Verify JWT token"""
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-        return payload
-    except jwt.ExpiredSignatureError:
-        return None
-    except jwt.InvalidTokenError:
-        return None
-
-def get_current_user(authorization: str):
-    """Get current user from authorization header"""
-    if not authorization or not authorization.startswith("Bearer "):
-        return None
-    
-    token = authorization.split(" ")[1]
-    payload = verify_jwt_token(token)
-    
-    if not payload:
-        return None
-    
-    user_id = payload.get("sub")
-    users = supabase_select("users", f"id=eq.'{user_id}'")
-    
-    if not users:
-        return None
-    
-    return users[0]
-
-# ========== PUBLIC ENDPOINTS ==========
+# ========== HEALTH & STATUS ==========
 @app.get("/")
 async def root():
-    return {"message": "XTourney API", "status": "running", "version": "10.0.0"}
+    """Root endpoint"""
+    return {
+        "message": "XTourney API",
+        "version": Config.API_VERSION,
+        "status": "running",
+        "environment": Config.ENVIRONMENT,
+        "docs": "/docs",
+        "health": "/api/health"
+    }
 
-@app.get("/api/health")
+@app.get("/api/health", dependencies=[Depends(RateLimiter(times=30, seconds=60))])
 async def health_check():
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
-
-@app.get("/api/stats/summary")
-async def get_stats_summary():
-    """Get overall platform statistics"""
+    """Health check endpoint"""
     try:
-        # Get tournaments count
-        tournaments = supabase_select("tournaments", "status=in.(registration,ongoing)")
-        active_tournaments = len(tournaments)
+        # Check database connection
+        db_check = DatabaseService.select("users", "limit=1")
         
-        # Get total teams
-        total_teams = 0
-        total_players = 0
-        for tournament in tournaments:
-            teams = supabase_select("teams", f"tournament_id=eq.{tournament.get('id')}")
-            total_teams += len(teams)
-            total_players += len(teams) * tournament.get('max_players_per_team', 5)
-        
-        # Get server count
-        servers = supabase_select("bot_servers", "is_active=eq.true")
-        connected_servers = len(servers)
-        
-        # Estimate live matches
-        live_matches = min(total_teams // 2, 10)
+        # Check Discord API (lightweight endpoint)
+        discord_check = requests.get(
+            "https://discord.com/api/v10/users/@me",
+            headers={"Authorization": f"Bot {Config.DISCORD_CLIENT_SECRET}"},
+            timeout=5
+        )
         
         return {
-            "success": True,
-            "stats": {
-                "live_matches": live_matches,
-                "active_tournaments": active_tournaments,
-                "connected_servers": connected_servers,
-                "total_players": total_players,
-                "total_teams": total_teams
-            }
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "database": "connected" if db_check is not None else "disconnected",
+            "discord_api": "connected" if discord_check.status_code in [200, 401] else "disconnected",
+            "version": Config.API_VERSION
         }
     except Exception as e:
-        print(f"Stats error: {str(e)}")
-        return {
-            "success": True,
-            "stats": {
-                "live_matches": 0,
-                "active_tournaments": 0,
-                "connected_servers": 0,
-                "total_players": 0,
-                "total_teams": 0
-            }
-        }
-
-@app.get("/api/matches/live")
-async def get_live_matches():
-    """Get live matches"""
-    try:
-        tournaments = supabase_select("tournaments", "status=eq.ongoing&limit=5")
-        
-        matches = []
-        for tournament in tournaments:
-            teams = supabase_select("teams", f"tournament_id=eq.{tournament.get('id')}&limit=8")
-            
-            if len(teams) >= 2:
-                for i in range(0, len(teams), 2):
-                    if i + 1 < len(teams):
-                        matches.append({
-                            "id": f"{tournament['id']}_{i//2}",
-                            "tournament_id": tournament['id'],
-                            "tournament_name": tournament['name'],
-                            "game": tournament['game'],
-                            "status": "live",
-                            "team1": {
-                                "id": teams[i]['id'],
-                                "name": teams[i]['name'],
-                                "score": teams[i].get('score', 0)
-                            },
-                            "team2": {
-                                "id": teams[i+1]['id'],
-                                "name": teams[i+1]['name'],
-                                "score": teams[i+1].get('score', 0)
-                            },
-                            "start_time": tournament.get('start_date'),
-                            "viewers": 0,
-                            "round": "Round 1"
-                        })
-        
-        if not matches:
-            # Sample data for demo
-            matches = [
-                {
-                    "id": "demo_1",
-                    "tournament_id": "demo",
-                    "tournament_name": "Valorant Championship",
-                    "game": "Valorant",
-                    "status": "live",
-                    "team1": {
-                        "id": "team1",
-                        "name": "Team Phoenix",
-                        "score": 8
-                    },
-                    "team2": {
-                        "id": "team2",
-                        "name": "Team Dragon",
-                        "score": 5
-                    },
-                    "start_time": datetime.utcnow().isoformat(),
-                    "viewers": 1245,
-                    "round": "Semi-Finals"
-                }
-            ]
-        
-        return {
-            "success": True,
-            "matches": matches[:10],
-            "count": len(matches)
-        }
-    except Exception as e:
-        print(f"Live matches error: {str(e)}")
-        return {"success": False, "matches": [], "count": 0}
-
-@app.get("/api/tournaments/public")
-async def get_public_tournaments():
-    """Get public tournaments"""
-    try:
-        tournaments = supabase_select("tournaments", "status=in.(registration,ongoing)&order=start_date.asc&limit=20")
-        
-        for tournament in tournaments:
-            teams = supabase_select("teams", f"tournament_id=eq.{tournament.get('id')}")
-            tournament['team_count'] = len(teams)
-            tournament['current_teams'] = len(teams)
-            tournament['progress_percent'] = int((len(teams) / tournament.get('max_teams', 16)) * 100) if tournament.get('max_teams', 16) > 0 else 0
-        
-        return {
-            "success": True,
-            "tournaments": tournaments,
-            "count": len(tournaments)
-        }
-    except Exception as e:
-        print(f"Public tournaments error: {str(e)}")
-        return {"success": False, "tournaments": [], "count": 0}
+        logger.error(f"Health check failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service unhealthy"
+        )
 
 # ========== AUTH ENDPOINTS ==========
-@app.post("/api/auth/discord/token")
+@app.post("/api/auth/discord/token", response_model=Dict, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def discord_auth_token(request: DiscordAuthRequest):
-    """Exchange Discord code for token"""
+    """Exchange Discord OAuth2 code for JWT tokens"""
     try:
-        redirect_uri = request.redirect_uri or f"{FRONTEND_URL}"
+        # Exchange code for Discord tokens
+        discord_tokens = DiscordAPIService.exchange_code(
+            request.code, 
+            request.redirect_uri or Config.FRONTEND_URL
+        )
         
-        # Get Discord access token
-        token_data = {
-            'client_id': DISCORD_CLIENT_ID,
-            'client_secret': DISCORD_CLIENT_SECRET,
-            'grant_type': 'authorization_code',
-            'code': request.code,
-            'redirect_uri': redirect_uri
-        }
-        
-        token_response = requests.post('https://discord.com/api/oauth2/token', data=token_data)
-        
-        if token_response.status_code != 200:
-            raise HTTPException(status_code=400, detail="Discord auth failed")
-        
-        discord_token = token_response.json()
-        access_token = discord_token.get("access_token")
-        
+        access_token = discord_tokens.get("access_token")
         if not access_token:
-            raise HTTPException(status_code=400, detail="No access token received")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No access token received from Discord"
+            )
         
-        # Get Discord user info
-        user_response = requests.get('https://discord.com/api/users/@me', 
-                                   headers={'Authorization': f'Bearer {access_token}'})
-        user_data = user_response.json()
+        # Get user info from Discord
+        user_data = DiscordAPIService.get_user_info(access_token)
         
         if 'id' not in user_data:
-            raise HTTPException(status_code=400, detail="Invalid user data from Discord")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid user data from Discord"
+            )
         
-        discord_username = user_data.get('global_name') or user_data['username']
         discord_id = user_data['id']
+        discord_username = user_data.get('global_name') or user_data['username']
         
-        # Check if user exists
-        existing_users = supabase_select("users", f"discord_id=eq.{discord_id}")
+        # Check if user exists in our database
+        existing_users = DatabaseService.select("users", f"discord_id=eq.'{discord_id}'")
         
-        if existing_users and len(existing_users) > 0:
+        if existing_users:
             # Update existing user
             user = existing_users[0]
             user_id = user['id']
@@ -391,13 +550,13 @@ async def discord_auth_token(request: DiscordAuthRequest):
             if user_data.get('email'):
                 update_data["email"] = user_data.get('email')
             
-            supabase_update("users", update_data, "id", user_id)
+            DatabaseService.update("users", update_data, "id", user_id)
             
         else:
             # Create new user
-            user_uuid = str(uuid4())
+            user_id = str(uuid4())
             user_db = {
-                "id": user_uuid,
+                "id": user_id,
                 "discord_id": discord_id,
                 "username": discord_username,
                 "email": user_data.get("email", ""),
@@ -408,31 +567,35 @@ async def discord_auth_token(request: DiscordAuthRequest):
                 "is_verified": True
             }
             
-            supabase_insert("users", user_db, admin=True)
-            user_id = user_uuid
+            DatabaseService.insert("users", user_db, admin=True)
         
-        # Get Discord servers
+        # Get user's guilds where bot is present
+        user_guilds = DiscordAPIService.get_user_guilds(access_token)
+        
+        # Get bot servers from database
+        bot_servers = DatabaseService.select("bot_servers", "is_active=eq.true")
+        bot_server_ids = [s['server_id'] for s in bot_servers] if bot_servers else []
+        
+        # Filter and format servers
         servers = []
-        try:
-            guilds_response = requests.get('https://discord.com/api/users/@me/guilds', 
-                                         headers={'Authorization': f'Bearer {access_token}'})
-            if guilds_response.status_code == 200:
-                user_guilds = guilds_response.json()
-                for guild in user_guilds[:20]:
-                    permissions = int(guild.get('permissions', 0))
-                    if permissions & 0x8 or permissions & 0x20:  # Admin or Manage Server
-                        servers.append({
-                            "id": guild['id'],
-                            "name": guild['name'],
-                            "icon": f"https://cdn.discordapp.com/icons/{guild['id']}/{guild.get('icon')}.png" if guild.get('icon') else None,
-                            "permissions": permissions
-                        })
-        except:
-            pass
+        for guild in user_guilds[:50]:  # Limit to 50 guilds
+            if guild['id'] in bot_server_ids:
+                permissions = int(guild.get('permissions', 0))
+                if permissions & 0x8 or permissions & 0x20:  # Admin or Manage Server
+                    server_info = next((s for s in bot_servers if s['server_id'] == guild['id']), None)
+                    
+                    servers.append({
+                        "id": guild['id'],
+                        "name": server_info['server_name'] if server_info else guild['name'],
+                        "icon": f"https://cdn.discordapp.com/icons/{guild['id']}/{guild.get('icon')}.png" if guild.get('icon') else None,
+                        "permissions": permissions,
+                        "member_count": server_info.get('member_count', 0) if server_info else 0,
+                        "tournament_count": server_info.get('tournament_count', 0) if server_info else 0
+                    })
         
-        # Create JWT token
-        jwt_token = create_jwt_token({
-            "sub": user_id,
+        # Create JWT tokens
+        tokens = AuthService.create_tokens({
+            "id": user_id,
             "username": discord_username,
             "discord_id": discord_id,
             "email": user_data.get("email"),
@@ -449,228 +612,78 @@ async def discord_auth_token(request: DiscordAuthRequest):
                 "email": user_data.get("email"),
                 "account_type": "discord"
             },
-            "access_token": jwt_token,
+            **tokens,
+            "servers": servers
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Discord auth error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during authentication"
+        )
+
+@app.get("/api/auth/discord/servers", dependencies=[Depends(RateLimiter(times=30, seconds=60))])
+async def get_discord_servers(current_user: Dict = Depends(AuthService.get_current_user)):
+    """Get user's Discord servers where bot is present"""
+    try:
+        discord_id = current_user.get('discord_id')
+        
+        if not discord_id:
+            return {"success": True, "servers": []}
+        
+        # Get Discord access token from user session (in production, store this securely)
+        # For now, we'll return servers from our database
+        
+        bot_servers = DatabaseService.select("bot_servers", "is_active=eq.true")
+        
+        if not bot_servers:
+            return {"success": True, "servers": []}
+        
+        servers = []
+        for server in bot_servers:
+            servers.append({
+                "id": server.get('server_id'),
+                "name": server.get('server_name', 'Unknown Server'),
+                "icon": server.get('icon_url'),
+                "permissions": 8,  # Assume admin for now (in production, check Discord API)
+                "member_count": server.get('member_count', 0),
+                "tournament_count": server.get('tournament_count', 0)
+            })
+        
+        return {
+            "success": True,
             "servers": servers
         }
         
     except Exception as e:
-        print(f"Discord auth error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/auth/email/register")
-async def email_register(request: EmailRegisterRequest):
-    """Register with email"""
-    try:
-        # Validate username
-        if not re.match(r'^[a-zA-Z0-9_]{3,20}$', request.username):
-            raise HTTPException(status_code=400, detail="Invalid username format")
-        
-        # Check if email exists
-        existing_email = supabase_select("users", f"email=ilike.'{request.email}'")
-        if existing_email:
-            raise HTTPException(status_code=400, detail="Email already registered")
-        
-        # Check if username exists
-        existing_username = supabase_select("users", f"username=ilike.'{request.username}'")
-        if existing_username:
-            raise HTTPException(status_code=400, detail="Username already taken")
-        
-        # Hash password
-        hashed_password = hashlib.sha256(request.password.encode()).hexdigest()
-        
-        # Create user
-        user_uuid = str(uuid4())
-        user_db = {
-            "id": user_uuid,
-            "username": request.username,
-            "email": request.email.lower(),
-            "password_hash": hashed_password,
-            "account_type": "email",
-            "created_at": datetime.utcnow().isoformat(),
-            "last_login": datetime.utcnow().isoformat(),
-            "is_verified": False,
-            "avatar_url": f"https://ui-avatars.com/api/?name={request.username.replace(' ', '+')}&background=DC2626&color=fff"
-        }
-        
-        result = supabase_insert("users", user_db, admin=True)
-        
-        if result:
-            jwt_token = create_jwt_token({
-                "sub": user_uuid,
-                "username": request.username,
-                "email": request.email,
-                "account_type": "email"
-            })
-            
-            return {
-                "success": True,
-                "user": {
-                    "id": user_uuid,
-                    "username": request.username,
-                    "email": request.email,
-                    "account_type": "email",
-                    "avatar": f"https://ui-avatars.com/api/?name={request.username.replace(' ', '+')}&background=DC2626&color=fff"
-                },
-                "access_token": jwt_token
-            }
-        else:
-            raise HTTPException(status_code=500, detail="Failed to create user")
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Email register error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/auth/email/login")
-async def email_login(request: EmailLoginRequest):
-    """Login with email"""
-    try:
-        # Find user
-        users = supabase_select("users", f"email=ilike.'{request.email}'")
-        
-        if not users:
-            raise HTTPException(status_code=401, detail="Invalid credentials")
-        
-        user = users[0]
-        
-        # Verify password
-        hashed_input = hashlib.sha256(request.password.encode()).hexdigest()
-        stored_hash = user.get('password_hash')
-        
-        if not stored_hash or hashed_input != stored_hash:
-            raise HTTPException(status_code=401, detail="Invalid credentials")
-        
-        # Update last login
-        supabase_update("users", {
-            "last_login": datetime.utcnow().isoformat()
-        }, "id", user['id'])
-        
-        # Create JWT token
-        jwt_token = create_jwt_token({
-            "sub": user['id'],
-            "username": user['username'],
-            "email": user['email'],
-            "account_type": user.get('account_type', 'email')
-        })
-        
-        return {
-            "success": True,
-            "user": {
-                "id": user['id'],
-                "username": user['username'],
-                "email": user['email'],
-                "account_type": user.get('account_type', 'email'),
-                "avatar": user.get('avatar_url')
-            },
-            "access_token": jwt_token
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Email login error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/auth/link-email")
-async def link_email(request: LinkEmailRequest, authorization: Optional[str] = Header(None)):
-    """Link email to Discord account"""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    token = authorization.split(" ")[1]
-    payload = verify_jwt_token(token)
-    
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    user_id = payload.get("sub")
-    
-    # Check if email already exists
-    existing_email = supabase_select("users", f"email=ilike.'{request.email}'")
-    if existing_email:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Update user
-    update_data = {
-        "email": request.email.lower(),
-        "account_type": "both"
-    }
-    
-    result = supabase_update("users", update_data, "id", user_id)
-    
-    if result:
-        return {"success": True, "message": "Email linked successfully"}
-    else:
-        raise HTTPException(status_code=500, detail="Failed to link email")
-
-@app.post("/api/auth/refresh")
-async def refresh_login(request: RefreshTokenRequest):
-    """Refresh token"""
-    try:
-        payload = verify_jwt_token(request.token)
-        
-        if not payload:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        
-        user_id = payload.get("sub")
-        users = supabase_select("users", f"id=eq.'{user_id}'")
-        
-        if not users:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        user = users[0]
-        
-        # Create new token
-        jwt_token = create_jwt_token({
-            "sub": user_id,
-            "username": user.get('username'),
-            "email": user.get('email'),
-            "account_type": user.get('account_type', 'email')
-        })
-        
-        return {
-            "success": True,
-            "access_token": jwt_token,
-            "user": {
-                "id": user_id,
-                "username": user.get('username'),
-                "email": user.get('email'),
-                "account_type": user.get('account_type', 'email'),
-                "avatar": user.get('avatar_url')
-            }
-        }
-        
-    except Exception as e:
-        print(f"Refresh error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error getting Discord servers: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error getting Discord servers"
+        )
 
 # ========== TOURNAMENT ENDPOINTS ==========
-@app.post("/api/tournaments")
-async def create_tournament(request: TournamentCreate, authorization: Optional[str] = Header(None)):
-    """Create a tournament"""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    token = authorization.split(" ")[1]
-    payload = verify_jwt_token(token)
-    
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    user_id = payload.get("sub")
-    
+@app.post("/api/tournaments", dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+async def create_tournament(
+    request: TournamentCreate,
+    current_user: Dict = Depends(AuthService.get_current_user)
+):
+    """Create a new tournament"""
     try:
+        # Validate server exists if specified
+        if request.discord_server_id:
+            bot_servers = DatabaseService.select("bot_servers", f"server_id=eq.'{request.discord_server_id}'")
+            if not bot_servers:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Discord server not found"
+                )
+        
         # Create tournament ID
         tournament_id = str(uuid4())
-        
-        # Validate start date
-        try:
-            start_date = datetime.fromisoformat(request.start_date.replace('Z', '+00:00'))
-            if start_date < datetime.utcnow():
-                raise HTTPException(status_code=400, detail="Start date must be in the future")
-        except:
-            raise HTTPException(status_code=400, detail="Invalid start date format")
         
         # Create tournament
         tournament_data = {
@@ -683,30 +696,26 @@ async def create_tournament(request: TournamentCreate, authorization: Optional[s
             "discord_server_id": request.discord_server_id,
             "bracket_type": request.bracket_type,
             "max_players_per_team": request.max_players_per_team,
-            "region_filter": request.region_filter,
+            "region": request.region,
             "prize_pool": request.prize_pool,
             "status": "registration",
-            "created_by": user_id,
+            "created_by": current_user['id'],
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        result = supabase_insert("tournaments", tournament_data, admin=True)
+        result = DatabaseService.insert("tournaments", tournament_data, admin=True)
         
         if result:
-            # Update server stats
+            # Update server tournament count
             if request.discord_server_id:
-                server_stats = {
-                    "server_id": request.discord_server_id,
-                    "server_name": f"Tournament: {request.name}",
-                    "last_updated": datetime.utcnow().isoformat(),
-                    "is_active": True
-                }
+                server_tournaments = DatabaseService.select("tournaments", f"discord_server_id=eq.'{request.discord_server_id}'")
                 
-                # Check if server exists
-                existing_servers = supabase_select("bot_servers", f"server_id=eq.{request.discord_server_id}")
-                if not existing_servers:
-                    supabase_insert("bot_servers", server_stats, admin=True)
+                server_update = {
+                    "tournament_count": len(server_tournaments) if server_tournaments else 1,
+                    "last_updated": datetime.utcnow().isoformat()
+                }
+                DatabaseService.update("bot_servers", server_update, "server_id", request.discord_server_id)
             
             return {
                 "success": True,
@@ -714,125 +723,24 @@ async def create_tournament(request: TournamentCreate, authorization: Optional[s
                 "message": "Tournament created successfully"
             }
         else:
-            raise HTTPException(status_code=500, detail="Failed to create tournament")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create tournament"
+            )
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Create tournament error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/tournaments/{tournament_id}")
-async def get_tournament(tournament_id: str, authorization: Optional[str] = Header(None)):
-    """Get tournament details"""
-    tournaments = supabase_select("tournaments", f"id=eq.{tournament_id}")
-    
-    if not tournaments:
-        raise HTTPException(status_code=404, detail="Tournament not found")
-    
-    tournament = tournaments[0]
-    
-    # Get teams
-    teams = supabase_select("teams", f"tournament_id=eq.{tournament_id}")
-    
-    # Add team count
-    tournament['team_count'] = len(teams)
-    tournament['current_teams'] = len(teams)
-    tournament['progress_percent'] = int((len(teams) / tournament.get('max_teams', 16)) * 100) if tournament.get('max_teams', 16) > 0 else 0
-    
-    return {
-        "success": True,
-        "tournament": tournament,
-        "teams": teams
-    }
-
-@app.get("/api/tournaments/{tournament_id}/public")
-async def get_tournament_public(tournament_id: str):
-    """Get tournament details (public)"""
-    tournaments = supabase_select("tournaments", f"id=eq.{tournament_id}")
-    
-    if not tournaments:
-        raise HTTPException(status_code=404, detail="Tournament not found")
-    
-    tournament = tournaments[0]
-    teams = supabase_select("teams", f"tournament_id=eq.{tournament_id}")
-    
-    tournament['team_count'] = len(teams)
-    tournament['current_teams'] = len(teams)
-    tournament['progress_percent'] = int((len(teams) / tournament.get('max_teams', 16)) * 100) if tournament.get('max_teams', 16) > 0 else 0
-    
-    return {
-        "success": True,
-        "tournament": tournament,
-        "teams": teams
-    }
-
-# ========== TEAM ENDPOINTS ==========
-@app.post("/api/teams")
-async def register_team(request: TeamRegister, authorization: Optional[str] = Header(None)):
-    """Register a team"""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    token = authorization.split(" ")[1]
-    payload = verify_jwt_token(token)
-    
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    # Check if tournament exists
-    tournaments = supabase_select("tournaments", f"id=eq.{request.tournament_id}")
-    
-    if not tournaments:
-        raise HTTPException(status_code=404, detail="Tournament not found")
-    
-    tournament = tournaments[0]
-    
-    # Check if tournament is accepting registrations
-    if tournament.get('status') != 'registration':
-        raise HTTPException(status_code=400, detail="Tournament is not accepting registrations")
-    
-    # Check if team name is taken
-    existing_teams = supabase_select("teams", f"tournament_id=eq.{request.tournament_id}&name=ilike.'{request.name}'")
-    if existing_teams:
-        raise HTTPException(status_code=400, detail="Team name already taken in this tournament")
-    
-    # Check if captain already has a team
-    captain_teams = supabase_select("teams", f"captain_discord_id=eq.{request.captain_discord_id}&tournament_id=eq.{request.tournament_id}")
-    if captain_teams:
-        raise HTTPException(status_code=400, detail="Captain already has a team in this tournament")
-    
-    # Check team limit
-    current_teams = supabase_select("teams", f"tournament_id=eq.{request.tournament_id}")
-    if len(current_teams) >= tournament.get('max_teams', 16):
-        raise HTTPException(status_code=400, detail="Tournament is full")
-    
-    # Create team
-    team_id = str(uuid4())
-    team_data = {
-        "id": team_id,
-        "tournament_id": request.tournament_id,
-        "name": request.name,
-        "captain_discord_id": request.captain_discord_id,
-        "created_at": datetime.utcnow().isoformat(),
-        "status": "registered"
-    }
-    
-    result = supabase_insert("teams", team_data, admin=True)
-    
-    if result:
-        return {
-            "success": True,
-            "team_id": team_id,
-            "message": "Team registered successfully"
-        }
-    else:
-        raise HTTPException(status_code=500, detail="Failed to register team")
+        logger.error(f"Create tournament error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error creating tournament"
+        )
 
 # ========== BOT ENDPOINTS ==========
-@app.post("/api/bot/server-stats")
+@app.post("/api/bot/server-stats", dependencies=[Depends(RateLimiter(times=60, seconds=60))])
 async def update_server_stats(request: Request):
-    """Update server stats from bot"""
+    """Update server statistics from bot"""
     try:
         data = await request.json()
         
@@ -842,42 +750,143 @@ async def update_server_stats(request: Request):
         is_active = data.get('is_active', True)
         
         if not server_id:
-            raise HTTPException(status_code=400, detail="Server ID required")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Server ID required"
+            )
+        
+        # Clean server name
+        if server_name:
+            server_name = server_name[:100]
+        else:
+            server_name = "Unknown Server"
         
         # Check if server exists
-        existing_servers = supabase_select("bot_servers", f"server_id=eq.{server_id}")
+        existing_servers = DatabaseService.select("bot_servers", f"server_id=eq.'{server_id}'")
+        
+        current_time = datetime.utcnow().isoformat()
         
         if existing_servers:
-            # Update
+            # Update existing server
             update_data = {
-                "server_name": server_name[:100] if server_name else "Unknown Server",
+                "server_name": server_name,
                 "member_count": member_count,
                 "is_active": is_active,
-                "last_updated": datetime.utcnow().isoformat()
+                "last_updated": current_time
             }
             
-            supabase_update("bot_servers", update_data, "server_id", server_id)
+            icon_url = data.get('icon_url')
+            if icon_url:
+                update_data["icon_url"] = icon_url
+            
+            DatabaseService.update("bot_servers", update_data, "server_id", server_id)
+            logger.info(f"✅ Updated server {server_name} ({server_id})")
         else:
-            # Create
+            # Create new server entry
             server_data = {
                 "server_id": server_id,
-                "server_name": server_name[:100] if server_name else "Unknown Server",
+                "server_name": server_name,
                 "member_count": member_count,
                 "is_active": is_active,
-                "created_at": datetime.utcnow().isoformat(),
-                "last_updated": datetime.utcnow().isoformat()
+                "created_at": current_time,
+                "last_updated": current_time
             }
             
-            supabase_insert("bot_servers", server_data, admin=True)
+            icon_url = data.get('icon_url')
+            if icon_url:
+                server_data["icon_url"] = icon_url
+            
+            DatabaseService.insert("bot_servers", server_data, admin=True)
+            logger.info(f"✅ Created new server {server_name} ({server_id})")
         
-        return {"success": True, "message": "Server stats updated"}
+        return {
+            "success": True, 
+            "message": "Server stats updated",
+            "server_id": server_id,
+            "server_name": server_name
+        }
         
     except Exception as e:
-        print(f"Server stats error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Server stats error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error updating server statistics"
+        )
 
-# ========== RUN SERVER ==========
+@app.get("/api/bot/servers", dependencies=[Depends(RateLimiter(times=30, seconds=60))])
+async def get_bot_servers():
+    """Get all servers where bot is active"""
+    try:
+        active_servers = DatabaseService.select("bot_servers", "is_active=eq.true&order=last_updated.desc")
+        
+        servers = []
+        for server in active_servers:
+            tournaments = DatabaseService.select("tournaments", f"discord_server_id=eq.'{server.get('server_id')}'")
+            
+            servers.append({
+                "server_id": server.get('server_id'),
+                "server_name": server.get('server_name', 'Unknown Server'),
+                "member_count": server.get('member_count', 0),
+                "tournament_count": len(tournaments) if tournaments else 0,
+                "last_updated": server.get('last_updated'),
+                "is_active": server.get('is_active', True)
+            })
+        
+        return {
+            "success": True,
+            "servers": servers,
+            "count": len(servers),
+            "total_members": sum(s.get('member_count', 0) for s in servers)
+        }
+    except Exception as e:
+        logger.error(f"Error getting bot servers: {str(e)}")
+        return {"success": False, "servers": [], "count": 0}
+
+# ========== ERROR HANDLERS ==========
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "detail": exc.detail,
+            "path": request.url.path
+        }
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handle general exceptions"""
+    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "success": False,
+            "detail": "Internal server error",
+            "path": request.url.path
+        }
+    )
+
+# ========== MAIN ==========
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    
+    # Development server
+    if Config.ENVIRONMENT == "development":
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=int(os.getenv("PORT", 8000)),
+            reload=True,
+            log_level="info"
+        )
+    else:
+        # Production server
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=int(os.getenv("PORT", 8000)),
+            workers=int(os.getenv("WORKERS", 4)),
+            log_level="warning"
+        )
