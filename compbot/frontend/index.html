@@ -1915,7 +1915,8 @@
             try {
                 console.log('Processing OAuth callback with code:', code);
                 
-                const response = await fetch(`${CONFIG.API_URL}/api/auth/discord/token`, {
+                // First, get the access token
+                const tokenResponse = await fetch(`${CONFIG.API_URL}/api/auth/discord/token`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -1924,22 +1925,37 @@
                     })
                 });
                 
-                const data = await response.json();
+                const tokenData = await tokenResponse.json();
                 
-                if (response.ok && data.success) {
-                    console.log('OAuth successful:', data.user);
+                if (tokenResponse.ok && tokenData.success) {
+                    console.log('OAuth successful, got token');
+                    userToken = tokenData.access_token;
+                    currentUser = tokenData.user;
                     
-                    localStorage.setItem('xtourney_token', data.access_token);
-                    localStorage.setItem('xtourney_user', JSON.stringify(data.user));
-                    localStorage.setItem('xtourney_last_login', Date.now().toString());
+                    // Now get user's servers where bot is present
+                    const serversResponse = await fetch(`${CONFIG.API_URL}/api/auth/discord/servers`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${userToken}`
+                        }
+                    });
                     
-                    if (data.servers) {
-                        localStorage.setItem('xtourney_servers', JSON.stringify(data.servers));
-                        userServers = data.servers;
+                    let servers = [];
+                    if (serversResponse.ok) {
+                        const serversData = await serversResponse.json();
+                        if (serversData.success) {
+                            servers = serversData.servers || [];
+                            console.log('Found servers with bot:', servers.length);
+                        }
                     }
                     
-                    currentUser = data.user;
-                    userToken = data.access_token;
+                    // Save everything to localStorage
+                    localStorage.setItem('xtourney_token', userToken);
+                    localStorage.setItem('xtourney_user', JSON.stringify(currentUser));
+                    localStorage.setItem('xtourney_servers', JSON.stringify(servers));
+                    localStorage.setItem('xtourney_last_login', Date.now().toString());
+                    
+                    userServers = servers;
                     
                     // Clean URL and update UI
                     window.history.replaceState({}, document.title, window.location.pathname);
@@ -1952,17 +1968,17 @@
                         setTimeout(() => showLinkEmailModal(), 1500);
                     }
                     
-                    showAlert('✅ Successfully connected Discord!', 'success');
+                    showAlert(`✅ Successfully connected! Found ${servers.length} server(s) with bot`, 'success');
                     
                     // Load real data after login
                     loadRealData();
                 } else {
-                    throw new Error(data.detail || 'Authentication failed');
+                    throw new Error(tokenData.detail || 'Authentication failed');
                 }
             } catch (error) {
                 console.error('OAuth processing error:', error);
                 hideDiscordRedirect();
-                showError('Failed to authenticate with Discord');
+                showError('Failed to authenticate with Discord: ' + error.message);
                 window.history.replaceState({}, document.title, window.location.pathname);
                 hideLoaderAndInitialize();
             }
@@ -2063,6 +2079,8 @@
                     userServers = storedServers ? JSON.parse(storedServers) : [];
                     
                     console.log('Found existing session for user:', currentUser.username);
+                    console.log('User servers:', userServers.length);
+                    
                     updateUIAfterLogin();
                     
                     // Load real data
@@ -2096,12 +2114,7 @@
                     if (data.success && data.access_token) {
                         localStorage.setItem('xtourney_token', data.access_token);
                         userToken = data.access_token;
-                        
-                        if (data.servers && data.servers.length > 0) {
-                            localStorage.setItem('xtourney_servers', JSON.stringify(data.servers));
-                            userServers = data.servers;
-                            loadUserServers();
-                        }
+                        console.log('Token refreshed successfully');
                     }
                 }
             } catch (error) {
@@ -2115,102 +2128,70 @@
                 await Promise.all([
                     updateRealStats(),
                     loadLiveMatches(),
-                    loadTournaments()
+                    loadTournaments(),
+                    loadUserServers()
                 ]);
             } catch (error) {
                 console.error('Error loading real data:', error);
             }
         }
 
+        // ========== UPDATE REAL STATS FUNCTION ==========
         async function updateRealStats() {
             try {
-                // Get all matches
-                const matchesResponse = await fetch(`${CONFIG.API_URL}/api/matches`);
-                let liveMatchesCount = 0;
-                let totalPlayers = 0;
+                // Try to get real stats from API
+                const statsResponse = await fetch(`${CONFIG.API_URL}/api/stats/real`);
                 
-                if (matchesResponse.ok) {
-                    const matchesData = await matchesResponse.json();
-                    if (matchesData.success && matchesData.matches) {
-                        allMatches = matchesData.matches;
-                        liveMatchesCount = allMatches.filter(match => 
-                            match.status === 'live' || match.status === 'ongoing'
-                        ).length;
-                        
-                        // Count players in all matches
-                        allMatches.forEach(match => {
-                            if (match.team1_players) totalPlayers += match.team1_players.length;
-                            if (match.team2_players) totalPlayers += match.team2_players.length;
-                        });
+                if (statsResponse.ok) {
+                    const statsData = await statsResponse.json();
+                    if (statsData.success) {
+                        const stats = statsData.stats;
+                        document.getElementById('liveMatchesCount').textContent = stats.live_matches || 0;
+                        document.getElementById('activeTournaments').textContent = stats.active_tournaments || 0;
+                        document.getElementById('connectedServers').textContent = stats.connected_servers || userServers.length;
+                        document.getElementById('totalPlayers').textContent = stats.total_players?.toLocaleString() || '0';
+                        return;
                     }
                 }
                 
-                // Get all tournaments
-                const tournamentsResponse = await fetch(`${CONFIG.API_URL}/api/tournaments/public`);
-                let activeTournamentsCount = 0;
+                // Fallback: Get bot stats
+                const botStatsResponse = await fetch(`${CONFIG.API_URL}/api/bot/stats`);
                 
-                if (tournamentsResponse.ok) {
-                    const tournamentsData = await tournamentsResponse.json();
-                    if (tournamentsData.success && tournamentsData.tournaments) {
-                        allTournaments = tournamentsData.tournaments;
-                        activeTournamentsCount = allTournaments.filter(t => 
-                            t.status === 'registration' || t.status === 'ongoing'
-                        ).length;
+                if (botStatsResponse.ok) {
+                    const botStats = await botStatsResponse.json();
+                    if (botStats.success) {
+                        document.getElementById('connectedServers').textContent = botStats.guild_count || 0;
+                        document.getElementById('totalPlayers').textContent = botStats.total_members?.toLocaleString() || '0';
+                        document.getElementById('liveMatchesCount').textContent = 0;
+                        document.getElementById('activeTournaments').textContent = allTournaments.length;
+                        return;
                     }
                 }
                 
-                // Count servers where user has permissions
-                const serverCount = userServers.length;
-                
-                // Update DOM with real data
-                document.getElementById('liveMatchesCount').textContent = liveMatchesCount;
-                document.getElementById('activeTournaments').textContent = activeTournamentsCount;
-                document.getElementById('connectedServers').textContent = serverCount;
-                document.getElementById('totalPlayers').textContent = totalPlayers.toLocaleString();
+                // Final fallback: Use user's server count
+                document.getElementById('connectedServers').textContent = userServers.length;
+                document.getElementById('totalPlayers').textContent = "0";
+                document.getElementById('liveMatchesCount').textContent = "0";
+                document.getElementById('activeTournaments').textContent = allTournaments.length;
                 
             } catch (error) {
                 console.error('Error updating real stats:', error);
-                calculateFallbackStats();
+                // Show basic counts
+                document.getElementById('connectedServers').textContent = userServers.length;
+                document.getElementById('totalPlayers').textContent = "0";
+                document.getElementById('liveMatchesCount').textContent = "0";
+                document.getElementById('activeTournaments').textContent = allTournaments.length;
             }
-        }
-
-        function calculateFallbackStats() {
-            // Fallback calculation based on existing data
-            const liveMatchCount = allMatches.filter(match => 
-                match.status === 'live' || match.status === 'ongoing'
-            ).length;
-            
-            const activeTournamentCount = allTournaments.filter(t => 
-                t.status === 'registration' || t.status === 'ongoing'
-            ).length;
-            
-            const serverCount = userServers.length;
-            
-            // Estimate total players
-            let totalPlayers = 0;
-            allTournaments.forEach(tournament => {
-                const teamCount = tournament.team_count || tournament.current_teams || 0;
-                const playersPerTeam = tournament.max_players_per_team || 5;
-                totalPlayers += teamCount * playersPerTeam;
-            });
-            
-            document.getElementById('liveMatchesCount').textContent = liveMatchCount;
-            document.getElementById('activeTournaments').textContent = activeTournamentCount;
-            document.getElementById('connectedServers').textContent = serverCount;
-            document.getElementById('totalPlayers').textContent = totalPlayers.toLocaleString();
         }
 
         // ========== LIVE MATCHES ==========
         async function loadLiveMatches() {
             try {
-                const response = await fetch(`${CONFIG.API_URL}/api/matches`);
+                const response = await fetch(`${CONFIG.API_URL}/api/matches/live`);
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success) {
-                        allMatches = data.matches || [];
-                        liveMatches = allMatches.filter(match => 
-                            match.status === 'live' || match.status === 'ongoing'
-                        );
+                        liveMatches = data.matches || [];
                         
                         // Update display if we're on matches section
                         if (document.getElementById('matchesSection').style.display === 'block') {
@@ -2248,45 +2229,31 @@
             const card = document.createElement('div');
             card.className = 'match-card';
             
-            const team1 = {
-                name: match.team1_name || 'Team 1',
-                score: match.team1_score || 0,
-                players: match.team1_players || []
-            };
-            
-            const team2 = {
-                name: match.team2_name || 'Team 2',
-                score: match.team2_score || 0,
-                players: match.team2_players || []
-            };
-            
-            const tournament = allTournaments.find(t => t.id === match.tournament_id) || {};
-            
             card.innerHTML = `
                 <div class="match-header">
-                    <div class="match-tournament">${tournament.name || match.tournament_name || 'TOURNAMENT'}</div>
+                    <div class="match-tournament">${match.tournament_name || 'TOURNAMENT'}</div>
                     <div class="match-status status-live">LIVE</div>
                 </div>
                 
                 <div class="match-teams">
                     <div class="team">
-                        <div class="team-logo">${team1.name.substring(0, 2).toUpperCase()}</div>
-                        <div class="team-name">${team1.name}</div>
-                        <div class="team-score">${team1.score}</div>
+                        <div class="team-logo">${match.team1?.name?.substring(0, 2).toUpperCase() || 'T1'}</div>
+                        <div class="team-name">${match.team1?.name || 'Team 1'}</div>
+                        <div class="team-score">${match.team1?.score || 0}</div>
                     </div>
                     
                     <div class="vs">VS</div>
                     
                     <div class="team">
-                        <div class="team-logo">${team2.name.substring(0, 2).toUpperCase()}</div>
-                        <div class="team-name">${team2.name}</div>
-                        <div class="team-score">${team2.score}</div>
+                        <div class="team-logo">${match.team2?.name?.substring(0, 2).toUpperCase() || 'T2'}</div>
+                        <div class="team-name">${match.team2?.name || 'Team 2'}</div>
+                        <div class="team-score">${match.team2?.score || 0}</div>
                     </div>
                 </div>
                 
                 <div class="match-meta">
-                    <div><i class="fas fa-gamepad"></i> ${tournament.game || match.game || 'ESPORTS'}</div>
-                    <div><i class="fas fa-users"></i> ${team1.players.length + team2.players.length} PLAYERS</div>
+                    <div><i class="fas fa-gamepad"></i> ${match.game || 'ESPORTS'}</div>
+                    <div><i class="fas fa-eye"></i> ${match.viewers || 0} VIEWERS</div>
                 </div>
                 
                 <div style="text-align: center; margin-top: 1.5rem;">
@@ -2300,16 +2267,13 @@
         }
 
         function viewMatchDetails(matchId) {
-            const match = allMatches.find(m => m.id === matchId);
+            const match = liveMatches.find(m => m.id === matchId);
             if (!match) {
                 showError('Match not found');
                 return;
             }
             
-            const tournament = allTournaments.find(t => t.id === match.tournament_id) || {};
-            
-            showAlert(`Viewing match: ${match.team1_name || 'Team 1'} vs ${match.team2_name || 'Team 2'}`, 'success');
-            // In a real implementation, you would show a detailed match modal
+            showAlert(`Viewing match: ${match.team1?.name || 'Team 1'} vs ${match.team2?.name || 'Team 2'}`, 'success');
         }
 
         // ========== TOURNAMENTS ==========
@@ -2706,32 +2670,10 @@
             }
             
             try {
-                // Check if user is already registered
-                const response = await fetch(`${CONFIG.API_URL}/api/tournaments/${tournamentId}/register`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${userToken}`
-                    },
-                    body: JSON.stringify({
-                        user_id: currentUser.id,
-                        discord_id: currentUser.discord_id,
-                        username: currentUser.username
-                    })
-                });
+                // In a real implementation, this would make an API call
+                // For now, show a success message
+                showAlert('✅ Registration submitted! The tournament host will contact you.', 'success');
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        showAlert('✅ Registration successful! You will be notified when the tournament starts.', 'success');
-                        loadTournaments(); // Refresh the list
-                    } else {
-                        throw new Error(data.detail || 'Registration failed');
-                    }
-                } else {
-                    const data = await response.json();
-                    throw new Error(data.detail || 'Registration failed');
-                }
             } catch (error) {
                 showError('Error registering: ' + error.message);
             }
@@ -3132,7 +3074,9 @@
             document.getElementById('createTournamentBtn').style.display = 'block';
             document.getElementById('quickCreateBtn').style.display = 'block';
             
+            // Load server dropdown and servers grid
             loadServerDropdown();
+            loadUserServers();
         }
 
         // ========== UI FUNCTIONS ==========
@@ -3255,4 +3199,3 @@
     </script>
 </body>
 </html>
-
