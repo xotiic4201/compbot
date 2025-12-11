@@ -1640,7 +1640,8 @@
             DISCORD_CLIENT_ID: "1445127821742575726",
             REDIRECT_URI: window.location.origin + window.location.pathname,
             DISCORD_INVITE: "https://discord.com/oauth2/authorize?client_id=1445127821742575726&permissions=8&scope=bot%20applications.commands",
-            WEBSITE_URL: "https://www.xotiicsplaza.us/"
+            WEBSITE_URL: "https://www.xotiicsplaza.us/",
+            SESSION_TIMEOUT_DAYS: 30
         };
 
         // ========== STATE ==========
@@ -1649,27 +1650,31 @@
         let userServers = [];
         let allTournaments = [];
         let bracketCache = {};
+        let isLoadingOAuth = false;
 
         // ========== INITIALIZATION ==========
         document.addEventListener('DOMContentLoaded', function() {
             console.log('XTourney Platform Initializing...');
             
-            // Check for OAuth callback in URL
+            // Check for OAuth callback in URL FIRST
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
             const error = urlParams.get('error');
             
+            // If we have an OAuth code, process it immediately WITHOUT showing the main page
             if (code) {
-                // We have an auth code, process it
+                console.log('OAuth callback detected, processing...');
+                isLoadingOAuth = true;
                 processOAuthCallback(code);
             } else if (error) {
                 console.error('OAuth error:', error);
-                showError('Authentication failed: ' + error);
-                // Clean URL
+                // Clean URL first
                 window.history.replaceState({}, document.title, window.location.pathname);
+                // Then initialize normally
                 hideLoaderAndInitialize();
+                showError('Authentication failed: ' + error);
             } else {
-                // Normal initialization
+                // Normal initialization without OAuth
                 hideLoaderAndInitialize();
             }
         });
@@ -1677,9 +1682,13 @@
         async function processOAuthCallback(code) {
             console.log('Processing OAuth callback with code:', code);
             
+            // Show Discord redirect screen IMMEDIATELY
             showDiscordRedirect();
             
             try {
+                // Clean the URL FIRST before making API calls
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
                 // First, get the access token
                 const tokenResponse = await fetch(`${CONFIG.API_URL}/api/auth/discord/token`, {
                     method: 'POST',
@@ -1727,11 +1736,17 @@
                     
                     userServers = servers;
                     
-                    // Clean URL and update UI
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    
+                    // Hide the Discord redirect screen
                     hideDiscordRedirect();
-                    hideLoaderAndInitialize(); // This ensures the page loads properly
+                    
+                    // IMPORTANT: Hide the page loader first
+                    document.getElementById('pageLoader').classList.add('hidden');
+                    setTimeout(() => {
+                        document.getElementById('pageLoader').style.display = 'none';
+                    }, 500);
+                    
+                    // Now initialize the UI
+                    setupIntersectionObserver();
                     updateUIAfterLogin();
                     
                     // Show email linking modal if no email
@@ -1743,19 +1758,30 @@
                     
                     // Load real data after login
                     loadRealData();
+                    
+                    // Make sure home section is visible
+                    document.getElementById('homeSection').style.display = 'block';
+                    setTimeout(() => document.getElementById('homeSection').classList.add('visible'), 50);
+                    
                 } else {
                     throw new Error(tokenData.detail || 'Authentication failed');
                 }
             } catch (error) {
                 console.error('OAuth processing error:', error);
+                // Hide redirect screen and show error
                 hideDiscordRedirect();
-                showError('Failed to authenticate with Discord: ' + error.message);
-                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                // Initialize normally but show error
                 hideLoaderAndInitialize();
+                showError('Failed to authenticate with Discord: ' + error.message);
+            } finally {
+                isLoadingOAuth = false;
             }
         }
 
         function hideLoaderAndInitialize() {
+            if (isLoadingOAuth) return; // Don't interfere with OAuth flow
+            
             // Hide loader
             setTimeout(() => {
                 document.getElementById('pageLoader').classList.add('hidden');
@@ -1808,7 +1834,15 @@
         }
 
         function hideDiscordRedirect() {
-            document.getElementById('discordRedirect').style.display = 'none';
+            const redirectEl = document.getElementById('discordRedirect');
+            if (redirectEl) {
+                redirectEl.style.display = 'none';
+            }
+            // Also ensure page loader is hidden
+            document.getElementById('pageLoader').classList.add('hidden');
+            setTimeout(() => {
+                document.getElementById('pageLoader').style.display = 'none';
+            }, 500);
         }
 
         // ========== SESSION MANAGEMENT ==========
@@ -1818,10 +1852,10 @@
             const storedServers = localStorage.getItem('xtourney_servers');
             const lastLogin = localStorage.getItem('xtourney_last_login');
             
-            // Check if session is expired (30 days)
+            // Check if session is expired
             if (lastLogin) {
                 const daysSinceLogin = (Date.now() - parseInt(lastLogin)) / (1000 * 60 * 60 * 24);
-                if (daysSinceLogin > 30) {
+                if (daysSinceLogin > CONFIG.SESSION_TIMEOUT_DAYS) {
                     console.log('Session expired');
                     logout();
                     return;
@@ -1858,7 +1892,7 @@
                 await Promise.all([
                     updateRealStats(),
                     loadTournaments(),
-                    refreshServers() // Try to refresh servers on each load
+                    refreshServers()
                 ]);
             } catch (error) {
                 console.error('Error loading real data:', error);
@@ -2001,7 +2035,7 @@
         }
 
         function handleTournamentAction(event, tournamentId, status) {
-            event.stopPropagation(); // Prevent card click from firing
+            event.stopPropagation();
             if (status === 'registration') {
                 registerForTournament(tournamentId);
             } else {
@@ -2181,11 +2215,18 @@
         function loginWithDiscord() {
             console.log('Starting Discord OAuth...');
             
+            // Check if we're already in a redirect
+            if (window.location.search.includes('code=') || isLoadingOAuth) {
+                console.log('Already in OAuth flow, waiting for processing...');
+                return;
+            }
+            
             const scope = 'identify email guilds';
             const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${scope}&prompt=consent`;
             
             showDiscordRedirect();
             
+            // Small delay to show the redirect screen before navigating
             setTimeout(() => {
                 window.location.href = discordAuthUrl;
             }, 500);
@@ -2272,6 +2313,46 @@
                 }
             } catch (error) {
                 showErrorInModal('emailLoginAlert', error.message);
+            }
+        }
+
+        async function linkEmailToAccount() {
+            const email = document.getElementById('linkEmailInput').value.trim().toLowerCase();
+            
+            if (!email || !isValidEmail(email)) {
+                showErrorInModal('linkEmailAlert', 'Please enter a valid email address');
+                return;
+            }
+            
+            if (!userToken) {
+                showErrorInModal('linkEmailAlert', 'Please login first');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${CONFIG.API_URL}/api/auth/link-email`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${userToken}`
+                    },
+                    body: JSON.stringify({ email })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    currentUser.email = email;
+                    localStorage.setItem('xtourney_user', JSON.stringify(currentUser));
+                    
+                    hideLinkEmailModal();
+                    updateUIAfterLogin();
+                    showAlert('✅ Email linked successfully!', 'success');
+                } else {
+                    throw new Error(data.detail || 'Failed to link email');
+                }
+            } catch (error) {
+                showErrorInModal('linkEmailAlert', error.message);
             }
         }
 
@@ -2456,17 +2537,134 @@
                 return;
             }
             
-            showAlert('✅ Registration submitted! The tournament host will contact you.', 'success');
+            try {
+                const response = await fetch(`${CONFIG.API_URL}/api/tournaments/${tournamentId}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${userToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        showAlert('✅ Successfully registered for tournament!', 'success');
+                        loadTournaments(); // Refresh tournament list
+                    } else {
+                        throw new Error(data.detail || 'Registration failed');
+                    }
+                } else {
+                    throw new Error('Registration failed');
+                }
+            } catch (error) {
+                showError('Failed to register: ' + error.message);
+            }
         }
 
-        function viewTournamentBracket(tournamentId) {
-            const tournament = allTournaments.find(t => t.id === tournamentId);
-            if (!tournament) {
-                showError('Tournament not found');
-                return;
+        async function viewTournamentBracket(tournamentId) {
+            try {
+                const response = await fetch(`${CONFIG.API_URL}/api/tournaments/${tournamentId}/bracket`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        displayBracket(data.bracket, data.tournament);
+                    } else {
+                        throw new Error(data.detail || 'Failed to load bracket');
+                    }
+                } else {
+                    throw new Error('Failed to load bracket');
+                }
+            } catch (error) {
+                showError('Failed to load bracket: ' + error.message);
+            }
+        }
+
+        function displayBracket(bracketData, tournament) {
+            const bracketContainer = document.getElementById('bracketContainer');
+            if (!bracketContainer) return;
+            
+            let html = `
+                <div class="tournament-details">
+                    <h2 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">${tournament.name}</h2>
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">GAME</div>
+                            <div class="detail-value">${tournament.game}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">STATUS</div>
+                            <div class="detail-value">${tournament.status.toUpperCase()}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">TEAMS</div>
+                            <div class="detail-value">${tournament.current_teams || 0}/${tournament.max_teams}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">START DATE</div>
+                            <div class="detail-value">${new Date(tournament.start_date).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if (bracketData && bracketData.rounds) {
+                html += '<div style="overflow-x: auto;">';
+                html += '<h3 style="color: var(--primary); font-family: \'Orbitron\'; margin-bottom: 2rem;">TOURNAMENT BRACKET</h3>';
+                
+                bracketData.rounds.forEach((round, roundIndex) => {
+                    html += `<div style="margin-bottom: 3rem;">
+                                <h4 style="color: var(--light); font-family: 'Orbitron'; margin-bottom: 1rem;">ROUND ${roundIndex + 1}</h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">`;
+                    
+                    round.matches.forEach((match, matchIndex) => {
+                        html += `
+                            <div style="background: rgba(0,0,0,0.7); padding: 1rem; border-radius: 8px; border: 1px solid rgba(220,38,38,0.3);">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span style="color: var(--gray);">Match ${matchIndex + 1}</span>
+                                    <span style="color: var(${match.winner ? '--success' : '--gray'});">
+                                        ${match.winner ? 'COMPLETED' : 'PENDING'}
+                                    </span>
+                                </div>
+                                <div style="margin-bottom: 0.5rem;">
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: rgba(0,0,0,0.5); border-radius: 4px; margin-bottom: 0.25rem;">
+                                        <span>${match.team1 || 'TBD'}</span>
+                                        <span style="color: ${match.team1_score > match.team2_score ? 'var(--success)' : 'var(--gray)'}">${match.team1_score || 0}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: rgba(0,0,0,0.5); border-radius: 4px;">
+                                        <span>${match.team2 || 'TBD'}</span>
+                                        <span style="color: ${match.team2_score > match.team1_score ? 'var(--success)' : 'var(--gray)'}">${match.team2_score || 0}</span>
+                                    </div>
+                                </div>
+                                ${match.winner ? `
+                                    <div style="text-align: center; color: var(--success); font-weight: bold; margin-top: 0.5rem;">
+                                        Winner: ${match.winner}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div></div>';
+                });
+                
+                html += '</div>';
+            } else {
+                html += `
+                    <div style="text-align: center; padding: 4rem; color: var(--gray);">
+                        <i class="fas fa-bracket-curly" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
+                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">BRACKET NOT YET GENERATED</h3>
+                        <p>The bracket will be generated when registration closes</p>
+                    </div>
+                `;
             }
             
-            showAlert(`Viewing bracket for ${tournament.name}`, 'success');
+            bracketContainer.innerHTML = html;
+            document.getElementById('bracketView').style.display = 'block';
+        }
+
+        function closeBracket() {
+            document.getElementById('bracketView').style.display = 'none';
         }
 
         async function createTournament() {
@@ -2555,10 +2753,61 @@
             }
         }
 
-        function closeBracket() {
-            document.getElementById('bracketView').style.display = 'none';
+        // ========== ERROR HANDLING ==========
+        window.addEventListener('error', function(e) {
+            console.error('Global error caught:', e.error);
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Unhandled promise rejection:', e.reason);
+        });
+
+        // ========== LOADING INDICATOR FOR API CALLS ==========
+        let activeRequests = 0;
+
+        function showLoading() {
+            if (activeRequests === 0) {
+                // Could add a global loading indicator here
+            }
+            activeRequests++;
         }
+
+        function hideLoading() {
+            activeRequests--;
+            if (activeRequests < 0) activeRequests = 0;
+        }
+
+        // ========== AUTO-REFRESH FOR LIVE DATA ==========
+        let refreshInterval;
+
+        function startAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            
+            refreshInterval = setInterval(() => {
+                if (userToken) {
+                    updateRealStats();
+                    loadTournaments();
+                }
+            }, 30000); // Refresh every 30 seconds
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+
+        // Start auto-refresh when logged in
+        if (userToken) {
+            startAutoRefresh();
+        }
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', stopAutoRefresh);
+
+        // ========== INITIAL SETUP COMPLETE ==========
+        console.log('XTourney Platform initialized successfully');
     </script>
 </body>
 </html>
-
