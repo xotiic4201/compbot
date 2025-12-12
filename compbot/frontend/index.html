@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XTourney - Professional Esports Tournament Platform</title>
-    <link rel="icon" type="XTourney">
+    <link rel="icon" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -1563,6 +1563,13 @@
                            placeholder="PASSWORD (MIN 8 CHARACTERS)" required minlength="8">
                 </div>
                 
+                <div class="form-group">
+                    <label class="form-label" style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="termsCheckbox" required>
+                        <span>I AGREE TO TERMS & CONDITIONS</span>
+                    </label>
+                </div>
+                
                 <button type="submit" class="login-option discord" style="margin-top: 1rem; width: 100%; background: var(--gradient-primary);">
                     <i class="fas fa-user-plus"></i>
                     <span>CREATE ACCOUNT</span>
@@ -1649,32 +1656,38 @@
         let userToken = null;
         let userServers = [];
         let allTournaments = [];
+        let globalStats = {
+            liveMatches: 0,
+            activeTournaments: 0,
+            connectedServers: 0,
+            totalPlayers: 0
+        };
         let bracketCache = {};
         let isLoadingOAuth = false;
+        let isProcessingAuth = false;
 
         // ========== INITIALIZATION ==========
         document.addEventListener('DOMContentLoaded', function() {
             console.log('XTourney Platform Initializing...');
             
-            // Check for OAuth callback in URL FIRST
+            // First check if we're returning from Discord OAuth
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
             const error = urlParams.get('error');
             
-            // If we have an OAuth code, process it immediately WITHOUT showing the main page
-            if (code) {
+            if (code && !isProcessingAuth) {
                 console.log('OAuth callback detected, processing...');
-                isLoadingOAuth = true;
+                isProcessingAuth = true;
+                // Don't hide loader yet - let OAuth process handle it
                 processOAuthCallback(code);
             } else if (error) {
                 console.error('OAuth error:', error);
-                // Clean URL first
+                // Clean URL and initialize normally
                 window.history.replaceState({}, document.title, window.location.pathname);
-                // Then initialize normally
                 hideLoaderAndInitialize();
                 showError('Authentication failed: ' + error);
             } else {
-                // Normal initialization without OAuth
+                // Normal initialization
                 hideLoaderAndInitialize();
             }
         });
@@ -1682,50 +1695,60 @@
         async function processOAuthCallback(code) {
             console.log('Processing OAuth callback with code:', code);
             
-            // Show Discord redirect screen IMMEDIATELY
+            // Show Discord redirect screen
             showDiscordRedirect();
             
             try {
-                // Clean the URL FIRST before making API calls
-                window.history.replaceState({}, document.title, window.location.pathname);
-                
                 // First, get the access token
                 const tokenResponse = await fetch(`${CONFIG.API_URL}/api/auth/discord/token`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify({ 
                         code: code,
                         redirect_uri: CONFIG.REDIRECT_URI
                     })
                 });
                 
-                const tokenData = await tokenResponse.json();
-                console.log('Token response:', tokenData);
+                if (!tokenResponse.ok) {
+                    const errorText = await tokenResponse.text();
+                    console.error('Token response error:', tokenResponse.status, errorText);
+                    throw new Error(`Server returned ${tokenResponse.status}: ${errorText}`);
+                }
                 
-                if (tokenResponse.ok && tokenData.success) {
+                const tokenData = await tokenResponse.json();
+                console.log('Token response data:', tokenData);
+                
+                if (tokenData.success) {
                     console.log('OAuth successful, got token');
                     userToken = tokenData.access_token;
                     currentUser = tokenData.user;
                     
-                    // Now get user's servers where bot is present
-                    console.log('Fetching servers with token:', userToken.substring(0, 20) + '...');
-                    const serversResponse = await fetch(`${CONFIG.API_URL}/api/auth/discord/servers`, {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${userToken}`
-                        }
-                    });
+                    // Clean URL immediately
+                    window.history.replaceState({}, document.title, window.location.pathname);
                     
+                    // Get user's servers
                     let servers = [];
-                    if (serversResponse.ok) {
-                        const serversData = await serversResponse.json();
-                        console.log('Servers response:', serversData);
-                        if (serversData.success) {
-                            servers = serversData.servers || [];
-                            console.log('Found servers with bot:', servers.length);
+                    try {
+                        const serversResponse = await fetch(`${CONFIG.API_URL}/api/auth/discord/servers`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${userToken}`,
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        if (serversResponse.ok) {
+                            const serversData = await serversResponse.json();
+                            if (serversData.success) {
+                                servers = serversData.servers || [];
+                                console.log('Found servers with bot:', servers.length);
+                            }
                         }
-                    } else {
-                        console.error('Failed to fetch servers:', serversResponse.status, await serversResponse.text());
+                    } catch (serverError) {
+                        console.error('Error fetching servers:', serverError);
                     }
                     
                     // Save everything to localStorage
@@ -1739,29 +1762,17 @@
                     // Hide the Discord redirect screen
                     hideDiscordRedirect();
                     
-                    // IMPORTANT: Hide the page loader first
-                    document.getElementById('pageLoader').classList.add('hidden');
+                    // Initialize the UI
                     setTimeout(() => {
-                        document.getElementById('pageLoader').style.display = 'none';
+                        hideLoaderAndInitialize();
+                        updateUIAfterLogin();
+                        
+                        // Show success message
+                        showAlert(`✅ Successfully connected! Found ${servers.length} server(s) with bot`, 'success');
+                        
+                        // Load real data after login
+                        loadRealData();
                     }, 500);
-                    
-                    // Now initialize the UI
-                    setupIntersectionObserver();
-                    updateUIAfterLogin();
-                    
-                    // Show email linking modal if no email
-                    if (!currentUser.email) {
-                        setTimeout(() => showLinkEmailModal(), 1500);
-                    }
-                    
-                    showAlert(`✅ Successfully connected! Found ${servers.length} server(s) with bot`, 'success');
-                    
-                    // Load real data after login
-                    loadRealData();
-                    
-                    // Make sure home section is visible
-                    document.getElementById('homeSection').style.display = 'block';
-                    setTimeout(() => document.getElementById('homeSection').classList.add('visible'), 50);
                     
                 } else {
                     throw new Error(tokenData.detail || 'Authentication failed');
@@ -1772,32 +1783,36 @@
                 hideDiscordRedirect();
                 
                 // Initialize normally but show error
-                hideLoaderAndInitialize();
-                showError('Failed to authenticate with Discord: ' + error.message);
+                setTimeout(() => {
+                    hideLoaderAndInitialize();
+                    showError('Failed to authenticate with Discord: ' + error.message);
+                }, 500);
             } finally {
-                isLoadingOAuth = false;
+                isProcessingAuth = false;
             }
         }
 
         function hideLoaderAndInitialize() {
-            if (isLoadingOAuth) return; // Don't interfere with OAuth flow
-            
             // Hide loader
             setTimeout(() => {
-                document.getElementById('pageLoader').classList.add('hidden');
-                setTimeout(() => {
-                    document.getElementById('pageLoader').style.display = 'none';
-                }, 500);
-            }, 500);
+                const pageLoader = document.getElementById('pageLoader');
+                if (pageLoader) {
+                    pageLoader.classList.add('hidden');
+                    setTimeout(() => {
+                        pageLoader.style.display = 'none';
+                    }, 500);
+                }
+            }, 300);
             
             // Set up animations
             setupIntersectionObserver();
             
-            // Try auto-login
+            // Try auto-login from localStorage
             checkExistingSession();
             
-            // Load public data
-            loadPublicData();
+            // Load global stats (works without login)
+            loadGlobalStats();
+            loadTournaments();
             
             // Set default tournament date
             const tomorrow = new Date();
@@ -1838,11 +1853,6 @@
             if (redirectEl) {
                 redirectEl.style.display = 'none';
             }
-            // Also ensure page loader is hidden
-            document.getElementById('pageLoader').classList.add('hidden');
-            setTimeout(() => {
-                document.getElementById('pageLoader').style.display = 'none';
-            }, 500);
         }
 
         // ========== SESSION MANAGEMENT ==========
@@ -1882,54 +1892,53 @@
                 }
             } else {
                 console.log('No existing session found');
-                loadPublicData();
             }
         }
 
-        // ========== LOAD REAL DATA ==========
-        async function loadRealData() {
+        // ========== GLOBAL STATS (NO LOGIN REQUIRED) ==========
+        async function loadGlobalStats() {
             try {
-                await Promise.all([
-                    updateRealStats(),
-                    loadTournaments(),
-                    refreshServers()
-                ]);
-            } catch (error) {
-                console.error('Error loading real data:', error);
-            }
-        }
-
-        // ========== UPDATE REAL STATS FUNCTION ==========
-        async function updateRealStats() {
-            try {
-                // Try to get real stats from API
-                const statsResponse = await fetch(`${CONFIG.API_URL}/api/stats/real`);
+                // First try to get real global stats from API
+                const statsResponse = await fetch(`${CONFIG.API_URL}/api/stats/global`);
                 
                 if (statsResponse.ok) {
                     const statsData = await statsResponse.json();
                     if (statsData.success) {
-                        const stats = statsData.stats;
-                        document.getElementById('liveMatchesCount').textContent = stats.live_matches || 0;
-                        document.getElementById('activeTournaments').textContent = stats.active_tournaments || 0;
-                        document.getElementById('connectedServers').textContent = stats.connected_servers || userServers.length;
-                        document.getElementById('totalPlayers').textContent = stats.total_players?.toLocaleString() || '0';
+                        globalStats = statsData.stats;
+                        updateStatsDisplay();
                         return;
                     }
                 }
                 
-                // Fallback: Use user's server count
-                document.getElementById('connectedServers').textContent = userServers.length;
-                document.getElementById('totalPlayers').textContent = "0";
-                document.getElementById('liveMatchesCount').textContent = "0";
-                document.getElementById('activeTournaments').textContent = allTournaments.length;
+                // If API fails, use fallback values
+                updateStatsDisplay();
                 
             } catch (error) {
-                console.error('Error updating real stats:', error);
-                // Show basic counts
-                document.getElementById('connectedServers').textContent = userServers.length;
-                document.getElementById('totalPlayers').textContent = "0";
-                document.getElementById('liveMatchesCount').textContent = "0";
-                document.getElementById('activeTournaments').textContent = allTournaments.length;
+                console.error('Error loading global stats:', error);
+                // Use fallback values
+                updateStatsDisplay();
+            }
+        }
+
+        function updateStatsDisplay() {
+            // Update the stats display with global data
+            document.getElementById('liveMatchesCount').textContent = globalStats.liveMatches || 0;
+            document.getElementById('activeTournaments').textContent = globalStats.activeTournaments || allTournaments.length;
+            document.getElementById('connectedServers').textContent = globalStats.connectedServers || 0;
+            document.getElementById('totalPlayers').textContent = globalStats.totalPlayers?.toLocaleString() || '0';
+        }
+
+        // ========== LOAD REAL DATA (REQUIRES LOGIN) ==========
+        async function loadRealData() {
+            if (!userToken) return;
+            
+            try {
+                await Promise.all([
+                    refreshServers(),
+                    loadTournaments()
+                ]);
+            } catch (error) {
+                console.error('Error loading real data:', error);
             }
         }
 
@@ -1942,6 +1951,10 @@
                     if (data.success) {
                         allTournaments = data.tournaments || [];
                         updateTournamentsDisplay(allTournaments);
+                        
+                        // Update stats with tournament count
+                        globalStats.activeTournaments = allTournaments.length;
+                        updateStatsDisplay();
                     }
                 }
             } catch (error) {
@@ -2216,20 +2229,19 @@
             console.log('Starting Discord OAuth...');
             
             // Check if we're already in a redirect
-            if (window.location.search.includes('code=') || isLoadingOAuth) {
-                console.log('Already in OAuth flow, waiting for processing...');
+            if (window.location.search.includes('code=') || isProcessingAuth) {
+                console.log('Already in OAuth flow');
                 return;
             }
             
             const scope = 'identify email guilds';
             const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${scope}&prompt=consent`;
             
-            showDiscordRedirect();
+            // Store that we're starting OAuth
+            localStorage.setItem('xtourney_oauth_started', 'true');
             
-            // Small delay to show the redirect screen before navigating
-            setTimeout(() => {
-                window.location.href = discordAuthUrl;
-            }, 500);
+            // Redirect to Discord
+            window.location.href = discordAuthUrl;
         }
 
         // ========== EMAIL AUTH ==========
@@ -2237,9 +2249,15 @@
             const username = document.getElementById('regUsername').value.trim();
             const email = document.getElementById('regEmail').value.trim().toLowerCase();
             const password = document.getElementById('regPassword').value;
+            const termsAccepted = document.getElementById('termsCheckbox').checked;
             
             if (!username || !email || !password) {
                 showErrorInModal('emailRegisterAlert', 'Please fill all fields');
+                return;
+            }
+            
+            if (!termsAccepted) {
+                showErrorInModal('emailRegisterAlert', 'You must agree to the terms & conditions');
                 return;
             }
             
@@ -2256,13 +2274,23 @@
             try {
                 const response = await fetch(`${CONFIG.API_URL}/api/auth/email/register`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify({ email, username, password })
                 });
                 
-                const data = await response.json();
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Registration error:', response.status, errorText);
+                    throw new Error(`Registration failed: ${errorText}`);
+                }
                 
-                if (response.ok && data.success) {
+                const data = await response.json();
+                console.log('Registration response:', data);
+                
+                if (data.success) {
                     localStorage.setItem('xtourney_token', data.access_token);
                     localStorage.setItem('xtourney_user', JSON.stringify(data.user));
                     localStorage.setItem('xtourney_last_login', Date.now().toString());
@@ -2272,10 +2300,14 @@
                     hideLoginModal();
                     updateUIAfterLogin();
                     showAlert('✅ Account created successfully!', 'success');
+                    
+                    // Load user data
+                    loadRealData();
                 } else {
                     throw new Error(data.detail || 'Registration failed');
                 }
             } catch (error) {
+                console.error('Registration error:', error);
                 showErrorInModal('emailRegisterAlert', error.message);
             }
         }
@@ -2292,13 +2324,21 @@
             try {
                 const response = await fetch(`${CONFIG.API_URL}/api/auth/email/login`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify({ email, password })
                 });
                 
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Login failed: ${errorText}`);
+                }
+                
                 const data = await response.json();
                 
-                if (response.ok && data.success) {
+                if (data.success) {
                     localStorage.setItem('xtourney_token', data.access_token);
                     localStorage.setItem('xtourney_user', JSON.stringify(data.user));
                     localStorage.setItem('xtourney_last_login', Date.now().toString());
@@ -2308,10 +2348,14 @@
                     hideLoginModal();
                     updateUIAfterLogin();
                     showAlert('✅ Login successful!', 'success');
+                    
+                    // Load user data
+                    loadRealData();
                 } else {
                     throw new Error(data.detail || 'Login failed');
                 }
             } catch (error) {
+                console.error('Login error:', error);
                 showErrorInModal('emailLoginAlert', error.message);
             }
         }
@@ -2452,6 +2496,7 @@
             localStorage.removeItem('xtourney_user');
             localStorage.removeItem('xtourney_servers');
             localStorage.removeItem('xtourney_last_login');
+            localStorage.removeItem('xtourney_oauth_started');
             
             currentUser = null;
             userToken = null;
@@ -2468,7 +2513,6 @@
             document.getElementById('quickCreateBtn').style.display = 'none';
             
             showSection('home');
-            loadPublicData();
             showAlert('✅ Successfully logged out', 'success');
         }
 
@@ -2491,12 +2535,6 @@
             if (document.getElementById('tournamentsGrid')) {
                 document.getElementById('tournamentsGrid').innerHTML = html;
             }
-        }
-
-        function loadPublicData() {
-            // Initial load of public data
-            updateRealStats();
-            loadTournaments();
         }
 
         // ========== UTILITY FUNCTIONS ==========
@@ -2743,7 +2781,7 @@
                     
                     // Reload data
                     loadTournaments();
-                    updateRealStats();
+                    loadGlobalStats();
                     showSection('tournaments');
                 } else {
                     throw new Error(data.detail || 'Failed to create tournament');
@@ -2753,42 +2791,18 @@
             }
         }
 
-        // ========== ERROR HANDLING ==========
-        window.addEventListener('error', function(e) {
-            console.error('Global error caught:', e.error);
-        });
-
-        window.addEventListener('unhandledrejection', function(e) {
-            console.error('Unhandled promise rejection:', e.reason);
-        });
-
-        // ========== LOADING INDICATOR FOR API CALLS ==========
-        let activeRequests = 0;
-
-        function showLoading() {
-            if (activeRequests === 0) {
-                // Could add a global loading indicator here
-            }
-            activeRequests++;
-        }
-
-        function hideLoading() {
-            activeRequests--;
-            if (activeRequests < 0) activeRequests = 0;
-        }
-
-        // ========== AUTO-REFRESH FOR LIVE DATA ==========
+        // ========== AUTO-REFRESH FOR GLOBAL STATS ==========
         let refreshInterval;
 
         function startAutoRefresh() {
             if (refreshInterval) clearInterval(refreshInterval);
             
             refreshInterval = setInterval(() => {
+                loadGlobalStats();
                 if (userToken) {
-                    updateRealStats();
                     loadTournaments();
                 }
-            }, 30000); // Refresh every 30 seconds
+            }, 60000); // Refresh every 60 seconds
         }
 
         function stopAutoRefresh() {
@@ -2798,10 +2812,8 @@
             }
         }
 
-        // Start auto-refresh when logged in
-        if (userToken) {
-            startAutoRefresh();
-        }
+        // Start auto-refresh
+        startAutoRefresh();
 
         // Clean up on page unload
         window.addEventListener('beforeunload', stopAutoRefresh);
@@ -2811,7 +2823,3 @@
     </script>
 </body>
 </html>
-
-
-
-
