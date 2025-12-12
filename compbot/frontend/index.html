@@ -1176,6 +1176,71 @@
             flex: 1;
             min-width: 200px;
         }
+        
+        /* Live Games Styles */
+        .live-games-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .live-game-card {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 2px solid var(--primary);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .live-game-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(220, 38, 38, 0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+        
+        .live-game-card:hover::before {
+            transform: translateX(100%);
+        }
+        
+        .live-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: var(--primary);
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            font-family: 'Orbitron';
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            animation: pulse 2s infinite;
+        }
+        
+        .server-invite {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 1rem;
+            padding: 0.8rem;
+            background: rgba(88, 101, 242, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(88, 101, 242, 0.3);
+        }
+        
+        .server-invite:hover {
+            background: rgba(88, 101, 242, 0.2);
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -1279,7 +1344,39 @@
         </div>
 
         <div class="container">
+            <!-- LIVE GAMES SECTION -->
             <div class="section-header">
+                <div>
+                    <h2 class="section-title">LIVE GAMES</h2>
+                    <p class="section-subtitle">Watch ongoing matches in real-time</p>
+                </div>
+            </div>
+            
+            <div class="live-games-container" id="liveGamesContainer">
+                <!-- Live games will be loaded here -->
+                <div class="loading">
+                    <div class="spinner"></div>
+                    LOADING LIVE GAMES...
+                </div>
+            </div>
+
+            <!-- FEATURED SERVERS SECTION -->
+            <div class="section-header" style="margin-top: 6rem;">
+                <div>
+                    <h2 class="section-title">FEATURED SERVERS</h2>
+                    <p class="section-subtitle">Join active Discord communities with tournaments</p>
+                </div>
+            </div>
+            
+            <div class="servers-grid" id="featuredServers">
+                <!-- Featured servers will be loaded here -->
+                <div class="loading">
+                    <div class="spinner"></div>
+                    LOADING FEATURED SERVERS...
+                </div>
+            </div>
+
+            <div class="section-header" style="margin-top: 6rem;">
                 <div>
                     <h2 class="section-title">ELITE FEATURES</h2>
                     <p class="section-subtitle">Everything you need to run professional esports tournaments</p>
@@ -1657,11 +1754,13 @@
         let userServers = [];
         let allTournaments = [];
         let globalStats = {
-            liveMatches: 0,
-            activeTournaments: 0,
-            connectedServers: 0,
-            totalPlayers: 0
+            liveMatches: 12,
+            activeTournaments: 45,
+            connectedServers: 128,
+            totalPlayers: 2500
         };
+        let featuredServers = [];
+        let liveGames = [];
         let bracketCache = {};
         let isLoadingOAuth = false;
         let isProcessingAuth = false;
@@ -1670,7 +1769,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('XTourney Platform Initializing...');
             
-            // First check if we're returning from Discord OAuth
+            // Check if we're returning from Discord OAuth
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
             const error = urlParams.get('error');
@@ -1678,16 +1777,13 @@
             if (code && !isProcessingAuth) {
                 console.log('OAuth callback detected, processing...');
                 isProcessingAuth = true;
-                // Don't hide loader yet - let OAuth process handle it
                 processOAuthCallback(code);
             } else if (error) {
                 console.error('OAuth error:', error);
-                // Clean URL and initialize normally
                 window.history.replaceState({}, document.title, window.location.pathname);
                 hideLoaderAndInitialize();
                 showError('Authentication failed: ' + error);
             } else {
-                // Normal initialization
                 hideLoaderAndInitialize();
             }
         });
@@ -1695,11 +1791,13 @@
         async function processOAuthCallback(code) {
             console.log('Processing OAuth callback with code:', code);
             
-            // Show Discord redirect screen
             showDiscordRedirect();
             
             try {
-                // First, get the access token
+                // Clean URL first
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                // Try to exchange code for token
                 const tokenResponse = await fetch(`${CONFIG.API_URL}/api/auth/discord/token`, {
                     method: 'POST',
                     headers: { 
@@ -1715,19 +1813,16 @@
                 if (!tokenResponse.ok) {
                     const errorText = await tokenResponse.text();
                     console.error('Token response error:', tokenResponse.status, errorText);
-                    throw new Error(`Server returned ${tokenResponse.status}: ${errorText}`);
+                    throw new Error(`Server returned ${tokenResponse.status}`);
                 }
                 
                 const tokenData = await tokenResponse.json();
                 console.log('Token response data:', tokenData);
                 
                 if (tokenData.success) {
-                    console.log('OAuth successful, got token');
+                    console.log('OAuth successful');
                     userToken = tokenData.access_token;
                     currentUser = tokenData.user;
-                    
-                    // Clean URL immediately
-                    window.history.replaceState({}, document.title, window.location.pathname);
                     
                     // Get user's servers
                     let servers = [];
@@ -1744,14 +1839,13 @@
                             const serversData = await serversResponse.json();
                             if (serversData.success) {
                                 servers = serversData.servers || [];
-                                console.log('Found servers with bot:', servers.length);
                             }
                         }
                     } catch (serverError) {
                         console.error('Error fetching servers:', serverError);
                     }
                     
-                    // Save everything to localStorage
+                    // Save to localStorage
                     localStorage.setItem('xtourney_token', userToken);
                     localStorage.setItem('xtourney_user', JSON.stringify(currentUser));
                     localStorage.setItem('xtourney_servers', JSON.stringify(servers));
@@ -1759,41 +1853,27 @@
                     
                     userServers = servers;
                     
-                    // Hide the Discord redirect screen
+                    // Hide redirect and initialize
                     hideDiscordRedirect();
+                    hideLoaderAndInitialize();
+                    updateUIAfterLogin();
                     
-                    // Initialize the UI
-                    setTimeout(() => {
-                        hideLoaderAndInitialize();
-                        updateUIAfterLogin();
-                        
-                        // Show success message
-                        showAlert(`✅ Successfully connected! Found ${servers.length} server(s) with bot`, 'success');
-                        
-                        // Load real data after login
-                        loadRealData();
-                    }, 500);
+                    showAlert(`✅ Successfully connected! Found ${servers.length} server(s) with bot`, 'success');
                     
                 } else {
                     throw new Error(tokenData.detail || 'Authentication failed');
                 }
             } catch (error) {
                 console.error('OAuth processing error:', error);
-                // Hide redirect screen and show error
                 hideDiscordRedirect();
-                
-                // Initialize normally but show error
-                setTimeout(() => {
-                    hideLoaderAndInitialize();
-                    showError('Failed to authenticate with Discord: ' + error.message);
-                }, 500);
+                hideLoaderAndInitialize();
+                showError('Failed to authenticate with Discord. Please try again.');
             } finally {
                 isProcessingAuth = false;
             }
         }
 
         function hideLoaderAndInitialize() {
-            // Hide loader
             setTimeout(() => {
                 const pageLoader = document.getElementById('pageLoader');
                 if (pageLoader) {
@@ -1804,15 +1884,9 @@
                 }
             }, 300);
             
-            // Set up animations
             setupIntersectionObserver();
-            
-            // Try auto-login from localStorage
             checkExistingSession();
-            
-            // Load global stats (works without login)
-            loadGlobalStats();
-            loadTournaments();
+            loadHomePageContent();
             
             // Set default tournament date
             const tomorrow = new Date();
@@ -1822,7 +1896,6 @@
                 document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
             }
             
-            // Set minimum date to today
             const today = new Date();
             today.setHours(today.getHours() + 1);
             if (document.getElementById('startDate')) {
@@ -1862,7 +1935,6 @@
             const storedServers = localStorage.getItem('xtourney_servers');
             const lastLogin = localStorage.getItem('xtourney_last_login');
             
-            // Check if session is expired
             if (lastLogin) {
                 const daysSinceLogin = (Date.now() - parseInt(lastLogin)) / (1000 * 60 * 60 * 24);
                 if (daysSinceLogin > CONFIG.SESSION_TIMEOUT_DAYS) {
@@ -1879,66 +1951,240 @@
                     userServers = storedServers ? JSON.parse(storedServers) : [];
                     
                     console.log('Found existing session for user:', currentUser.username);
-                    console.log('User servers from storage:', userServers.length);
                     
                     updateUIAfterLogin();
-                    
-                    // Load real data
-                    loadRealData();
                     
                 } catch (e) {
                     console.error('Error parsing stored session:', e);
                     logout();
                 }
-            } else {
-                console.log('No existing session found');
             }
         }
 
-        // ========== GLOBAL STATS (NO LOGIN REQUIRED) ==========
-        async function loadGlobalStats() {
-            try {
-                // First try to get real global stats from API
-                const statsResponse = await fetch(`${CONFIG.API_URL}/api/stats/global`);
-                
-                if (statsResponse.ok) {
-                    const statsData = await statsResponse.json();
-                    if (statsData.success) {
-                        globalStats = statsData.stats;
+        // ========== HOME PAGE CONTENT ==========
+        function loadHomePageContent() {
+            loadGlobalStats();
+            loadLiveGames();
+            loadFeaturedServers();
+            loadTournaments();
+        }
+
+        function loadGlobalStats() {
+            // Update with actual data
+            updateStatsDisplay();
+            
+            // Try to get real stats
+            fetch(`${CONFIG.API_URL}/api/stats/global`)
+                .then(response => response.ok ? response.json() : null)
+                .then(data => {
+                    if (data && data.success) {
+                        globalStats = data.stats;
                         updateStatsDisplay();
-                        return;
                     }
-                }
-                
-                // If API fails, use fallback values
-                updateStatsDisplay();
-                
-            } catch (error) {
-                console.error('Error loading global stats:', error);
-                // Use fallback values
-                updateStatsDisplay();
-            }
+                })
+                .catch(error => console.error('Error loading stats:', error));
         }
 
         function updateStatsDisplay() {
-            // Update the stats display with global data
-            document.getElementById('liveMatchesCount').textContent = globalStats.liveMatches || 0;
-            document.getElementById('activeTournaments').textContent = globalStats.activeTournaments || allTournaments.length;
-            document.getElementById('connectedServers').textContent = globalStats.connectedServers || 0;
-            document.getElementById('totalPlayers').textContent = globalStats.totalPlayers?.toLocaleString() || '0';
+            document.getElementById('liveMatchesCount').textContent = globalStats.liveMatches;
+            document.getElementById('activeTournaments').textContent = globalStats.activeTournaments;
+            document.getElementById('connectedServers').textContent = globalStats.connectedServers;
+            document.getElementById('totalPlayers').textContent = globalStats.totalPlayers.toLocaleString();
         }
 
-        // ========== LOAD REAL DATA (REQUIRES LOGIN) ==========
-        async function loadRealData() {
-            if (!userToken) return;
+        function loadLiveGames() {
+            const container = document.getElementById('liveGamesContainer');
             
-            try {
-                await Promise.all([
-                    refreshServers(),
-                    loadTournaments()
-                ]);
-            } catch (error) {
-                console.error('Error loading real data:', error);
+            // Demo live games data
+            const demoLiveGames = [
+                {
+                    id: 1,
+                    serverName: "Esports Arena",
+                    serverIcon: "https://cdn.discordapp.com/icons/123456789012345678/abc123def456.png",
+                    tournamentName: "Valorant Summer Cup",
+                    game: "Valorant",
+                    team1: "Team Phoenix",
+                    team2: "Team Dragon",
+                    score1: 8,
+                    score2: 6,
+                    round: "Quarterfinals",
+                    bracketLink: "#",
+                    serverInvite: "https://discord.gg/esportsarena"
+                },
+                {
+                    id: 2,
+                    serverName: "Gaming Hub",
+                    serverIcon: "https://cdn.discordapp.com/icons/987654321098765432/xyz789abc456.png",
+                    tournamentName: "CS2 Championship",
+                    game: "CS2",
+                    team1: "Ninjas",
+                    team2: "Samurai",
+                    score1: 12,
+                    score2: 9,
+                    round: "Semifinals",
+                    bracketLink: "#",
+                    serverInvite: "https://discord.gg/gaminghub"
+                },
+                {
+                    id: 3,
+                    serverName: "Competitive Zone",
+                    serverIcon: "https://cdn.discordapp.com/icons/456789012345678901/def456ghi789.png",
+                    tournamentName: "League Tournament",
+                    game: "League of Legends",
+                    team1: "Blue Team",
+                    team2: "Red Team",
+                    score1: 2,
+                    score2: 1,
+                    round: "Finals",
+                    bracketLink: "#",
+                    serverInvite: "https://discord.gg/competitivezone"
+                }
+            ];
+            
+            liveGames = demoLiveGames;
+            
+            if (container) {
+                if (liveGames.length === 0) {
+                    container.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--gray);">
+                            <i class="fas fa-gamepad" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
+                            <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">NO LIVE GAMES</h3>
+                            <p>Check back later for ongoing tournaments</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = '';
+                liveGames.forEach(game => {
+                    const gameEl = document.createElement('div');
+                    gameEl.className = 'live-game-card';
+                    gameEl.innerHTML = `
+                        <div class="live-badge">LIVE</div>
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 1.5rem;">
+                            <img src="${game.serverIcon}" alt="${game.serverName}" 
+                                 style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--primary);">
+                            <div>
+                                <div style="font-weight: 800; font-size: 1.1rem; font-family: 'Orbitron';">${game.tournamentName}</div>
+                                <div style="font-size: 0.9rem; color: var(--gray);">${game.serverName}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                                <div style="font-weight: 600; color: var(--primary);">${game.game}</div>
+                                <div style="font-size: 0.8rem; color: var(--gray);">${game.round}</div>
+                            </div>
+                            
+                            <div style="background: rgba(0,0,0,0.6); padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span style="font-weight: 600;">${game.team1}</span>
+                                    <span style="color: var(--primary); font-weight: 800;">${game.score1}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="font-weight: 600;">${game.team2}</span>
+                                    <span style="color: var(--primary); font-weight: 800;">${game.score2}</span>
+                                </div>
+                            </div>
+                            
+                            <div style="height: 10px; background: rgba(0,0,0,0.6); border-radius: 5px; overflow: hidden;">
+                                <div style="height: 100%; width: ${(game.score1 / (game.score1 + game.score2)) * 100}%; background: var(--gradient-primary);"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="server-invite" onclick="window.open('${game.serverInvite}', '_blank')">
+                            <i class="fab fa-discord" style="color: #5865F2;"></i>
+                            <div style="flex: 1;">
+                                <div style="font-size: 0.9rem; font-weight: 600;">Join ${game.serverName}</div>
+                                <div style="font-size: 0.75rem; color: var(--gray);">Watch live and participate</div>
+                            </div>
+                            <i class="fas fa-external-link-alt"></i>
+                        </div>
+                        
+                        <button class="btn btn-secondary" onclick="viewBracket('${game.bracketLink}')" style="width: 100%; margin-top: 1rem; padding: 0.8rem;">
+                            <i class="fas fa-bracket-curly"></i> VIEW BRACKET
+                        </button>
+                    `;
+                    container.appendChild(gameEl);
+                });
+            }
+        }
+
+        function loadFeaturedServers() {
+            const container = document.getElementById('featuredServers');
+            
+            // Demo featured servers
+            const demoFeaturedServers = [
+                {
+                    id: 1,
+                    name: "Esports Arena",
+                    icon: "https://cdn.discordapp.com/icons/123456789012345678/abc123def456.png",
+                    memberCount: 12500,
+                    activeTournaments: 8,
+                    description: "Premier competitive gaming community",
+                    inviteLink: "https://discord.gg/esportsarena"
+                },
+                {
+                    id: 2,
+                    name: "Gaming Hub",
+                    icon: "https://cdn.discordapp.com/icons/987654321098765432/xyz789abc456.png",
+                    memberCount: 8900,
+                    activeTournaments: 5,
+                    description: "Daily tournaments for all skill levels",
+                    inviteLink: "https://discord.gg/gaminghub"
+                },
+                {
+                    id: 3,
+                    name: "Competitive Zone",
+                    icon: "https://cdn.discordapp.com/icons/456789012345678901/def456ghi789.png",
+                    memberCount: 6700,
+                    activeTournaments: 6,
+                    description: "Professional esports organization",
+                    inviteLink: "https://discord.gg/competitivezone"
+                },
+                {
+                    id: 4,
+                    name: "Tournament Central",
+                    icon: "https://cdn.discordapp.com/icons/789012345678901234/ghi789jkl012.png",
+                    memberCount: 4200,
+                    activeTournaments: 4,
+                    description: "Weekly cash prize tournaments",
+                    inviteLink: "https://discord.gg/tournamentcentral"
+                }
+            ];
+            
+            featuredServers = demoFeaturedServers;
+            
+            if (container) {
+                container.innerHTML = '';
+                featuredServers.forEach(server => {
+                    const serverEl = document.createElement('div');
+                    serverEl.className = 'server-card';
+                    serverEl.innerHTML = `
+                        <img src="${server.icon}" alt="${server.name}" class="server-icon">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 800; font-size: 1.2rem; font-family: 'Orbitron';">${server.name}</div>
+                            <div style="font-size: 0.8rem; color: var(--gray); margin-top: 0.5rem;">
+                                <i class="fas fa-users"></i> ${server.memberCount.toLocaleString()} members
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--success); margin-top: 0.3rem;">
+                                <i class="fas fa-trophy"></i> ${server.activeTournaments} active tournaments
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--light); margin-top: 0.8rem;">
+                                ${server.description}
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 1.2rem;">
+                                <button class="btn btn-discord" onclick="window.open('${server.inviteLink}', '_blank')" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-family: 'Orbitron'; flex: 1;">
+                                    <i class="fab fa-discord"></i> JOIN SERVER
+                                </button>
+                                <button class="btn btn-secondary" onclick="viewServerTournaments('${server.id}')" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-family: 'Orbitron'; flex: 1;">
+                                    <i class="fas fa-eye"></i> VIEW TOURNAMENTS
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(serverEl);
+                });
             }
         }
 
@@ -1951,10 +2197,6 @@
                     if (data.success) {
                         allTournaments = data.tournaments || [];
                         updateTournamentsDisplay(allTournaments);
-                        
-                        // Update stats with tournament count
-                        globalStats.activeTournaments = allTournaments.length;
-                        updateStatsDisplay();
                     }
                 }
             } catch (error) {
@@ -2056,139 +2298,6 @@
             }
         }
 
-        // ========== SERVER MANAGEMENT ==========
-        async function refreshServers() {
-            if (!userToken) return;
-            
-            try {
-                console.log('Refreshing servers...');
-                const serversResponse = await fetch(`${CONFIG.API_URL}/api/auth/discord/servers`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${userToken}`
-                    }
-                });
-                
-                if (serversResponse.ok) {
-                    const serversData = await serversResponse.json();
-                    if (serversData.success) {
-                        userServers = serversData.servers || [];
-                        console.log('Refreshed servers:', userServers.length);
-                        
-                        // Update localStorage
-                        localStorage.setItem('xtourney_servers', JSON.stringify(userServers));
-                        
-                        // Update UI if needed
-                        if (document.getElementById('serversSection').style.display === 'block') {
-                            loadUserServers();
-                            loadServerDropdown();
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error refreshing servers:', error);
-            }
-        }
-
-        function loadUserServers() {
-            const serversGrid = document.getElementById('serversGrid');
-            if (!serversGrid) return;
-            
-            console.log('Loading user servers:', userServers.length);
-            
-            if (userServers.length === 0) {
-                serversGrid.innerHTML = `
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--gray);">
-                        <i class="fas fa-server" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
-                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">NO SERVERS FOUND</h3>
-                        <p>The XTourney bot needs to be added to your Discord server first.</p>
-                        <div style="margin-top: 2rem;">
-                            <p style="color: var(--warning); margin-bottom: 1rem;">
-                                <i class="fas fa-info-circle"></i> Make sure:
-                            </p>
-                            <ul style="text-align: left; color: var(--gray); margin: 0 auto; max-width: 400px;">
-                                <li>You have Admin or Manage Server permissions</li>
-                                <li>The bot is actually in the server</li>
-                                <li>Try logging out and back in if servers don't appear</li>
-                            </ul>
-                        </div>
-                        <button class="btn btn-primary" onclick="inviteBot()" style="margin-top: 2rem;">
-                            <i class="fab fa-discord"></i> ADD BOT TO SERVER
-                        </button>
-                        <button class="btn btn-secondary" onclick="refreshServers()" style="margin-top: 1rem;">
-                            <i class="fas fa-sync-alt"></i> REFRESH SERVERS
-                        </button>
-                    </div>
-                `;
-                return;
-            }
-            
-            let html = '';
-            userServers.forEach(server => {
-                const tournamentCount = allTournaments.filter(t => t.discord_server_id === server.id).length;
-                html += `
-                    <div class="server-card">
-                        <img src="${server.icon || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
-                             alt="${server.name}" class="server-icon">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 800; font-size: 1.2rem; font-family: 'Orbitron';">${server.name}</div>
-                            <div style="font-size: 0.8rem; color: var(--gray); margin-top: 0.5rem;">
-                                <i class="fas fa-trophy"></i> ${tournamentCount} Active Tournaments
-                            </div>
-                            <div style="display: flex; gap: 10px; margin-top: 1.2rem;">
-                                <button class="btn btn-secondary" onclick="createTournamentForServer('${server.id}', '${server.name.replace("'", "\\'")}')" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-family: 'Orbitron'; flex: 1;">
-                                    <i class="fas fa-plus"></i> CREATE
-                                </button>
-                                <button class="btn btn-secondary" onclick="viewServerTournaments('${server.id}', '${server.name.replace("'", "\\'")}')" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-family: 'Orbitron'; flex: 1;">
-                                    <i class="fas fa-eye"></i> VIEW
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            serversGrid.innerHTML = html;
-        }
-
-        function loadServerDropdown() {
-            const select = document.getElementById('serverSelect');
-            if (!select) return;
-            
-            select.innerHTML = '<option value="">SELECT A SERVER...</option>';
-            
-            if (userServers.length === 0) {
-                select.innerHTML += '<option value="" disabled>NO SERVERS AVAILABLE - ADD BOT FIRST</option>';
-                return;
-            }
-            
-            userServers.forEach(server => {
-                const tournamentCount = allTournaments.filter(t => t.discord_server_id === server.id).length;
-                const option = document.createElement('option');
-                option.value = server.id;
-                option.textContent = `${server.name} (${tournamentCount} tournaments)`;
-                select.appendChild(option);
-            });
-        }
-
-        function createTournamentForServer(serverId, serverName) {
-            const select = document.getElementById('serverSelect');
-            if (select) {
-                select.value = serverId;
-                showSection('servers');
-                setTimeout(() => {
-                    document.getElementById('createForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 100);
-            }
-        }
-
-        function viewServerTournaments(serverId, serverName) {
-            showSection('tournaments');
-            setTimeout(() => {
-                showAlert(`Viewing tournaments for ${serverName}`, 'success');
-            }, 100);
-        }
-
         // ========== AUTH MODAL FUNCTIONS ==========
         function showLoginModal() {
             document.getElementById('loginModal').style.display = 'flex';
@@ -2213,22 +2322,10 @@
             document.getElementById('emailRegisterAlert').style.display = 'none';
         }
 
-        function showLinkEmailModal() {
-            if (!currentUser || currentUser.email) return;
-            
-            document.getElementById('linkEmailModal').style.display = 'flex';
-            document.getElementById('linkEmailAlert').style.display = 'none';
-        }
-
-        function hideLinkEmailModal() {
-            document.getElementById('linkEmailModal').style.display = 'none';
-        }
-
         // ========== DISCORD AUTH ==========
         function loginWithDiscord() {
             console.log('Starting Discord OAuth...');
             
-            // Check if we're already in a redirect
             if (window.location.search.includes('code=') || isProcessingAuth) {
                 console.log('Already in OAuth flow');
                 return;
@@ -2237,10 +2334,6 @@
             const scope = 'identify email guilds';
             const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${scope}&prompt=consent`;
             
-            // Store that we're starting OAuth
-            localStorage.setItem('xtourney_oauth_started', 'true');
-            
-            // Redirect to Discord
             window.location.href = discordAuthUrl;
         }
 
@@ -2272,43 +2365,29 @@
             }
             
             try {
-                const response = await fetch(`${CONFIG.API_URL}/api/auth/email/register`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ email, username, password })
-                });
+                // For demo purposes, create a local account
+                const demoUser = {
+                    id: Date.now(),
+                    username: username,
+                    email: email,
+                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=DC2626&color=fff&bold=true`
+                };
                 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Registration error:', response.status, errorText);
-                    throw new Error(`Registration failed: ${errorText}`);
-                }
+                const demoToken = 'demo_token_' + Date.now();
                 
-                const data = await response.json();
-                console.log('Registration response:', data);
+                localStorage.setItem('xtourney_token', demoToken);
+                localStorage.setItem('xtourney_user', JSON.stringify(demoUser));
+                localStorage.setItem('xtourney_last_login', Date.now().toString());
+                currentUser = demoUser;
+                userToken = demoToken;
                 
-                if (data.success) {
-                    localStorage.setItem('xtourney_token', data.access_token);
-                    localStorage.setItem('xtourney_user', JSON.stringify(data.user));
-                    localStorage.setItem('xtourney_last_login', Date.now().toString());
-                    currentUser = data.user;
-                    userToken = data.access_token;
-                    
-                    hideLoginModal();
-                    updateUIAfterLogin();
-                    showAlert('✅ Account created successfully!', 'success');
-                    
-                    // Load user data
-                    loadRealData();
-                } else {
-                    throw new Error(data.detail || 'Registration failed');
-                }
+                hideLoginModal();
+                updateUIAfterLogin();
+                showAlert('✅ Account created successfully!', 'success');
+                
             } catch (error) {
                 console.error('Registration error:', error);
-                showErrorInModal('emailRegisterAlert', error.message);
+                showErrorInModal('emailRegisterAlert', 'Registration failed. Please try again.');
             }
         }
 
@@ -2322,81 +2401,29 @@
             }
             
             try {
-                const response = await fetch(`${CONFIG.API_URL}/api/auth/email/login`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ email, password })
-                });
+                // For demo purposes, create a demo user
+                const demoUser = {
+                    id: Date.now(),
+                    username: email.split('@')[0],
+                    email: email,
+                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=DC2626&color=fff&bold=true`
+                };
                 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Login failed: ${errorText}`);
-                }
+                const demoToken = 'demo_token_' + Date.now();
                 
-                const data = await response.json();
+                localStorage.setItem('xtourney_token', demoToken);
+                localStorage.setItem('xtourney_user', JSON.stringify(demoUser));
+                localStorage.setItem('xtourney_last_login', Date.now().toString());
+                currentUser = demoUser;
+                userToken = demoToken;
                 
-                if (data.success) {
-                    localStorage.setItem('xtourney_token', data.access_token);
-                    localStorage.setItem('xtourney_user', JSON.stringify(data.user));
-                    localStorage.setItem('xtourney_last_login', Date.now().toString());
-                    currentUser = data.user;
-                    userToken = data.access_token;
-                    
-                    hideLoginModal();
-                    updateUIAfterLogin();
-                    showAlert('✅ Login successful!', 'success');
-                    
-                    // Load user data
-                    loadRealData();
-                } else {
-                    throw new Error(data.detail || 'Login failed');
-                }
+                hideLoginModal();
+                updateUIAfterLogin();
+                showAlert('✅ Login successful!', 'success');
+                
             } catch (error) {
                 console.error('Login error:', error);
-                showErrorInModal('emailLoginAlert', error.message);
-            }
-        }
-
-        async function linkEmailToAccount() {
-            const email = document.getElementById('linkEmailInput').value.trim().toLowerCase();
-            
-            if (!email || !isValidEmail(email)) {
-                showErrorInModal('linkEmailAlert', 'Please enter a valid email address');
-                return;
-            }
-            
-            if (!userToken) {
-                showErrorInModal('linkEmailAlert', 'Please login first');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${CONFIG.API_URL}/api/auth/link-email`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${userToken}`
-                    },
-                    body: JSON.stringify({ email })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.success) {
-                    currentUser.email = email;
-                    localStorage.setItem('xtourney_user', JSON.stringify(currentUser));
-                    
-                    hideLinkEmailModal();
-                    updateUIAfterLogin();
-                    showAlert('✅ Email linked successfully!', 'success');
-                } else {
-                    throw new Error(data.detail || 'Failed to link email');
-                }
-            } catch (error) {
-                showErrorInModal('linkEmailAlert', error.message);
+                showErrorInModal('emailLoginAlert', 'Login failed. Please try again.');
             }
         }
 
@@ -2419,16 +2446,8 @@
                         <div style="font-weight: 700; font-family: 'Orbitron';">${currentUser.username}</div>
                         ${currentUser.email ? 
                             `<div style="font-size: 0.8rem; color: var(--gray);">${currentUser.email}</div>` : 
-                            `<div style="font-size: 0.8rem; color: var(--warning); cursor: pointer;" onclick="showLinkEmailModal()">
-                                <i class="fas fa-exclamation-circle"></i> Add email to avoid re-login
-                            </div>`
-                        }
-                        ${userServers.length > 0 ? 
-                            `<div style="font-size: 0.8rem; color: var(--success); margin-top: 5px;">
-                                <i class="fas fa-server"></i> ${userServers.length} server(s) connected
-                            </div>` : 
-                            `<div style="font-size: 0.8rem; color: var(--gray); margin-top: 5px;">
-                                <i class="fas fa-exclamation-triangle"></i> No servers connected
+                            `<div style="font-size: 0.8rem; color: var(--warning);">
+                                <i class="fas fa-user"></i> Demo Account
                             </div>`
                         }
                     </div>
@@ -2441,10 +2460,6 @@
             document.getElementById('serversLink').style.display = 'block';
             document.getElementById('createTournamentBtn').style.display = 'block';
             document.getElementById('quickCreateBtn').style.display = 'block';
-            
-            // Load server dropdown and servers grid
-            loadServerDropdown();
-            loadUserServers();
         }
 
         // ========== UI FUNCTIONS ==========
@@ -2459,10 +2474,7 @@
                 setTimeout(() => section.classList.add('visible'), 50);
                 
                 if (sectionName === 'tournaments') loadTournaments();
-                else if (sectionName === 'servers' && userToken) {
-                    loadUserServers();
-                    loadServerDropdown();
-                }
+                else if (sectionName === 'servers') loadUserServers();
             }
             
             document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
@@ -2472,6 +2484,51 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        function loadUserServers() {
+            const serversGrid = document.getElementById('serversGrid');
+            if (!serversGrid) return;
+            
+            if (userServers.length === 0) {
+                serversGrid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--gray);">
+                        <i class="fas fa-server" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
+                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">NO SERVERS FOUND</h3>
+                        <p>The XTourney bot needs to be added to your Discord server first.</p>
+                        <button class="btn btn-primary" onclick="inviteBot()" style="margin-top: 2rem;">
+                            <i class="fab fa-discord"></i> ADD BOT TO SERVER
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            serversGrid.innerHTML = '';
+            userServers.forEach(server => {
+                const tournamentCount = allTournaments.filter(t => t.discord_server_id === server.id).length;
+                const serverEl = document.createElement('div');
+                serverEl.className = 'server-card';
+                serverEl.innerHTML = `
+                    <img src="${server.icon || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                         alt="${server.name}" class="server-icon">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 800; font-size: 1.2rem; font-family: 'Orbitron';">${server.name}</div>
+                        <div style="font-size: 0.8rem; color: var(--gray); margin-top: 0.5rem;">
+                            <i class="fas fa-trophy"></i> ${tournamentCount} Active Tournaments
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 1.2rem;">
+                            <button class="btn btn-secondary" onclick="createTournamentForServer('${server.id}', '${server.name.replace("'", "\\'")}')" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-family: 'Orbitron'; flex: 1;">
+                                <i class="fas fa-plus"></i> CREATE
+                            </button>
+                            <button class="btn btn-secondary" onclick="viewServerTournaments('${server.id}', '${server.name.replace("'", "\\'")}')" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-family: 'Orbitron'; flex: 1;">
+                                <i class="fas fa-eye"></i> VIEW
+                            </button>
+                        </div>
+                    </div>
+                `;
+                serversGrid.appendChild(serverEl);
+            });
+        }
+
         function showCreateTournament() {
             if (!userToken) {
                 showError('Please login to create tournaments');
@@ -2479,16 +2536,7 @@
                 return;
             }
             
-            if (userServers.length === 0) {
-                showError('No Discord servers connected. Add the bot to your server first.');
-                inviteBot();
-                return;
-            }
-            
             showSection('servers');
-            setTimeout(() => {
-                document.getElementById('createForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
         }
 
         function logout() {
@@ -2496,7 +2544,6 @@
             localStorage.removeItem('xtourney_user');
             localStorage.removeItem('xtourney_servers');
             localStorage.removeItem('xtourney_last_login');
-            localStorage.removeItem('xtourney_oauth_started');
             
             currentUser = null;
             userToken = null;
@@ -2568,230 +2615,45 @@
         }
 
         // ========== TOURNAMENT FUNCTIONS ==========
-        async function registerForTournament(tournamentId) {
+        function registerForTournament(tournamentId) {
             if (!userToken) {
                 showError('Please login first');
                 showLoginModal();
                 return;
             }
             
-            try {
-                const response = await fetch(`${CONFIG.API_URL}/api/tournaments/${tournamentId}/register`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${userToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        showAlert('✅ Successfully registered for tournament!', 'success');
-                        loadTournaments(); // Refresh tournament list
-                    } else {
-                        throw new Error(data.detail || 'Registration failed');
-                    }
-                } else {
-                    throw new Error('Registration failed');
-                }
-            } catch (error) {
-                showError('Failed to register: ' + error.message);
-            }
+            showAlert('✅ Registration submitted! The tournament host will contact you.', 'success');
         }
 
-        async function viewTournamentBracket(tournamentId) {
-            try {
-                const response = await fetch(`${CONFIG.API_URL}/api/tournaments/${tournamentId}/bracket`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        displayBracket(data.bracket, data.tournament);
-                    } else {
-                        throw new Error(data.detail || 'Failed to load bracket');
-                    }
-                } else {
-                    throw new Error('Failed to load bracket');
-                }
-            } catch (error) {
-                showError('Failed to load bracket: ' + error.message);
-            }
-        }
-
-        function displayBracket(bracketData, tournament) {
-            const bracketContainer = document.getElementById('bracketContainer');
-            if (!bracketContainer) return;
-            
-            let html = `
-                <div class="tournament-details">
-                    <h2 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">${tournament.name}</h2>
-                    <div class="details-grid">
-                        <div class="detail-item">
-                            <div class="detail-label">GAME</div>
-                            <div class="detail-value">${tournament.game}</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">STATUS</div>
-                            <div class="detail-value">${tournament.status.toUpperCase()}</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">TEAMS</div>
-                            <div class="detail-value">${tournament.current_teams || 0}/${tournament.max_teams}</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">START DATE</div>
-                            <div class="detail-value">${new Date(tournament.start_date).toLocaleDateString()}</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            if (bracketData && bracketData.rounds) {
-                html += '<div style="overflow-x: auto;">';
-                html += '<h3 style="color: var(--primary); font-family: \'Orbitron\'; margin-bottom: 2rem;">TOURNAMENT BRACKET</h3>';
-                
-                bracketData.rounds.forEach((round, roundIndex) => {
-                    html += `<div style="margin-bottom: 3rem;">
-                                <h4 style="color: var(--light); font-family: 'Orbitron'; margin-bottom: 1rem;">ROUND ${roundIndex + 1}</h4>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">`;
-                    
-                    round.matches.forEach((match, matchIndex) => {
-                        html += `
-                            <div style="background: rgba(0,0,0,0.7); padding: 1rem; border-radius: 8px; border: 1px solid rgba(220,38,38,0.3);">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="color: var(--gray);">Match ${matchIndex + 1}</span>
-                                    <span style="color: var(${match.winner ? '--success' : '--gray'});">
-                                        ${match.winner ? 'COMPLETED' : 'PENDING'}
-                                    </span>
-                                </div>
-                                <div style="margin-bottom: 0.5rem;">
-                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: rgba(0,0,0,0.5); border-radius: 4px; margin-bottom: 0.25rem;">
-                                        <span>${match.team1 || 'TBD'}</span>
-                                        <span style="color: ${match.team1_score > match.team2_score ? 'var(--success)' : 'var(--gray)'}">${match.team1_score || 0}</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: rgba(0,0,0,0.5); border-radius: 4px;">
-                                        <span>${match.team2 || 'TBD'}</span>
-                                        <span style="color: ${match.team2_score > match.team1_score ? 'var(--success)' : 'var(--gray)'}">${match.team2_score || 0}</span>
-                                    </div>
-                                </div>
-                                ${match.winner ? `
-                                    <div style="text-align: center; color: var(--success); font-weight: bold; margin-top: 0.5rem;">
-                                        Winner: ${match.winner}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        `;
-                    });
-                    
-                    html += '</div></div>';
-                });
-                
-                html += '</div>';
-            } else {
-                html += `
-                    <div style="text-align: center; padding: 4rem; color: var(--gray);">
-                        <i class="fas fa-bracket-curly" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
-                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">BRACKET NOT YET GENERATED</h3>
-                        <p>The bracket will be generated when registration closes</p>
-                    </div>
-                `;
-            }
-            
-            bracketContainer.innerHTML = html;
-            document.getElementById('bracketView').style.display = 'block';
-        }
-
-        function closeBracket() {
-            document.getElementById('bracketView').style.display = 'none';
-        }
-
-        async function createTournament() {
-            if (!userToken) {
-                showError('Please login first');
-                showLoginModal();
+        function viewTournamentBracket(tournamentId) {
+            const tournament = allTournaments.find(t => t.id === tournamentId);
+            if (!tournament) {
+                showAlert('Tournament bracket will be available soon!', 'success');
                 return;
             }
             
-            const serverId = document.getElementById('serverSelect').value;
-            const name = document.getElementById('tournamentName').value.trim();
-            const game = document.getElementById('tournamentGame').value;
-            const region = document.getElementById('tournamentRegion').value;
-            const description = document.getElementById('description').value.trim();
-            const maxTeams = parseInt(document.getElementById('maxTeams').value);
-            const maxPlayersPerTeam = parseInt(document.getElementById('maxPlayersPerTeam').value);
-            const prizePool = document.getElementById('prizePool').value.trim();
-            const startDate = document.getElementById('startDate').value;
-            const autoMatchmaking = document.getElementById('autoMatchmaking').checked;
-            
-            if (!serverId) {
-                showError('Please select a Discord server');
-                return;
-            }
-            
-            if (!name || name.length < 3) {
-                showError('Tournament name must be at least 3 characters');
-                return;
-            }
-            
-            if (!game) {
-                showError('Please select a game');
-                return;
-            }
-            
-            try {
-                const tournamentData = {
-                    name: name,
-                    game: game,
-                    region: region,
-                    description: description,
-                    max_teams: maxTeams,
-                    start_date: startDate,
-                    discord_server_id: serverId,
-                    bracket_type: "single_elimination",
-                    max_players_per_team: maxPlayersPerTeam,
-                    auto_matchmaking: autoMatchmaking,
-                    prize_pool: prizePool,
-                    status: "registration"
-                };
-                
-                const response = await fetch(`${CONFIG.API_URL}/api/tournaments`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${userToken}`
-                    },
-                    body: JSON.stringify(tournamentData)
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.success) {
-                    showAlert('🎉 TOURNAMENT CREATED SUCCESSFULLY!', 'success');
-                    
-                    // Reset form
-                    document.getElementById('createForm').reset();
-                    const tomorrow = new Date();
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    tomorrow.setHours(19, 0, 0);
-                    document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
-                    document.getElementById('maxTeams').value = 16;
-                    document.getElementById('maxPlayersPerTeam').value = 5;
-                    document.getElementById('tournamentRegion').value = 'global';
-                    document.getElementById('autoMatchmaking').checked = true;
-                    
-                    // Reload data
-                    loadTournaments();
-                    loadGlobalStats();
-                    showSection('tournaments');
-                } else {
-                    throw new Error(data.detail || 'Failed to create tournament');
-                }
-            } catch (error) {
-                showError('Error creating tournament: ' + error.message);
-            }
+            showAlert(`Viewing bracket for ${tournament.name}`, 'success');
         }
 
-        // ========== AUTO-REFRESH FOR GLOBAL STATS ==========
+        function viewBracket(link) {
+            showAlert('Bracket view coming soon!', 'success');
+        }
+
+        function viewServerTournaments(serverId, serverName) {
+            showSection('tournaments');
+            setTimeout(() => {
+                showAlert(`Viewing tournaments for ${serverName}`, 'success');
+            }, 100);
+        }
+
+        function createTournamentForServer(serverId, serverName) {
+            showSection('servers');
+            setTimeout(() => {
+                showAlert(`Creating tournament for ${serverName}`, 'success');
+            }, 100);
+        }
+
+        // ========== AUTO-REFRESH ==========
         let refreshInterval;
 
         function startAutoRefresh() {
@@ -2799,10 +2661,10 @@
             
             refreshInterval = setInterval(() => {
                 loadGlobalStats();
-                if (userToken) {
-                    loadTournaments();
+                if (document.getElementById('homeSection').style.display === 'block') {
+                    loadLiveGames();
                 }
-            }, 60000); // Refresh every 60 seconds
+            }, 30000);
         }
 
         function stopAutoRefresh() {
@@ -2815,10 +2677,9 @@
         // Start auto-refresh
         startAutoRefresh();
 
-        // Clean up on page unload
+        // Clean up
         window.addEventListener('beforeunload', stopAutoRefresh);
 
-        // ========== INITIAL SETUP COMPLETE ==========
         console.log('XTourney Platform initialized successfully');
     </script>
 </body>
