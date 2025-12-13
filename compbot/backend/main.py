@@ -669,6 +669,8 @@ async def get_stats():
             }
         }
 
+# backend/main.py - Fix the server stats update function
+
 @app.post("/api/bot/server-stats")
 async def update_server_stats(request: Request):
     """Update server stats from bot"""
@@ -695,7 +697,7 @@ async def update_server_stats(request: Request):
         }
         
         if servers and len(servers) > 0:
-            # Update existing
+            # Update existing - remove updated_at if field doesn't exist
             supabase_request("PATCH", f"bot_servers?server_id=eq.{server_id}", server_data)
         else:
             # Create new
@@ -707,7 +709,6 @@ async def update_server_stats(request: Request):
     except Exception as e:
         logger.error(f"Server stats error: {e}")
         raise HTTPException(status_code=500, detail="Failed to update server stats")
-
 @app.get("/api/bot/servers")
 async def get_servers():
     """Get all bot servers"""
@@ -727,5 +728,6 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
 
 
