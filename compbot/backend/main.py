@@ -691,7 +691,8 @@ function broadcastToTournament(tournamentId, message) {
 // ========== SERVER SETUP ==========
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
-    console.log(`✅ Server running on port ${PORT}`);
+    print(f"Server running on port {PORT}")
+
     console.log(`🌐 API available at http://localhost:${PORT}/api`);
 });
 
@@ -747,3 +748,4 @@ server.on('upgrade', (request, socket, head) => {
 })();
 
 module.exports = { app, db };
+
