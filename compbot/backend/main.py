@@ -1,1038 +1,749 @@
-from fastapi import FastAPI, HTTPException, Request, Header, Depends, status, Response
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import os
-import requests
-import secrets
-import hashlib
-import json
-import base64
-from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any, Tuple
-from pydantic import BaseModel, EmailStr, Field, validator
-import jwt
-from uuid import uuid4
-import re
-import logging
-import math
-from contextlib import asynccontextmanager
-import redis.asyncio as redis
-import random
-from enum import Enum
-import asyncio
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
+require('dotenv').config();
 
-# ========== SETUP LOGGING ==========
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
 
-# ========== ENUMS ==========
-class TournamentStatus(str, Enum):
-    REGISTRATION = "registration"
-    ONGOING = "ongoing"
-    COMPLETED = "completed"
+// Simple in-memory storage
+const db = {
+    users: {},
+    tournaments: {},
+    matches: {},
+    teams: {},
+    brackets: {},
+    proofs: {}
+};
 
-class MatchStatus(str, Enum):
-    SCHEDULED = "scheduled"
-    ONGOING = "ongoing"
-    COMPLETED = "completed"
-    PENDING = "pending"
+// JWT Secret
+const JWT_SECRET = process.env.JWT_SECRET || 'tourney-secret-key-' + Date.now();
 
-class ProofStatus(str, Enum):
-    PENDING = "pending"
-    VERIFIED = "verified"
-    REJECTED = "rejected"
-
-class BracketType(str, Enum):
-    SINGLE_ELIMINATION = "single_elimination"
-    DOUBLE_ELIMINATION = "double_elimination"
-
-# ========== LIFECYCLE MANAGEMENT ==========
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Handle startup and shutdown events"""
-    # Startup
-    logger.info("🚀 Starting XTourney API v2.0")
-    logger.info(f"📊 Environment: {os.getenv('ENVIRONMENT', 'development')}")
+// ========== MIDDLEWARE ==========
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
     
-    yield
+    if (!token) return res.status(401).json({ error: 'Access denied' });
     
-    # Shutdown
-    logger.info("🛑 Shutting down XTourney API")
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).json({ error: 'Invalid token' });
+        req.user = user;
+        next();
+    });
+};
 
-# ========== APP INITIALIZATION ==========
-app = FastAPI(
-    title="XTourney API v2.0", 
-    version="2.0.0",
-    description="Professional Esports Tournament Platform with Auto Bracket Progression",
-    lifespan=lifespan
-)
+// Admin middleware
+const isAdmin = (req, res, next) => {
+    if (req.user && req.user.isAdmin) {
+        next();
+    } else {
+        res.status(403).json({ error: 'Admin access required' });
+    }
+};
 
-# ========== SECURITY MIDDLEWARE ==========
-security = HTTPBearer()
+// Host middleware
+const isHost = (req, res, next) => {
+    if (req.user && (req.user.isHost || req.user.isAdmin)) {
+        next();
+    } else {
+        res.status(403).json({ error: 'Host access required' });
+    }
+};
 
-# CORS Configuration
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://www.xotiicsplaza.us",
-    "https://xotiicsplaza.us",
-    "https://*.xotiicsplaza.us",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000"
-]
+// ========== AUTH ENDPOINTS ==========
+app.post('/api/register', async (req, res) => {
+    try {
+        const { username, password, email } = req.body;
+        
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password required' });
+        }
+        
+        if (username.length < 3) {
+            return res.status(400).json({ error: 'Username must be at least 3 characters' });
+        }
+        
+        if (password.length < 6) {
+            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        }
+        
+        if (db.users[username]) {
+            return res.status(400).json({ error: 'Username already exists' });
+        }
+        
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const userId = uuidv4();
+        
+        db.users[username] = {
+            id: userId,
+            username,
+            email: email || '',
+            password: hashedPassword,
+            isHost: false,
+            isAdmin: false,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString()
+        };
+        
+        const token = jwt.sign(
+            { 
+                id: userId, 
+                username, 
+                isHost: false,
+                isAdmin: false 
+            }, 
+            JWT_SECRET, 
+            { expiresIn: '30d' }
+        );
+        
+        res.json({
+            success: true,
+            token,
+            user: {
+                id: userId,
+                username,
+                email: email || '',
+                isHost: false,
+                isAdmin: false
+            }
+        });
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'Registration failed' });
+    }
+});
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"]
-)
+app.post('/api/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password required' });
+        }
+        
+        const user = db.users[username];
+        if (!user) {
+            return res.status(400).json({ error: 'Invalid credentials' });
+        }
+        
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) {
+            return res.status(400).json({ error: 'Invalid credentials' });
+        }
+        
+        // Update last login
+        user.lastLogin = new Date().toISOString();
+        
+        const token = jwt.sign(
+            { 
+                id: user.id, 
+                username: user.username, 
+                isHost: user.isHost,
+                isAdmin: user.isAdmin 
+            }, 
+            JWT_SECRET, 
+            { expiresIn: '30d' }
+        );
+        
+        res.json({
+            success: true,
+            token,
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                isHost: user.isHost,
+                isAdmin: user.isAdmin
+            }
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Login failed' });
+    }
+});
 
-# ========== CONFIGURATION ==========
-class Config:
-    """Configuration management"""
-    SUPABASE_URL = os.getenv("SUPABASE_URL", "https://ugaeaekzhocwqdzdtrry.supabase.co")
-    SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnYWVhZWt6aG9jd3FkemR0cnJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM0MDQzMzMsImV4cCI6MjA0ODk4MDMzM30.3r7y8ryqpH7FBy-HwKN5TVpeL6hQsCFgC-nonBRkYFQ")
-    SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnYWVhZWt6aG9jd3FkemR0cnJ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczMzQwNDMzMywiZXhwIjoyMDQ4OTgwMzMzfQ.75OHIq7HOSzRGRa8AGm8_zs6tqukmvNw2kD7D60UJ0k")
-    
-    DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "1445127821742575726")
-    DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET", "your_discord_secret")
-    
-    FRONTEND_URL = os.getenv("FRONTEND_URL", "https://www.xotiicsplaza.us/")
-    JWT_SECRET = os.getenv("JWT_SECRET", "your-super-secret-jwt-key-change-this-now")
-    JWT_ALGORITHM = "HS256"
-    JWT_EXPIRE_DAYS = 30
-    
-    ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-    API_VERSION = "v2"
-    
-    @classmethod
-    def validate(cls):
-        """Validate required environment variables"""
-        logger.info("✅ Configuration loaded")
-        return True
+// ========== ADMIN ENDPOINTS ==========
+app.post('/api/admin/make-host', authenticateToken, isAdmin, (req, res) => {
+    try {
+        const { username } = req.body;
+        
+        if (!db.users[username]) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        db.users[username].isHost = true;
+        
+        res.json({
+            success: true,
+            message: `${username} is now a tournament host`,
+            user: {
+                username: db.users[username].username,
+                isHost: true
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update user' });
+    }
+});
 
-# Validate config
-Config.validate()
+// ========== TOURNAMENT ENDPOINTS ==========
+app.post('/api/tournaments', authenticateToken, isHost, (req, res) => {
+    try {
+        const { name, game, description, maxTeams, maxPlayers, prizePool, startDate, region } = req.body;
+        
+        if (!name || !game || !maxTeams) {
+            return res.status(400).json({ error: 'Required fields: name, game, maxTeams' });
+        }
+        
+        const tournamentId = uuidv4();
+        const tournamentPass = generateTournamentPass();
+        
+        db.tournaments[tournamentId] = {
+            id: tournamentId,
+            name,
+            game,
+            description: description || '',
+            maxTeams: parseInt(maxTeams),
+            maxPlayers: parseInt(maxPlayers) || 5,
+            prizePool: prizePool || '',
+            startDate: startDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            region: region || 'global',
+            status: 'registration',
+            createdBy: req.user.username,
+            hostId: req.user.id,
+            tournamentPass, // Secret pass for host management
+            createdAt: new Date().toISOString(),
+            teams: [],
+            matches: [],
+            currentRound: 0,
+            totalRounds: calculateRounds(maxTeams)
+        };
+        
+        res.json({
+            success: true,
+            tournament: db.tournaments[tournamentId],
+            message: 'Tournament created successfully'
+        });
+    } catch (error) {
+        console.error('Tournament creation error:', error);
+        res.status(500).json({ error: 'Failed to create tournament' });
+    }
+});
 
-# Headers for Supabase requests
-headers = {
-    "apikey": Config.SUPABASE_KEY,
-    "Content-Type": "application/json",
-    "Prefer": "return=representation"
-}
+app.get('/api/tournaments', (req, res) => {
+    try {
+        const tournaments = Object.values(db.tournaments).filter(t => t.status !== 'completed');
+        
+        res.json({
+            success: true,
+            tournaments: tournaments.map(t => ({
+                id: t.id,
+                name: t.name,
+                game: t.game,
+                description: t.description,
+                maxTeams: t.maxTeams,
+                currentTeams: t.teams.length,
+                status: t.status,
+                prizePool: t.prizePool,
+                startDate: t.startDate,
+                region: t.region,
+                createdBy: t.createdBy
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch tournaments' });
+    }
+});
 
-service_headers = {
-    "apikey": Config.SUPABASE_KEY,
-    "Authorization": f"Bearer {Config.SUPABASE_SERVICE_KEY}",
-    "Content-Type": "application/json",
-    "Prefer": "return=representation"
-}
+app.get('/api/tournaments/:id', (req, res) => {
+    try {
+        const tournament = db.tournaments[req.params.id];
+        
+        if (!tournament) {
+            return res.status(404).json({ error: 'Tournament not found' });
+        }
+        
+        res.json({
+            success: true,
+            tournament: {
+                ...tournament,
+                teams: tournament.teams.map(teamId => db.teams[teamId]).filter(Boolean),
+                matches: tournament.matches.map(matchId => db.matches[matchId]).filter(Boolean)
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch tournament' });
+    }
+});
 
-# ========== PYDANTIC MODELS ==========
-class DiscordAuthRequest(BaseModel):
-    code: str
-    redirect_uri: Optional[str] = None
+app.post('/api/tournaments/:id/register', authenticateToken, (req, res) => {
+    try {
+        const tournament = db.tournaments[req.params.id];
+        const { teamName, players } = req.body;
+        
+        if (!tournament) {
+            return res.status(404).json({ error: 'Tournament not found' });
+        }
+        
+        if (tournament.status !== 'registration') {
+            return res.status(400).json({ error: 'Tournament not accepting registrations' });
+        }
+        
+        if (tournament.teams.length >= tournament.maxTeams) {
+            return res.status(400).json({ error: 'Tournament is full' });
+        }
+        
+        // Check if user already has a team
+        const existingTeam = Object.values(db.teams).find(
+            t => t.tournamentId === tournament.id && t.captainId === req.user.id
+        );
+        
+        if (existingTeam) {
+            return res.status(400).json({ error: 'You already have a team in this tournament' });
+        }
+        
+        const teamId = uuidv4();
+        
+        db.teams[teamId] = {
+            id: teamId,
+            name: teamName,
+            tournamentId: tournament.id,
+            captainId: req.user.id,
+            captainName: req.user.username,
+            players: players || [req.user.username],
+            createdAt: new Date().toISOString(),
+            wins: 0,
+            losses: 0,
+            seed: tournament.teams.length + 1
+        };
+        
+        tournament.teams.push(teamId);
+        
+        res.json({
+            success: true,
+            team: db.teams[teamId],
+            message: 'Team registered successfully'
+        });
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'Failed to register team' });
+    }
+});
 
-class RefreshTokenRequest(BaseModel):
-    refresh_token: str
+app.post('/api/tournaments/:id/start', authenticateToken, (req, res) => {
+    try {
+        const tournament = db.tournaments[req.params.id];
+        
+        if (!tournament) {
+            return res.status(404).json({ error: 'Tournament not found' });
+        }
+        
+        // Verify host access
+        if (tournament.hostId !== req.user.id && !req.user.isAdmin) {
+            return res.status(403).json({ error: 'Only the tournament host can start the tournament' });
+        }
+        
+        if (tournament.status !== 'registration') {
+            return res.status(400).json({ error: 'Tournament already started or completed' });
+        }
+        
+        if (tournament.teams.length < 2) {
+            return res.status(400).json({ error: 'Need at least 2 teams to start' });
+        }
+        
+        tournament.status = 'ongoing';
+        tournament.currentRound = 1;
+        
+        // Generate bracket
+        const bracket = generateBracket(tournament);
+        db.brackets[tournament.id] = bracket;
+        
+        // Create matches for first round
+        createMatchesFromBracket(tournament.id, bracket);
+        
+        res.json({
+            success: true,
+            tournament,
+            bracket,
+            message: 'Tournament started successfully'
+        });
+    } catch (error) {
+        console.error('Start tournament error:', error);
+        res.status(500).json({ error: 'Failed to start tournament' });
+    }
+});
 
-class EmailRegisterRequest(BaseModel):
-    email: EmailStr
-    username: str = Field(..., min_length=3, max_length=20)
-    password: str = Field(..., min_length=8)
-    
-    @validator('username')
-    def validate_username(cls, v):
-        if not re.match(r'^[a-zA-Z0-9_]{3,20}$', v):
-            raise ValueError('Username can only contain letters, numbers, and underscores')
-        return v
-
-class EmailLoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-class LinkEmailRequest(BaseModel):
-    email: EmailStr
-
-class TournamentCreate(BaseModel):
-    name: str = Field(..., min_length=3, max_length=100)
-    game: str = Field(..., min_length=2, max_length=50)
-    description: Optional[str] = Field(default="", max_length=1000)
-    max_teams: int = Field(default=16, ge=2, le=128)
-    start_date: str
-    discord_server_id: Optional[str] = None
-    bracket_type: str = Field(default=BracketType.SINGLE_ELIMINATION)
-    max_players_per_team: int = Field(default=5, ge=1, le=10)
-    region_lock: bool = Field(default=False)
-    region: str = Field(default="global")
-    prize_pool: Optional[str] = Field(default="", max_length=200)
-    auto_matchmaking: bool = Field(default=True)
-
-class TeamRegister(BaseModel):
-    tournament_id: str
-    name: str = Field(..., min_length=2, max_length=50)
-    captain_discord_id: str
-    region: Optional[str] = Field(default="global")
-    members: Optional[List[str]] = Field(default_factory=list)
-
-# ========== DATABASE SERVICE ==========
-class DatabaseService:
-    """Database service with error handling"""
-    
-    @staticmethod
-    def execute_query(table: str, method: str = "GET", data: dict = None, 
-                     query: str = "", admin: bool = False):
-        """Execute a database query"""
-        try:
-            url = f"{Config.SUPABASE_URL}/rest/v1/{table}"
-            if query:
-                url += f"?{query}"
-            
-            # Always use service headers for authenticated operations
-            # This bypasses RLS policies
-            headers_to_use = service_headers
-            
-            if method == "GET":
-                response = requests.get(url, headers=headers_to_use, timeout=10)
-            elif method == "POST":
-                response = requests.post(url, json=data, headers=headers_to_use, timeout=10)
-            elif method == "PATCH":
-                response = requests.patch(url, json=data, headers=headers_to_use, timeout=10)
-            elif method == "DELETE":
-                response = requests.delete(url, headers=headers_to_use, timeout=10)
-            elif method == "PUT":
-                response = requests.put(url, json=data, headers=headers_to_use, timeout=10)
-            else:
-                raise ValueError(f"Invalid method: {method}")
-            
-            logger.info(f"Database {method} {table}: {response.status_code}")
-            
-            if response.status_code in [200, 201, 204]:
-                try:
-                    return response.json()
-                except:
-                    return {"success": True}
-            elif response.status_code == 404:
-                return []
-            else:
-                error_text = response.text[:200]
-                logger.error(f"Database error {response.status_code}: {error_text}")
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"Database error: {error_text}"
-                )
+app.post('/api/tournaments/:id/manage', authenticateToken, (req, res) => {
+    try {
+        const { tournamentPass, action, data } = req.body;
+        const tournament = db.tournaments[req.params.id];
+        
+        if (!tournament) {
+            return res.status(404).json({ error: 'Tournament not found' });
+        }
+        
+        // Verify host access using tournament pass or ownership
+        const isOwner = tournament.hostId === req.user.id || req.user.isAdmin;
+        const hasValidPass = tournamentPass === tournament.tournamentPass;
+        
+        if (!isOwner && !hasValidPass) {
+            return res.status(403).json({ error: 'Invalid tournament pass or access denied' });
+        }
+        
+        // Handle different management actions
+        switch (action) {
+            case 'update_match':
+                updateMatchResult(data.matchId, data.winnerId, data.scores);
+                break;
                 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Database connection error: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-        except Exception as e:
-            logger.error(f"Database exception: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-    
-    @staticmethod
-    def insert(table: str, data: dict):
-        return DatabaseService.execute_query(table, "POST", data, admin=True)
-    
-    @staticmethod
-    def select(table: str, query: str = ""):
-        return DatabaseService.execute_query(table, "GET", query=query, admin=True)
-    
-    @staticmethod
-    def update(table: str, data: dict, column: str, value: str):
-        query_str = f"{column}=eq.{value}"
-        return DatabaseService.execute_query(table, "PATCH", data, query=query_str, admin=True)
-    
-    @staticmethod
-    def delete(table: str, column: str, value: str):
-        query_str = f"{column}=eq.{value}"
-        return DatabaseService.execute_query(table, "DELETE", query=query_str, admin=True)
-
-# ========== AUTH SERVICE ==========
-class AuthService:
-    """Authentication and authorization service"""
-    
-    @staticmethod
-    def create_tokens(user_data: dict) -> Dict[str, str]:
-        """Create access and refresh tokens"""
-        access_payload = {
-            "sub": user_data.get("id"),
-            "username": user_data.get("username"),
-            "discord_id": user_data.get("discord_id"),
-            "email": user_data.get("email"),
-            "account_type": user_data.get("account_type"),
-            "iat": datetime.utcnow(),
-            "exp": datetime.utcnow() + timedelta(days=7)
-        }
-        
-        refresh_payload = {
-            "sub": user_data.get("id"),
-            "type": "refresh",
-            "iat": datetime.utcnow(),
-            "exp": datetime.utcnow() + timedelta(days=Config.JWT_EXPIRE_DAYS)
-        }
-        
-        access_token = jwt.encode(access_payload, Config.JWT_SECRET, algorithm=Config.JWT_ALGORITHM)
-        refresh_token = jwt.encode(refresh_payload, Config.JWT_SECRET, algorithm=Config.JWT_ALGORITHM)
-        
-        return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer",
-            "expires_in": 7 * 24 * 60 * 60
-        }
-    
-    @staticmethod
-    def verify_token(token: str) -> Optional[Dict]:
-        """Verify JWT token"""
-        try:
-            payload = jwt.decode(token, Config.JWT_SECRET, algorithms=[Config.JWT_ALGORITHM])
-            return payload
-        except jwt.ExpiredSignatureError:
-            logger.warning("Token expired")
-            return None
-        except jwt.InvalidTokenError:
-            logger.warning("Invalid token")
-            return None
-    
-    @staticmethod
-    async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict:
-        """Get current authenticated user"""
-        token = credentials.credentials
-        payload = AuthService.verify_token(token)
-        
-        if not payload or payload.get("type") == "refresh":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or expired token",
-                headers={"WWW-Authenticate": "Bearer"}
-            )
-        
-        user_id = payload.get("sub")
-        users = DatabaseService.select("users", f"id=eq.'{user_id}'")
-        
-        if not users or len(users) == 0:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found",
-                headers={"WWW-Authenticate": "Bearer"}
-            )
-        
-        return users[0]
-
-# ========== DISCORD AUTH ENDPOINTS ==========
-@app.post("/api/auth/discord/token")
-async def discord_auth_token(request: DiscordAuthRequest):
-    """Exchange Discord OAuth code for access token"""
-    try:
-        logger.info(f"Processing Discord OAuth for redirect: {request.redirect_uri}")
-        
-        # Exchange code for access token
-        token_data = {
-            'client_id': Config.DISCORD_CLIENT_ID,
-            'client_secret': Config.DISCORD_CLIENT_SECRET,
-            'grant_type': 'authorization_code',
-            'code': request.code,
-            'redirect_uri': request.redirect_uri or f"{Config.FRONTEND_URL}"
-        }
-        
-        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        
-        # Get Discord access token
-        token_response = requests.post(
-            'https://discord.com/api/oauth2/token',
-            data=token_data,
-            headers=headers
-        )
-        
-        if token_response.status_code != 200:
-            logger.error(f"Discord token error {token_response.status_code}: {token_response.text}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to authenticate with Discord"
-            )
-        
-        token_json = token_response.json()
-        discord_access_token = token_json['access_token']
-        
-        # Get user info from Discord
-        user_response = requests.get(
-            'https://discord.com/api/users/@me',
-            headers={'Authorization': f'Bearer {discord_access_token}'}
-        )
-        
-        if user_response.status_code != 200:
-            logger.error(f"Discord user error: {user_response.text}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to fetch user info from Discord"
-            )
-        
-        discord_user = user_response.json()
-        discord_id = discord_user['id']
-        username = discord_user['username']
-        discriminator = discord_user.get('discriminator', '0')
-        email = discord_user.get('email')
-        avatar = f"https://cdn.discordapp.com/avatars/{discord_id}/{discord_user.get('avatar')}.png" if discord_user.get('avatar') else None
-        
-        # Full username with discriminator
-        full_username = f"{username}#{discriminator}"
-        
-        logger.info(f"Discord user: {full_username} ({discord_id}), email: {email}")
-        
-        # Check if user exists
-        users = DatabaseService.select("users", f"discord_id=eq.'{discord_id}'")
-        
-        if users and len(users) > 0:
-            # Update existing user
-            user = users[0]
-            logger.info(f"Updating existing user: {user['id']}")
-            update_data = {
-                "username": full_username,
-                "email": email or user.get('email'),
-                "avatar_url": avatar,
-                "last_login": datetime.utcnow().isoformat()
-            }
-            DatabaseService.update("users", update_data, "id", user['id'])
-            user.update(update_data)
-        else:
-            # Create new user
-            user_id = str(uuid4())
-            logger.info(f"Creating new user: {user_id}")
-            user_data = {
-                "id": user_id,
-                "discord_id": discord_id,
-                "username": full_username,
-                "email": email,
-                "avatar_url": avatar,
-                "account_type": "discord",
-                "is_verified": True if email else False,
-                "created_at": datetime.utcnow().isoformat(),
-                "last_login": datetime.utcnow().isoformat()
-            }
-            DatabaseService.insert("users", user_data)
-            users = DatabaseService.select("users", f"id=eq.'{user_id}'")
-            user = users[0] if users else user_data
-        
-        # Create JWT tokens
-        tokens = AuthService.create_tokens(user)
-        
-        # Get user's servers from database (simplified for now)
-        servers = DatabaseService.select("bot_servers", "is_active=eq.true")
-        
-        response_data = {
-            "success": True,
-            "access_token": tokens["access_token"],
-            "refresh_token": tokens["refresh_token"],
-            "token_type": tokens["token_type"],
-            "expires_in": tokens["expires_in"],
-            "user": {
-                "id": user.get("id"),
-                "discord_id": user.get("discord_id"),
-                "username": user.get("username"),
-                "email": user.get("email"),
-                "avatar": user.get("avatar_url"),
-                "account_type": user.get("account_type")
-            },
-            "servers": [
-                {
-                    "id": server.get('server_id'),
-                    "name": server.get('server_name'),
-                    "icon": server.get('icon_url'),
-                    "member_count": server.get('member_count'),
-                    "tournament_count": server.get('tournament_count', 0)
+            case 'advance_round':
+                advanceTournamentRound(tournament.id);
+                break;
+                
+            case 'update_status':
+                tournament.status = data.status;
+                break;
+                
+            case 'add_admin':
+                // Grant temporary admin access
+                if (isOwner) {
+                    // Would need to implement session-based admin access
                 }
-                for server in (servers or [])
-            ]
+                break;
         }
         
-        logger.info(f"✅ Discord auth successful for {full_username}")
-        return response_data
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Discord auth error: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error authenticating with Discord"
-        )
-
-@app.get("/api/auth/discord/servers")
-async def get_discord_servers(current_user: Dict = Depends(AuthService.get_current_user)):
-    """Get user's Discord servers where bot is present"""
-    try:
-        # Get all active servers from database
-        servers = DatabaseService.select("bot_servers", "is_active=eq.true")
-        
-        return {
-            "success": True,
-            "servers": [
-                {
-                    "id": server.get('server_id'),
-                    "name": server.get('server_name'),
-                    "icon": server.get('icon_url'),
-                    "member_count": server.get('member_count'),
-                    "tournament_count": server.get('tournament_count', 0)
-                }
-                for server in (servers or [])
-            ]
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting Discord servers: {e}")
-        return {
-            "success": True,
-            "servers": []
-        }
-
-# ========== EMAIL AUTH ENDPOINTS ==========
-@app.post("/api/auth/email/register")
-async def email_register(request: EmailRegisterRequest):
-    """Register new user with email"""
-    try:
-        # Check if email already exists
-        users_by_email = DatabaseService.select("users", f"email=eq.'{request.email}'")
-        if users_by_email and len(users_by_email) > 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
-        
-        # Check if username already exists
-        users_by_username = DatabaseService.select("users", f"username=eq.'{request.username}'")
-        if users_by_username and len(users_by_username) > 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already taken"
-            )
-        
-        # Create password hash
-        password_hash = hashlib.sha256(request.password.encode()).hexdigest()
-        
-        # Create user
-        user_id = str(uuid4())
-        user_data = {
-            "id": user_id,
-            "username": request.username,
-            "email": request.email,
-            "password_hash": password_hash,
-            "account_type": "email",
-            "is_verified": False,
-            "created_at": datetime.utcnow().isoformat(),
-            "last_login": datetime.utcnow().isoformat()
-        }
-        
-        DatabaseService.insert("users", user_data)
-        
-        # Create tokens
-        tokens = AuthService.create_tokens(user_data)
-        
-        return {
-            "success": True,
-            "access_token": tokens["access_token"],
-            "refresh_token": tokens["refresh_token"],
-            "token_type": tokens["token_type"],
-            "expires_in": tokens["expires_in"],
-            "user": {
-                "id": user_id,
-                "username": request.username,
-                "email": request.email,
-                "account_type": "email"
-            }
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Email register error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error registering user"
-        )
-
-@app.post("/api/auth/email/login")
-async def email_login(request: EmailLoginRequest):
-    """Login with email and password"""
-    try:
-        # Find user by email
-        users = DatabaseService.select("users", f"email=eq.'{request.email}'")
-        if not users or len(users) == 0:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password"
-            )
-        
-        user = users[0]
-        
-        # Verify password
-        password_hash = hashlib.sha256(request.password.encode()).hexdigest()
-        if password_hash != user.get('password_hash'):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password"
-            )
-        
-        # Update last login
-        DatabaseService.update(
-            "users",
-            {"last_login": datetime.utcnow().isoformat()},
-            "id",
-            user['id']
-        )
-        
-        # Create tokens
-        tokens = AuthService.create_tokens(user)
-        
-        return {
-            "success": True,
-            "access_token": tokens["access_token"],
-            "refresh_token": tokens["refresh_token"],
-            "token_type": tokens["token_type"],
-            "expires_in": tokens["expires_in"],
-            "user": {
-                "id": user.get("id"),
-                "username": user.get("username"),
-                "email": user.get("email"),
-                "account_type": user.get("account_type")
-            }
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Email login error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error logging in"
-        )
-
-@app.post("/api/auth/refresh")
-async def refresh_token(request: RefreshTokenRequest):
-    """Refresh access token"""
-    try:
-        payload = AuthService.verify_token(request.refresh_token)
-        
-        if not payload or payload.get("type") != "refresh":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token"
-            )
-        
-        user_id = payload.get("sub")
-        users = DatabaseService.select("users", f"id=eq.'{user_id}'")
-        
-        if not users or len(users) == 0:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found"
-            )
-        
-        # Create new tokens
-        tokens = AuthService.create_tokens(users[0])
-        
-        return {
-            "success": True,
-            "access_token": tokens["access_token"],
-            "refresh_token": tokens["refresh_token"],
-            "token_type": tokens["token_type"],
-            "expires_in": tokens["expires_in"]
-        }
-        
-    except Exception as e:
-        logger.error(f"Refresh token error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token"
-        )
-
-@app.get("/api/auth/me")
-async def get_current_user_profile(current_user: Dict = Depends(AuthService.get_current_user)):
-    """Get current user profile"""
-    return {
-        "success": True,
-        "user": {
-            "id": current_user.get("id"),
-            "username": current_user.get("username"),
-            "email": current_user.get("email"),
-            "avatar": current_user.get("avatar_url"),
-            "discord_id": current_user.get("discord_id"),
-            "account_type": current_user.get("account_type"),
-            "created_at": current_user.get("created_at")
-        }
+        res.json({
+            success: true,
+            tournament,
+            message: 'Tournament updated successfully'
+        });
+    } catch (error) {
+        console.error('Tournament management error:', error);
+        res.status(500).json({ error: 'Failed to manage tournament' });
     }
+});
 
-# ========== TOURNAMENT ENDPOINTS ==========
-@app.post("/api/tournaments")
-async def create_tournament(
-    request: TournamentCreate,
-    current_user: Dict = Depends(AuthService.get_current_user)
-):
-    """Create a new tournament"""
-    try:
-        # Parse start date
-        try:
-            start_date = datetime.fromisoformat(request.start_date.replace('Z', '+00:00'))
-        except:
-            start_date = datetime.utcnow() + timedelta(days=7)
+// ========== MATCH MANAGEMENT ==========
+app.post('/api/matches/:id/submit-proof', authenticateToken, (req, res) => {
+    try {
+        const { imageUrl, description } = req.body;
+        const match = db.matches[req.params.id];
         
-        # Calculate total rounds
-        def calculate_rounds(teams):
-            rounds = 0
-            while teams > 1:
-                teams //= 2
-                rounds += 1
-            return max(rounds, 1)
-        
-        total_rounds = calculate_rounds(request.max_teams)
-        
-        # Create tournament
-        tournament_id = str(uuid4())
-        tournament_data = {
-            "id": tournament_id,
-            "name": request.name,
-            "game": request.game,
-            "description": request.description,
-            "max_teams": request.max_teams,
-            "start_date": start_date.isoformat(),
-            "discord_server_id": request.discord_server_id,
-            "server_id": request.discord_server_id,
-            "bracket_type": request.bracket_type,
-            "max_players_per_team": request.max_players_per_team,
-            "region": request.region,
-            "region_lock": request.region_lock,
-            "auto_matchmaking": request.auto_matchmaking,
-            "prize_pool": request.prize_pool,
-            "status": TournamentStatus.REGISTRATION.value,
-            "current_round": 1,
-            "total_rounds": total_rounds,
-            "created_by": current_user['id'],
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat(),
-            "team_count": 0
+        if (!match) {
+            return res.status(404).json({ error: 'Match not found' });
         }
         
-        DatabaseService.insert("tournaments", tournament_data)
+        const proofId = uuidv4();
+        db.proofs[proofId] = {
+            id: proofId,
+            matchId: match.id,
+            tournamentId: match.tournamentId,
+            submittedBy: req.user.id,
+            submittedByName: req.user.username,
+            imageUrl,
+            description,
+            status: 'pending',
+            submittedAt: new Date().toISOString()
+        };
         
-        # Update server tournament count
-        if request.discord_server_id:
-            try:
-                servers = DatabaseService.select("bot_servers", f"server_id=eq.'{request.discord_server_id}'")
-                if servers and len(servers) > 0:
-                    server = servers[0]
-                    tournament_count = server.get('tournament_count', 0)
-                    DatabaseService.update(
-                        "bot_servers",
-                        {"tournament_count": tournament_count + 1},
-                        "server_id",
-                        request.discord_server_id
-                    )
-            except Exception as e:
-                logger.error(f"Error updating server count: {e}")
-        
-        return {
-            "success": True,
-            "tournament_id": tournament_id,
-            "message": "Tournament created successfully",
-            "tournament": tournament_data
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Create tournament error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error creating tournament"
-        )
-
-@app.get("/api/tournaments/public")
-async def get_public_tournaments():
-    """Get public tournaments for display"""
-    try:
-        # Get active tournaments
-        tournaments = DatabaseService.select(
-            "tournaments", 
-            "status=in.(registration,ongoing)&order=created_at.desc&limit=20"
-        )
-        
-        # Get team counts for each tournament
-        for tournament in (tournaments or []):
-            teams = DatabaseService.select("teams", f"tournament_id=eq.'{tournament['id']}'")
-            tournament['team_count'] = len(teams) if teams else 0
-        
-        return {
-            "success": True,
-            "tournaments": tournaments or [],
-            "count": len(tournaments) if tournaments else 0
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting public tournaments: {e}")
-        return {
-            "success": True,
-            "tournaments": [],
-            "count": 0
-        }
-
-@app.get("/api/tournaments/{tournament_id}")
-async def get_tournament(tournament_id: str):
-    """Get specific tournament details"""
-    try:
-        tournaments = DatabaseService.select("tournaments", f"id=eq.'{tournament_id}'")
-        if not tournaments or len(tournaments) == 0:
-            raise HTTPException(status_code=404, detail="Tournament not found")
-        
-        tournament = tournaments[0]
-        
-        # Get teams
-        teams = DatabaseService.select("teams", f"tournament_id=eq.'{tournament_id}'")
-        tournament['teams'] = teams or []
-        tournament['team_count'] = len(teams) if teams else 0
-        
-        # Get matches
-        matches = DatabaseService.select("matches", f"tournament_id=eq.'{tournament_id}'")
-        tournament['matches'] = matches or []
-        
-        return {
-            "success": True,
-            "tournament": tournament
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting tournament: {e}")
-        raise HTTPException(status_code=500, detail="Error getting tournament")
-
-# ========== STATS ENDPOINTS ==========
-@app.get("/api/stats/real")
-async def get_real_stats():
-    """Get real platform statistics"""
-    try:
-        # Get active servers
-        active_servers = DatabaseService.select("bot_servers", "is_active=eq.true")
-        
-        # Get active tournaments
-        active_tournaments = DatabaseService.select(
-            "tournaments", 
-            "status=in.(registration,ongoing)"
-        )
-        
-        # Get live matches
-        live_matches = DatabaseService.select("matches", "is_live=eq.true")
-        
-        # Calculate total players (estimate)
-        total_players = 0
-        for server in (active_servers or []):
-            total_players += server.get('member_count', 0)
-        
-        return {
-            "success": True,
-            "stats": {
-                "connected_servers": len(active_servers) if active_servers else 0,
-                "active_tournaments": len(active_tournaments) if active_tournaments else 0,
-                "live_matches": len(live_matches) if live_matches else 0,
-                "total_players": total_players
-            }
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting stats: {e}")
-        return {
-            "success": True,
-            "stats": {
-                "connected_servers": 0,
-                "active_tournaments": 0,
-                "live_matches": 0,
-                "total_players": 0
-            }
-        }
-
-# ========== BOT ENDPOINTS ==========
-@app.post("/api/bot/server-stats")
-async def update_server_stats(request: Request):
-    """Update server statistics from bot"""
-    try:
-        data = await request.json()
-        
-        server_id = data.get('server_id')
-        server_name = data.get('server_name')
-        member_count = data.get('member_count', 0)
-        is_active = data.get('is_active', True)
-        
-        if not server_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Server ID required"
-            )
-        
-        # Clean server name
-        if server_name:
-            server_name = server_name[:100]
-        else:
-            server_name = "Unknown Server"
-        
-        # Check if server exists
-        existing_servers = DatabaseService.select("bot_servers", f"server_id=eq.'{server_id}'")
-        
-        current_time = datetime.utcnow().isoformat()
-        
-        if existing_servers and len(existing_servers) > 0:
-            # Update existing server
-            update_data = {
-                "server_name": server_name,
-                "member_count": member_count,
-                "is_active": is_active,
-                "last_updated": current_time
-            }
-            
-            icon_url = data.get('icon_url')
-            if icon_url:
-                update_data["icon_url"] = icon_url
-            
-            DatabaseService.update("bot_servers", update_data, "server_id", server_id)
-            logger.info(f"✅ Updated server {server_name} ({server_id})")
-        else:
-            # Create new server entry
-            server_data = {
-                "server_id": server_id,
-                "server_name": server_name,
-                "member_count": member_count,
-                "is_active": is_active,
-                "tournament_count": 0,
-                "created_at": current_time,
-                "last_updated": current_time
-            }
-            
-            icon_url = data.get('icon_url')
-            if icon_url:
-                server_data["icon_url"] = icon_url
-            
-            DatabaseService.insert("bot_servers", server_data)
-            logger.info(f"✅ Created new server {server_name} ({server_id})")
-        
-        return {
-            "success": True, 
-            "message": "Server stats updated",
-            "server_id": server_id,
-            "server_name": server_name
-        }
-        
-    except Exception as e:
-        logger.error(f"Server stats error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error updating server statistics"
-        )
-
-# ========== HEALTH & STATUS ==========
-@app.get("/")
-async def root():
-    """Root endpoint"""
-    return {
-        "message": "XTourney API v2.0",
-        "version": Config.API_VERSION,
-        "status": "running",
-        "environment": Config.ENVIRONMENT,
-        "docs": "/docs",
-        "health": "/api/health",
-        "features": ["authentication", "tournaments", "stats", "bot-integration"]
+        res.json({
+            success: true,
+            proof: db.proofs[proofId],
+            message: 'Proof submitted successfully'
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to submit proof' });
     }
+});
 
-@app.get("/api/health")
-async def health_check():
-    """Health check endpoint"""
-    try:
-        # Check database connection
-        db_check = DatabaseService.select("users", "limit=1")
-        
-        return {
-            "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
-            "database": "connected" if db_check is not None else "disconnected",
-            "version": Config.API_VERSION
-        }
-    except Exception as e:
-        logger.error(f"Health check failed: {str(e)}")
-        return {
-            "status": "unhealthy",
-            "timestamp": datetime.utcnow().isoformat(),
-            "database": "error",
-            "error": str(e)
-        }
+// ========== HELPER FUNCTIONS ==========
+function generateTournamentPass() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let pass = '';
+    for (let i = 0; i < 8; i++) {
+        pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pass;
+}
 
-# ========== MIDDLEWARE ==========
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    """Log all requests"""
-    start_time = datetime.utcnow()
+function calculateRounds(teamCount) {
+    return Math.ceil(Math.log2(teamCount));
+}
+
+function generateBracket(tournament) {
+    const teams = tournament.teams.map(id => db.teams[id]);
+    const bracket = {
+        tournamentId: tournament.id,
+        type: 'single_elimination',
+        rounds: [],
+        createdAt: new Date().toISOString()
+    };
     
-    try:
-        response = await call_next(request)
-        process_time = (datetime.utcnow() - start_time).total_seconds() * 1000
-        
-        logger.info(
-            f"{request.method} {request.url.path} "
-            f"{response.status_code} {process_time:.2f}ms"
-        )
-        
-        return response
-    except Exception as e:
-        logger.error(f"Request error: {str(e)}")
-        raise
-
-# ========== ERROR HANDLERS ==========
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    """Handle HTTP exceptions"""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "success": False,
-            "detail": exc.detail,
-            "path": request.url.path
-        }
-    )
-
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    """Handle general exceptions"""
-    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "success": False,
-            "detail": "Internal server error",
-            "path": request.url.path
-        }
-    )
-
-# ========== MAIN ==========
-if __name__ == "__main__":
-    import uvicorn
+    // Shuffle teams for seeding
+    const shuffledTeams = [...teams].sort(() => Math.random() - 0.5);
     
-    # Development server
-    if Config.ENVIRONMENT == "development":
-        uvicorn.run(
-            app,
-            host="0.0.0.0",
-            port=int(os.getenv("PORT", 8000)),
-            reload=True,
-            log_level="info"
-        )
-    else:
-        # Production server
-        uvicorn.run(
-            app,
-            host="0.0.0.0",
-            port=int(os.getenv("PORT", 8000)),
-            workers=int(os.getenv("WORKERS", 4)),
-            log_level="warning"
-        )
+    // Create first round
+    const round1 = {
+        round: 1,
+        matches: []
+    };
+    
+    for (let i = 0; i < shuffledTeams.length; i += 2) {
+        const matchId = uuidv4();
+        round1.matches.push({
+            matchId,
+            team1Id: shuffledTeams[i].id,
+            team2Id: shuffledTeams[i + 1]?.id || null,
+            team1Name: shuffledTeams[i].name,
+            team2Name: shuffledTeams[i + 1]?.name || 'BYE',
+            winnerId: null,
+            status: 'scheduled'
+        });
+    }
+    
+    bracket.rounds.push(round1);
+    
+    // Create empty rounds for bracket structure
+    for (let round = 2; round <= tournament.totalRounds; round++) {
+        const roundMatches = [];
+        const matchesInRound = Math.pow(2, tournament.totalRounds - round);
+        
+        for (let i = 0; i < matchesInRound; i++) {
+            const matchId = uuidv4();
+            roundMatches.push({
+                matchId,
+                team1Id: null,
+                team2Id: null,
+                team1Name: 'TBD',
+                team2Name: 'TBD',
+                winnerId: null,
+                status: 'pending'
+            });
+        }
+        
+        bracket.rounds.push({
+            round,
+            matches: roundMatches
+        });
+    }
+    
+    return bracket;
+}
+
+function createMatchesFromBracket(tournamentId, bracket) {
+    const tournament = db.tournaments[tournamentId];
+    
+    bracket.rounds.forEach(round => {
+        round.matches.forEach(match => {
+            if (match.team1Id) {
+                db.matches[match.matchId] = {
+                    id: match.matchId,
+                    tournamentId,
+                    round: round.round,
+                    team1Id: match.team1Id,
+                    team2Id: match.team2Id,
+                    team1Name: match.team1Name,
+                    team2Name: match.team2Name,
+                    winnerId: null,
+                    status: match.status,
+                    createdAt: new Date().toISOString()
+                };
+                tournament.matches.push(match.matchId);
+            }
+        });
+    });
+}
+
+function updateMatchResult(matchId, winnerId, scores) {
+    const match = db.matches[matchId];
+    if (!match) return;
+    
+    match.winnerId = winnerId;
+    match.scores = scores;
+    match.status = 'completed';
+    match.completedAt = new Date().toISOString();
+    
+    // Update team stats
+    const winnerTeam = db.teams[winnerId];
+    const loserTeam = db.teams[match.team1Id === winnerId ? match.team2Id : match.team1Id];
+    
+    if (winnerTeam) winnerTeam.wins++;
+    if (loserTeam) loserTeam.losses++;
+}
+
+function advanceTournamentRound(tournamentId) {
+    const tournament = db.tournaments[tournamentId];
+    const bracket = db.brackets[tournamentId];
+    
+    if (!tournament || !bracket) return;
+    
+    const currentRound = tournament.currentRound;
+    const nextRound = currentRound + 1;
+    
+    if (nextRound > tournament.totalRounds) {
+        tournament.status = 'completed';
+        return;
+    }
+    
+    // Get winners from current round
+    const currentMatches = bracket.rounds[currentRound - 1].matches;
+    const winners = [];
+    
+    currentMatches.forEach(match => {
+        if (match.winnerId) {
+            winners.push(match.winnerId);
+        }
+    });
+    
+    // Update next round matches
+    const nextRoundMatches = bracket.rounds[nextRound - 1].matches;
+    let winnerIndex = 0;
+    
+    nextRoundMatches.forEach(match => {
+        if (winnerIndex < winners.length) {
+            match.team1Id = winners[winnerIndex];
+            match.team1Name = db.teams[winners[winnerIndex]]?.name || 'TBD';
+            winnerIndex++;
+        }
+        
+        if (winnerIndex < winners.length) {
+            match.team2Id = winners[winnerIndex];
+            match.team2Name = db.teams[winners[winnerIndex]]?.name || 'TBD';
+            winnerIndex++;
+        }
+        
+        match.status = 'scheduled';
+        
+        // Create match in database
+        if (match.team1Id && match.team2Id) {
+            const matchId = uuidv4();
+            db.matches[matchId] = {
+                id: matchId,
+                tournamentId,
+                round: nextRound,
+                team1Id: match.team1Id,
+                team2Id: match.team2Id,
+                team1Name: match.team1Name,
+                team2Name: match.team2Name,
+                winnerId: null,
+                status: 'scheduled',
+                createdAt: new Date().toISOString()
+            };
+            tournament.matches.push(matchId);
+        }
+    });
+    
+    tournament.currentRound = nextRound;
+}
+
+// ========== STATS & DASHBOARD ==========
+app.get('/api/stats', (req, res) => {
+    try {
+        const activeTournaments = Object.values(db.tournaments).filter(t => t.status === 'ongoing').length;
+        const totalTeams = Object.keys(db.teams).length;
+        const totalUsers = Object.keys(db.users).length;
+        
+        res.json({
+            success: true,
+            stats: {
+                activeTournaments,
+                totalTeams,
+                totalUsers,
+                liveMatches: Object.values(db.matches).filter(m => m.status === 'ongoing').length
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch stats' });
+    }
+});
+
+// ========== WEBSOCKET FOR LIVE UPDATES ==========
+const WebSocket = require('ws');
+const wss = new WebSocket.Server({ noServer: true });
+
+wss.on('connection', (ws) => {
+    ws.on('message', (message) => {
+        const data = JSON.parse(message);
+        
+        if (data.type === 'subscribe') {
+            ws.tournamentId = data.tournamentId;
+        }
+    });
+    
+    ws.on('close', () => {
+        // Clean up
+    });
+});
+
+function broadcastToTournament(tournamentId, message) {
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN && client.tournamentId === tournamentId) {
+            client.send(JSON.stringify(message));
+        }
+    });
+}
+
+// ========== SERVER SETUP ==========
+const PORT = process.env.PORT || 3000;
+const server = app.listen(PORT, () => {
+    console.log(`✅ Server running on port ${PORT}`);
+    console.log(`🌐 API available at http://localhost:${PORT}/api`);
+});
+
+// Attach WebSocket server
+server.on('upgrade', (request, socket, head) => {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+    });
+});
+
+// Create default admin user on startup
+(async () => {
+    if (!db.users['admin']) {
+        const hashedPassword = await bcrypt.hash('admin123', 10);
+        db.users['admin'] = {
+            id: uuidv4(),
+            username: 'admin',
+            password: hashedPassword,
+            email: 'admin@tourney.com',
+            isHost: true,
+            isAdmin: true,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString()
+        };
+        console.log('✅ Default admin user created (admin:admin123)');
+    }
+    
+    // Create some sample tournaments for testing
+    if (Object.keys(db.tournaments).length === 0) {
+        const tournamentId = uuidv4();
+        db.tournaments[tournamentId] = {
+            id: tournamentId,
+            name: 'Summer Championship 2024',
+            game: 'Valorant',
+            description: 'Annual summer tournament with cash prizes',
+            maxTeams: 16,
+            maxPlayers: 5,
+            prizePool: '$5,000',
+            startDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+            region: 'global',
+            status: 'registration',
+            createdBy: 'admin',
+            hostId: db.users['admin'].id,
+            tournamentPass: generateTournamentPass(),
+            createdAt: new Date().toISOString(),
+            teams: [],
+            matches: [],
+            currentRound: 0,
+            totalRounds: 4
+        };
+        console.log('✅ Sample tournament created');
+    }
+})();
+
+module.exports = { app, db };
