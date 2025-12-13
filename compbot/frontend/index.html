@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XTourney - Professional Esports Tournament Platform</title>
-    <link rel="icon" type="image/x-icon" .png>
+    <!-- Replace favicon.png with your custom PNG file -->
+    <link rel="icon" type="image/x-icon" href="x-icon.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* ========== YOUR ORIGINAL STYLES ========== */
         :root {
             --primary: #DC2626;
             --primary-dark: #B91C1C;
@@ -61,6 +63,58 @@
             background: linear-gradient(90deg, transparent 0%, rgba(220, 38, 38, 0.1) 50%, transparent 100%);
         }
         
+        /* ========== AUTH PAGE ========== */
+        .auth-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--gradient-dark);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+        
+        .auth-container {
+            background: rgba(0, 0, 0, 0.95);
+            padding: 3rem;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 450px;
+            border: 2px solid rgba(220, 38, 38, 0.3);
+            box-shadow: 0 0 50px rgba(220, 38, 38, 0.3);
+            backdrop-filter: blur(10px);
+            animation: scaleIn 0.5s ease;
+        }
+        
+        @keyframes scaleIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .auth-logo h1 {
+            font-family: 'Orbitron', monospace;
+            font-size: 3rem;
+            font-weight: 900;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        
+        .auth-logo p {
+            color: var(--gray);
+            font-size: 1rem;
+        }
+        
+        /* ========== LOADER ========== */
         .page-loader {
             position: fixed;
             top: 0;
@@ -73,12 +127,6 @@
             justify-content: center;
             align-items: center;
             z-index: 9999;
-            transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
-        }
-        
-        .page-loader.hidden {
-            opacity: 0;
-            visibility: hidden;
         }
         
         .loader-logo {
@@ -86,7 +134,6 @@
             align-items: center;
             gap: 15px;
             margin-bottom: 2rem;
-            animation: fadeInUp 0.8s ease-out;
         }
         
         .loader-icon {
@@ -132,39 +179,16 @@
             box-shadow: 0 0 10px var(--primary);
         }
         
-        @keyframes loading {
-            0% { width: 0%; }
-            100% { width: 100%; }
-        }
-        
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
+        @keyframes loading { 0% { width: 0%; } 100% { width: 100%; } }
         @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-                box-shadow: 0 0 20px var(--primary);
-            }
-            50% {
-                transform: scale(1.05);
-                box-shadow: 0 0 30px var(--primary), 0 0 40px var(--primary);
-            }
+            0%, 100% { transform: scale(1); box-shadow: 0 0 20px var(--primary); }
+            50% { transform: scale(1.05); box-shadow: 0 0 30px var(--primary), 0 0 40px var(--primary); }
         }
         
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
+        /* ========== MAIN APP ========== */
+        #mainApp { display: none; }
         
+        /* ========== HEADER ========== */
         header {
             background: rgba(0, 0, 0, 0.95);
             backdrop-filter: blur(10px);
@@ -180,20 +204,17 @@
         }
         
         @keyframes slideDown {
-            from {
-                transform: translateY(-100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
         
         .header-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
         }
         
         .logo {
@@ -226,6 +247,13 @@
             font-weight: 900;
             font-size: 1.5rem;
             box-shadow: 0 0 15px var(--primary);
+        }
+        
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            object-fit: cover;
         }
         
         .logo span {
@@ -317,9 +345,7 @@
             transition: left 0.5s;
         }
         
-        .btn:hover::before {
-            left: 100%;
-        }
+        .btn:hover::before { left: 100%; }
         
         .btn-primary {
             background: var(--gradient-primary);
@@ -347,46 +373,7 @@
             box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
         }
         
-        .btn-discord {
-            background: #5865F2;
-            color: white;
-            border: 1px solid #4752C4;
-        }
-        
-        .btn-discord:hover {
-            background: #4752C4;
-            transform: translateY(-3px);
-            box-shadow: 0 4px 15px rgba(88, 101, 242, 0.4);
-        }
-        
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            border: 1px solid rgba(220, 38, 38, 0.3);
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .user-profile:hover {
-            background: rgba(220, 38, 38, 0.1);
-            border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(220, 38, 38, 0.2);
-        }
-        
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 2px solid var(--primary);
-            object-fit: cover;
-            box-shadow: 0 0 10px var(--primary);
-        }
-        
+        /* ========== HERO SECTION ========== */
         .hero {
             padding: 10rem 0 6rem;
             text-align: center;
@@ -432,128 +419,12 @@
             font-weight: 300;
         }
         
-        .hero-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 2rem;
-            margin-top: 4rem;
-            max-width: 1000px;
-            margin-left: auto;
-            margin-right: auto;
-            animation: fadeInUp 0.8s ease-out 0.7s both;
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
-        .stat-item {
-            text-align: center;
-            padding: 2rem;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 15px;
-            border: 2px solid rgba(220, 38, 38, 0.3);
-            transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .stat-item::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(45deg, transparent, rgba(220, 38, 38, 0.1), transparent);
-            transform: translateX(-100%);
-            transition: transform 0.6s;
-        }
-        
-        .stat-item:hover::before {
-            transform: translateX(100%);
-        }
-        
-        .stat-item:hover {
-            transform: translateY(-5px);
-            border-color: var(--primary);
-            box-shadow: 0 10px 30px rgba(220, 38, 38, 0.3);
-        }
-        
-        .stat-number {
-            font-family: 'Orbitron', monospace;
-            font-size: 3rem;
-            font-weight: 900;
-            color: var(--primary);
-            margin-bottom: 0.5rem;
-            text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
-        }
-        
-        .stat-label {
-            color: var(--gray);
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            font-weight: 600;
-        }
-        
-        .section {
-            padding: 6rem 0;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.6s ease, transform 0.6s ease;
-            position: relative;
-        }
-        
-        .section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100px;
-            height: 3px;
-            background: var(--gradient-primary);
-            border-radius: 2px;
-        }
-        
-        .section.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 4rem;
-        }
-        
-        .section-title {
-            font-family: 'Orbitron', monospace;
-            font-size: 2.8rem;
-            font-weight: 900;
-            position: relative;
-            padding-bottom: 1.5rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .section-title::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 80px;
-            height: 4px;
-            background: var(--gradient-primary);
-            border-radius: 2px;
-            box-shadow: 0 0 10px var(--primary);
-        }
-        
-        .section-subtitle {
-            color: var(--gray);
-            font-size: 1.1rem;
-            margin-top: 1rem;
-            font-weight: 300;
-        }
-        
+        /* ========== TOURNAMENT CARDS ========== */
         .tournaments-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -567,9 +438,6 @@
             padding: 2rem;
             border: 2px solid rgba(220, 38, 38, 0.3);
             transition: all 0.3s;
-            opacity: 0;
-            transform: translateY(20px);
-            animation: fadeInUp 0.6s ease forwards;
             backdrop-filter: blur(10px);
             position: relative;
             overflow: hidden;
@@ -588,20 +456,13 @@
             transition: transform 0.6s;
         }
         
-        .tournament-card:hover::before {
-            transform: translateX(100%);
-        }
+        .tournament-card:hover::before { transform: translateX(100%); }
         
         .tournament-card:hover {
             border-color: var(--primary);
             box-shadow: 0 15px 40px rgba(220, 38, 38, 0.3);
             transform: translateY(-10px) scale(1.02);
         }
-        
-        .tournament-card:nth-child(1) { animation-delay: 0.1s; }
-        .tournament-card:nth-child(2) { animation-delay: 0.2s; }
-        .tournament-card:nth-child(3) { animation-delay: 0.3s; }
-        .tournament-card:nth-child(4) { animation-delay: 0.4s; }
         
         .tournament-header {
             display: flex;
@@ -641,56 +502,13 @@
             border: 1px solid rgba(220, 38, 38, 0.5);
         }
         
-        .tournament-game {
-            color: var(--primary);
-            font-weight: 700;
-            margin-bottom: 0.8rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-family: 'Orbitron', monospace;
-        }
-        
-        .tournament-prize {
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-family: 'Orbitron', monospace;
-            text-shadow: 0 0 5px var(--primary);
-        }
-        
-        .tournament-progress {
-            margin-bottom: 2rem;
-        }
-        
-        .progress-bar {
-            height: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            border-radius: 5px;
-            overflow: hidden;
-            margin-bottom: 0.8rem;
-            border: 1px solid rgba(220, 38, 38, 0.3);
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: var(--gradient-primary);
-            border-radius: 5px;
-            transition: width 0.6s ease;
-            box-shadow: 0 0 10px var(--primary);
-        }
-        
-        .progress-text {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.8rem;
+        .status-completed {
+            background: rgba(107, 114, 128, 0.15);
             color: var(--gray);
-            font-family: 'Orbitron', monospace;
+            border: 1px solid rgba(107, 114, 128, 0.5);
         }
         
+        /* ========== FORM STYLES ========== */
         .form-container {
             max-width: 500px;
             margin: 0 auto;
@@ -698,7 +516,6 @@
             border-radius: 15px;
             padding: 3rem;
             border: 2px solid rgba(220, 38, 38, 0.3);
-            animation: fadeInUp 0.6s ease;
             backdrop-filter: blur(10px);
         }
         
@@ -736,8 +553,39 @@
             background: rgba(0, 0, 0, 0.9);
         }
         
+        /* ========== ALERTS ========== */
+        .alert {
+            padding: 1.2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideInRight 0.3s ease;
+            border: 2px solid transparent;
+            font-family: 'Orbitron', monospace;
+        }
+        
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: var(--success);
+        }
+        
+        .alert-error {
+            background: rgba(220, 38, 38, 0.1);
+            border-color: rgba(220, 38, 38, 0.3);
+            color: var(--danger);
+        }
+        
+        /* ========== MODALS ========== */
         .modal-overlay {
-            display: none;
             position: fixed;
             top: 0;
             left: 0;
@@ -746,15 +594,13 @@
             background: rgba(0, 0, 0, 0.95);
             backdrop-filter: blur(10px);
             z-index: 2000;
+            display: flex;
             align-items: center;
             justify-content: center;
             animation: fadeIn 0.3s ease;
         }
         
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
         .modal-content {
             background: rgba(0, 0, 0, 0.95);
@@ -767,17 +613,6 @@
             animation: scaleIn 0.3s ease;
             box-shadow: 0 0 50px rgba(220, 38, 38, 0.2);
             backdrop-filter: blur(20px);
-        }
-        
-        @keyframes scaleIn {
-            from {
-                opacity: 0;
-                transform: scale(0.9);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
         }
         
         .modal-title {
@@ -796,290 +631,60 @@
             font-size: 0.9rem;
         }
         
-        .login-options {
-            display: flex;
-            flex-direction: column;
-            gap: 1.2rem;
-            margin-top: 1rem;
-        }
-        
-        .login-option {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            padding: 1.2rem;
-            border: 2px solid rgba(220, 38, 38, 0.3);
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 600;
-            font-size: 1rem;
-            font-family: 'Orbitron', monospace;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .login-option::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.2), transparent);
-            transition: left 0.5s;
-        }
-        
-        .login-option:hover::before {
-            left: 100%;
-        }
-        
-        .login-option.discord {
-            background: rgba(220, 38, 38, 0.1);
-            color: white;
-            border-color: var(--primary);
-        }
-        
-        .login-option.discord:hover {
-            background: rgba(220, 38, 38, 0.2);
-            transform: translateY(-3px);
-            box-shadow: 0 5px 20px rgba(220, 38, 38, 0.4);
-        }
-        
-        .login-option.email {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--light);
-        }
-        
-        .login-option.email:hover {
-            background: rgba(220, 38, 38, 0.1);
-            transform: translateY(-3px);
-            border-color: var(--primary);
-        }
-        
-        .alert {
-            padding: 1.2rem;
-            border-radius: 10px;
-            margin-bottom: 2rem;
-            font-weight: 600;
+        /* ========== USER PROFILE ========== */
+        .user-profile {
             display: flex;
             align-items: center;
             gap: 12px;
-            animation: slideInRight 0.3s ease;
-            border: 2px solid transparent;
-            font-family: 'Orbitron', monospace;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            cursor: pointer;
+            transition: all 0.3s;
         }
         
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-        
-        .alert-success {
-            background: rgba(16, 185, 129, 0.1);
-            border-color: rgba(16, 185, 129, 0.3);
-            color: var(--success);
-        }
-        
-        .alert-error {
+        .user-profile:hover {
             background: rgba(220, 38, 38, 0.1);
-            border-color: rgba(220, 38, 38, 0.3);
-            color: var(--danger);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 38, 38, 0.2);
         }
         
-        .loading {
-            text-align: center;
-            padding: 4rem;
-            color: var(--gray);
-        }
-        
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-top: 4px solid var(--primary);
+        .user-avatar {
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem;
+            border: 2px solid var(--primary);
+            object-fit: cover;
             box-shadow: 0 0 10px var(--primary);
         }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .servers-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 2rem;
-            margin-top: 1rem;
-        }
-        
-        .server-card {
+        /* ========== TOURNAMENT PASS ========== */
+        .tournament-pass-container {
             background: rgba(0, 0, 0, 0.8);
+            padding: 2rem;
             border-radius: 15px;
-            padding: 1.8rem;
-            border: 2px solid rgba(220, 38, 38, 0.3);
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
+            border: 2px solid var(--primary);
+            margin-top: 2rem;
+            text-align: center;
         }
         
-        .server-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(45deg, transparent, rgba(220, 38, 38, 0.05), transparent);
-            transform: translateX(-100%);
-            transition: transform 0.6s;
-        }
-        
-        .server-card:hover::before {
-            transform: translateX(100%);
-        }
-        
-        .server-card:hover {
-            border-color: var(--primary);
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(220, 38, 38, 0.3);
-        }
-        
-        .server-icon {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid var(--primary);
-            box-shadow: 0 0 15px var(--primary);
-        }
-        
-        .tournament-preview {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 3rem;
-            margin-top: 3rem;
-        }
-        
-        .preview-card {
-            background: rgba(0, 0, 0, 0.8);
-            border-radius: 20px;
-            padding: 2.5rem;
-            border: 2px solid rgba(220, 38, 38, 0.3);
-        }
-        
-        @media (max-width: 992px) {
-            .hero h1 {
-                font-size: 3rem;
-            }
-            .tournament-preview {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .nav-links {
-                display: none;
-            }
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-            .hero-stats {
-                grid-template-columns: 1fr;
-            }
-            .stat-item {
-                padding: 1.5rem;
-            }
-            .tournaments-grid {
-                grid-template-columns: 1fr;
-            }
-            .section-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 1.5rem;
-            }
-            .form-container {
-                padding: 2rem;
-            }
-        }
-        
-        .alert-toast {
-            position: fixed;
-            top: 100px;
-            right: 20px;
-            z-index: 3000;
-            max-width: 350px;
-            padding: 1.2rem;
-            animation: slideInRight 0.3s ease-out;
-            border: 2px solid;
+        .tournament-pass-code {
             font-family: 'Orbitron', monospace;
-            font-weight: 600;
-            backdrop-filter: blur(10px);
+            font-size: 2rem;
+            font-weight: 900;
+            color: var(--primary);
+            letter-spacing: 4px;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            border: 2px solid var(--primary);
+            text-shadow: 0 0 10px var(--primary);
         }
         
-        .alert-toast.hiding {
-            animation: slideOutRight 0.3s ease-in forwards;
-        }
-        
-        @keyframes slideOutRight {
-            from {
-                opacity: 1;
-                transform: translateX(0);
-            }
-            to {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-        }
-        
-        .login-redirect {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--dark);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-        }
-        
-        ::-webkit-scrollbar {
-            width: 12px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: #000;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: var(--gradient-primary);
-            border-radius: 6px;
-            border: 3px solid #000;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--primary);
-        }
-        
-        /* Bracket Styles */
+        /* ========== BRACKET VIEW ========== */
         .bracket-view {
             display: none;
             position: fixed;
@@ -1100,7 +705,6 @@
             padding: 2rem;
             border-radius: 15px;
             border: 2px solid var(--primary);
-            position: relative;
         }
         
         .close-bracket {
@@ -1115,1573 +719,1816 @@
             cursor: pointer;
             font-family: 'Orbitron';
             font-weight: bold;
-            font-size: 1rem;
             z-index: 3001;
-            transition: all 0.3s;
         }
         
-        .close-bracket:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(220, 38, 38, 0.4);
-        }
-        
-        /* Tournament Details Styles */
-        .tournament-details {
-            margin-bottom: 3rem;
-            padding: 2rem;
+        /* ========== PROGRESS BAR ========== */
+        .progress-bar {
+            height: 10px;
             background: rgba(0, 0, 0, 0.8);
-            border-radius: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 0.8rem;
             border: 1px solid rgba(220, 38, 38, 0.3);
         }
         
-        .details-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-top: 1rem;
-        }
-        
-        .detail-item {
-            padding: 1rem;
-            background: rgba(0, 0, 0, 0.6);
-            border-radius: 8px;
-            border-left: 3px solid var(--primary);
-        }
-        
-        .detail-label {
-            color: var(--gray);
-            font-size: 0.9rem;
-            font-family: 'Orbitron';
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 0.5rem;
-        }
-        
-        .detail-value {
-            color: var(--light);
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
-        
-        /* Tournament Actions */
-        .tournament-actions {
-            display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
-            flex-wrap: wrap;
-        }
-        
-        .action-button {
-            flex: 1;
-            min-width: 200px;
-        }
-        
-        /* Live Games Styles */
-        .live-games-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 2rem;
-            margin-top: 2rem;
-        }
-        
-        .live-game-card {
-            background: rgba(0, 0, 0, 0.8);
-            border-radius: 15px;
-            padding: 1.5rem;
-            border: 2px solid var(--primary);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .live-game-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
+        .progress-fill {
             height: 100%;
-            background: linear-gradient(45deg, transparent, rgba(220, 38, 38, 0.1), transparent);
-            transform: translateX(-100%);
-            transition: transform 0.6s;
+            background: var(--gradient-primary);
+            border-radius: 5px;
+            transition: width 0.6s ease;
+            box-shadow: 0 0 10px var(--primary);
         }
         
-        .live-game-card:hover::before {
-            transform: translateX(100%);
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .tournaments-grid { grid-template-columns: 1fr; }
+            .nav-links { display: none; }
+            .form-container, .auth-container { padding: 2rem; }
         }
         
-        .live-badge {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: var(--primary);
-            color: white;
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: bold;
-            font-family: 'Orbitron';
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            animation: pulse 2s infinite;
+        /* ========== UTILITY CLASSES ========== */
+        .hidden { display: none !important; }
+        .text-center { text-align: center; }
+        .mt-1 { margin-top: 1rem; } .mt-2 { margin-top: 2rem; } .mt-3 { margin-top: 3rem; } .mt-4 { margin-top: 4rem; }
+        .mb-1 { margin-bottom: 1rem; } .mb-2 { margin-bottom: 2rem; } .mb-3 { margin-bottom: 3rem; } .mb-4 { margin-bottom: 4rem; }
+        
+        /* ========== LOADING SPINNER ========== */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
         }
         
-        .server-invite {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 1rem;
-            padding: 0.8rem;
-            background: rgba(88, 101, 242, 0.1);
-            border-radius: 8px;
-            border: 1px solid rgba(88, 101, 242, 0.3);
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
-        .server-invite:hover {
-            background: rgba(88, 101, 242, 0.2);
-            cursor: pointer;
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--gray);
         }
     </style>
 </head>
 <body>
     <div class="matrix-bg"></div>
     
+    <!-- Loader -->
     <div class="page-loader" id="pageLoader">
         <div class="loader-logo">
-            <div class="loader-icon">X</div>
+            <div class="loader-icon">
+                <!-- Replace with your custom icon or keep X -->
+                X
+            </div>
             <div class="loader-text">XTOURNEY</div>
         </div>
         <div class="loader-progress">
             <div class="loader-progress-bar"></div>
         </div>
     </div>
-
-    <!-- Bracket View Modal -->
-    <div class="bracket-view" id="bracketView">
-        <button class="close-bracket" onclick="closeBracket()">
-            <i class="fas fa-times"></i> CLOSE BRACKET
-        </button>
-        <div class="bracket-container" id="bracketContainer">
-            <!-- Tournament details will be loaded here -->
+    
+    <!-- Auth Page -->
+    <div class="auth-page" id="authPage">
+        <div class="auth-container">
+            <div class="auth-logo">
+                <h1>XTOURNEY</h1>
+                <p>Professional Tournament Platform</p>
+            </div>
+            
+            <div class="tabs" style="display: flex; margin-bottom: 2rem; border-bottom: 2px solid rgba(220,38,38,0.3);">
+                <button class="tab" style="flex: 1; padding: 1rem; background: none; border: none; color: var(--gray); font-family: 'Orbitron'; cursor: pointer; font-weight: 600;" onclick="showAuthTab('login')">LOGIN</button>
+                <button class="tab" style="flex: 1; padding: 1rem; background: none; border: none; color: var(--gray); font-family: 'Orbitron'; cursor: pointer; font-weight: 600;" onclick="showAuthTab('register')">REGISTER</button>
+            </div>
+            
+            <div id="authAlert" class="alert" style="display: none;"></div>
+            
+            <!-- Login Form -->
+            <div id="loginForm" class="form-container active">
+                <form onsubmit="login(event)">
+                    <div class="form-group">
+                        <label class="form-label">USERNAME</label>
+                        <input type="text" id="loginUsername" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">PASSWORD</label>
+                        <input type="password" id="loginPassword" class="form-input" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <i class="fas fa-sign-in-alt"></i> LOGIN
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Register Form -->
+            <div id="registerForm" class="form-container" style="display: none;">
+                <form onsubmit="register(event)">
+                    <div class="form-group">
+                        <label class="form-label">USERNAME *</label>
+                        <input type="text" id="regUsername" class="form-input" required minlength="3">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">EMAIL (OPTIONAL)</label>
+                        <input type="email" id="regEmail" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">PASSWORD *</label>
+                        <input type="password" id="regPassword" class="form-input" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <i class="fas fa-user-plus"></i> CREATE ACCOUNT
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
-
-    <header>
-        <div class="container header-content">
-            <a href="#" class="logo" onclick="showSection('home'); return false;">
-                <div class="loader-icon" style="width: 40px; height: 40px; font-size: 1.2rem;">X</div>
-                <span>TOURNEY</span>
-            </a>
-            
-            <div class="nav-links">
-                <a class="nav-link active" onclick="showSection('home')">
-                    <i class="fas fa-home"></i> HOME
+    
+    <!-- Main Application -->
+    <div id="mainApp">
+        <!-- Header -->
+        <header>
+            <div class="header-content">
+                <a href="#" class="logo" onclick="showSection('home')">
+                    <div class="logo-icon">
+                        <!-- Replace with your custom PNG icon -->
+                        X
+                    </div>
+                    <span>TOURNEY</span>
                 </a>
-                <a class="nav-link" onclick="showSection('tournaments')">
-                    <i class="fas fa-trophy"></i> TOURNAMENTS
-                </a>
-                <a class="nav-link" onclick="showSection('servers')" id="serversLink" style="display: none;">
-                    <i class="fas fa-server"></i> MY SERVERS
-                </a>
-            </div>
-            
-            <div class="auth-buttons" id="authButtons">
-                <button class="btn btn-primary" onclick="showLoginModal()">
-                    <i class="fas fa-sign-in-alt"></i> LOGIN
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <div id="discordRedirect" class="login-redirect" style="display: none;">
-        <div class="loader-logo">
-            <div class="loader-icon"><i class="fab fa-discord"></i></div>
-            <div class="loader-text">CONNECTING DISCORD</div>
-        </div>
-        <div class="loader-progress">
-            <div class="loader-progress-bar"></div>
-        </div>
-        <p style="margin-top: 2rem; color: var(--gray);">Redirecting to Discord...</p>
-    </div>
-
-    <section id="homeSection" class="section">
-        <div class="hero">
-            <div class="container">
-                <h1>DOMINATE THE COMPETITION</h1>
-                <p class="hero-subtitle">
-                    Professional esports tournament platform with Discord integration, automated brackets, 
-                    and revolutionary proof verification. Built for champions.
-                </p>
                 
-                <div style="display: flex; gap: 1.5rem; justify-content: center; margin-top: 3rem; flex-wrap: wrap;">
-                    <button class="btn btn-primary" onclick="showSection('tournaments')" style="padding: 1.2rem 2.5rem;">
-                        <i class="fas fa-trophy"></i> BROWSE TOURNAMENTS
-                    </button>
-                    <button class="btn btn-discord" onclick="loginWithDiscord()" style="padding: 1.2rem 2.5rem;">
-                        <i class="fab fa-discord"></i> CONNECT DISCORD
-                    </button>
+                <div class="nav-links">
+                    <a class="nav-link active" onclick="showSection('home')">
+                        <i class="fas fa-home"></i> HOME
+                    </a>
+                    <a class="nav-link" onclick="showSection('tournaments')">
+                        <i class="fas fa-trophy"></i> TOURNAMENTS
+                    </a>
+                    <a class="nav-link" onclick="showSection('myTournaments')" id="myTournamentsLink">
+                        <i class="fas fa-gamepad"></i> MY TOURNAMENTS
+                    </a>
+                    <a class="nav-link" onclick="showSection('hostPanel')" id="hostPanelLink" style="display: none;">
+                        <i class="fas fa-crown"></i> HOST PANEL
+                    </a>
                 </div>
                 
-                <div class="hero-stats">
-                    <div class="stat-item">
-                        <div class="stat-number" id="liveMatchesCount">0</div>
-                        <div class="stat-label">LIVE MATCHES</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number" id="activeTournaments">0</div>
-                        <div class="stat-label">ACTIVE TOURNAMENTS</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number" id="connectedServers">0</div>
-                        <div class="stat-label">CONNECTED SERVERS</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number" id="totalPlayers">0</div>
-                        <div class="stat-label">ACTIVE PLAYERS</div>
+                <div class="auth-buttons" id="authButtons">
+                    <div class="user-profile" onclick="showUserMenu()">
+                        <img id="userAvatar" class="user-avatar" src="https://ui-avatars.com/api/?name=User&background=DC2626&color=fff&bold=true">
+                        <div>
+                            <div id="userName" style="font-weight: 700; font-family: 'Orbitron';">Guest</div>
+                            <div id="userStatus" style="font-size: 0.8rem; color: var(--gray);">Not logged in</div>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div class="container">
-            <!-- LIVE GAMES SECTION -->
-            <div class="section-header">
-                <div>
-                    <h2 class="section-title">LIVE GAMES</h2>
-                    <p class="section-subtitle">Watch ongoing matches in real-time</p>
-                </div>
-            </div>
-            
-            <div class="live-games-container" id="liveGamesContainer">
-                <!-- Live games will be loaded here -->
-                <div class="loading">
-                    <div class="spinner"></div>
-                    LOADING LIVE GAMES...
-                </div>
-            </div>
-
-            <!-- FEATURED SERVERS SECTION -->
-            <div class="section-header" style="margin-top: 6rem;">
-                <div>
-                    <h2 class="section-title">FEATURED SERVERS</h2>
-                    <p class="section-subtitle">Join active Discord communities with tournaments</p>
-                </div>
-            </div>
-            
-            <div class="servers-grid" id="featuredServers">
-                <!-- Featured servers will be loaded here -->
-                <div class="loading">
-                    <div class="spinner"></div>
-                    LOADING FEATURED SERVERS...
-                </div>
-            </div>
-
-            <div class="section-header" style="margin-top: 6rem;">
-                <div>
-                    <h2 class="section-title">ELITE FEATURES</h2>
-                    <p class="section-subtitle">Everything you need to run professional esports tournaments</p>
-                </div>
-            </div>
-            
-            <div class="tournament-preview">
-                <div class="preview-card">
-                    <h3 style="margin-bottom: 1.5rem; color: var(--primary); font-family: 'Orbitron';">
-                        <i class="fas fa-crown"></i> PREMIUM FEATURES
-                    </h3>
-                    <ul style="list-style: none; line-height: 2.5; font-size: 1.1rem;">
-                        <li><i class="fas fa-check-circle" style="color: var(--primary); margin-right: 15px;"></i> Discord Bot Integration</li>
-                        <li><i class="fas fa-check-circle" style="color: var(--primary); margin-right: 15px;"></i> Screenshot Proof System</li>
-                        <li><i class="fas fa-check-circle" style="color: var(--primary); margin-right: 15px;"></i> Automated Tournament Brackets</li>
-                        <li><i class="fas fa-check-circle" style="color: var(--primary); margin-right: 15px;"></i> Region-Based Matchmaking</li>
-                        <li><i class="fas fa-check-circle" style="color: var(--primary); margin-right: 15px;"></i> Real-time Match Tracking</li>
-                    </ul>
-                </div>
-                
-                <div class="preview-card">
-                    <h3 style="margin-bottom: 1.5rem; color: var(--primary); font-family: 'Orbitron';">
-                        <i class="fas fa-bolt"></i> QUICK START
-                    </h3>
-                    <div style="display: flex; flex-direction: column; gap: 1.2rem;">
-                        <button class="btn btn-primary" onclick="loginWithDiscord()">
-                            <i class="fab fa-discord"></i> CONNECT ACCOUNT
+        </header>
+        
+        <!-- User Menu Dropdown -->
+        <div id="userMenu" class="modal-overlay" style="display: none;" onclick="hideUserMenu(event)">
+            <div class="modal-content" style="position: fixed; top: 80px; right: 20px; width: 300px; max-width: 90vw;">
+                <div style="text-align: left;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem;">
+                        <img id="menuUserAvatar" class="user-avatar">
+                        <div>
+                            <div id="menuUserName" style="font-weight: 800; font-family: 'Orbitron';"></div>
+                            <div id="menuUserRole" style="font-size: 0.8rem; color: var(--primary);"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <button class="btn btn-secondary" onclick="showSection('myTournaments')">
+                            <i class="fas fa-gamepad"></i> My Tournaments
                         </button>
-                        <button class="btn btn-secondary" onclick="showSection('servers')" id="quickCreateBtn" style="display: none;">
+                        <button class="btn btn-secondary" onclick="showCreateTournament()" id="createTournamentMenuBtn">
+                            <i class="fas fa-plus"></i> Create Tournament
+                        </button>
+                        <button class="btn btn-secondary" onclick="showTournamentPass()" id="hostPassBtn" style="display: none;">
+                            <i class="fas fa-key"></i> Host Pass
+                        </button>
+                        <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 1rem 0;"></div>
+                        <button class="btn btn-secondary" onclick="logout()" style="background: rgba(220,38,38,0.1);">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <main>
+            <!-- Home Section -->
+            <section id="homeSection" class="section">
+                <div class="hero">
+                    <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+                        <h1>DOMINATE THE COMPETITION</h1>
+                        <p class="hero-subtitle">
+                            Complete tournament platform with username/password login, live brackets, 
+                            and tournament pass system for hosts.
+                        </p>
+                        
+                        <div style="display: flex; gap: 1.5rem; justify-content: center; margin-top: 3rem; flex-wrap: wrap;">
+                            <button class="btn btn-primary" onclick="showSection('tournaments')" style="padding: 1.2rem 2.5rem;">
+                                <i class="fas fa-trophy"></i> BROWSE TOURNAMENTS
+                            </button>
+                            <button class="btn btn-secondary" onclick="showCreateTournament()" id="createTournamentBtn" style="padding: 1.2rem 2.5rem; display: none;">
+                                <i class="fas fa-plus"></i> CREATE TOURNAMENT
+                            </button>
+                        </div>
+                        
+                        <!-- Stats -->
+                        <div class="hero-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; margin-top: 4rem;">
+                            <div class="stat-item" style="text-align: center; padding: 2rem; background: rgba(0,0,0,0.7); border-radius: 15px; border: 2px solid rgba(220,38,38,0.3);">
+                                <div id="liveMatchesCount" style="font-family: 'Orbitron'; font-size: 3rem; color: var(--primary);">0</div>
+                                <div style="color: var(--gray); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px;">LIVE MATCHES</div>
+                            </div>
+                            <div class="stat-item" style="text-align: center; padding: 2rem; background: rgba(0,0,0,0.7); border-radius: 15px; border: 2px solid rgba(220,38,38,0.3);">
+                                <div id="activeTournaments" style="font-family: 'Orbitron'; font-size: 3rem; color: var(--primary);">0</div>
+                                <div style="color: var(--gray); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px;">TOURNAMENTS</div>
+                            </div>
+                            <div class="stat-item" style="text-align: center; padding: 2rem; background: rgba(0,0,0,0.7); border-radius: 15px; border: 2px solid rgba(220,38,38,0.3);">
+                                <div id="totalTeams" style="font-family: 'Orbitron'; font-size: 3rem; color: var(--primary);">0</div>
+                                <div style="color: var(--gray); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px;">ACTIVE TEAMS</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+                    <!-- Featured Tournaments -->
+                    <div style="margin-top: 6rem;">
+                        <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; margin-bottom: 1.5rem; padding-bottom: 1.5rem; position: relative;">
+                            FEATURED TOURNAMENTS
+                            <div style="position: absolute; bottom: 0; left: 0; width: 80px; height: 4px; background: var(--gradient-primary);"></div>
+                        </h2>
+                        <p style="color: var(--gray); margin-bottom: 2rem;">Join tournaments or create your own</p>
+                        
+                        <div class="tournaments-grid" id="featuredTournaments">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                                LOADING TOURNAMENTS...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Tournaments Section -->
+            <section id="tournamentsSection" class="section" style="display: none; padding: 6rem 0;">
+                <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4rem;">
+                        <div>
+                            <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; margin-bottom: 1rem;">ALL TOURNAMENTS</h2>
+                            <p style="color: var(--gray);">Browse and join available tournaments</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="showCreateTournament()" id="createTournamentHeaderBtn" style="display: none;">
                             <i class="fas fa-plus"></i> CREATE TOURNAMENT
                         </button>
-                        <button class="btn btn-secondary" onclick="inviteBot()">
-                            <i class="fab fa-discord"></i> ADD BOT TO SERVER
+                    </div>
+                    
+                    <div class="tournaments-grid" id="allTournaments">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            LOADING TOURNAMENTS...
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Create Tournament Section -->
+            <section id="createTournamentSection" class="section" style="display: none; padding: 6rem 0;">
+                <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+                    <div class="form-container">
+                        <h2 class="modal-title" style="text-align: left; margin-bottom: 2rem;">CREATE TOURNAMENT</h2>
+                        
+                        <div id="createAlert" class="alert" style="display: none;"></div>
+                        
+                        <form id="createTournamentForm" onsubmit="createTournament(event)">
+                            <div class="form-group">
+                                <label class="form-label">TOURNAMENT NAME *</label>
+                                <input type="text" id="tournamentName" class="form-input" placeholder="SUMMER CHAMPIONSHIP 2024" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">GAME *</label>
+                                <select id="tournamentGame" class="form-input" required>
+                                    <option value="">SELECT A GAME...</option>
+                                    <option value="Valorant">VALORANT</option>
+                                    <option value="CS2">COUNTER-STRIKE 2</option>
+                                    <option value="League of Legends">LEAGUE OF LEGENDS</option>
+                                    <option value="Dota 2">DOTA 2</option>
+                                    <option value="Fortnite">FORTNITE</option>
+                                    <option value="Rocket League">ROCKET LEAGUE</option>
+                                    <option value="Other">OTHER</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">MAX TEAMS *</label>
+                                <select id="maxTeams" class="form-input" required>
+                                    <option value="4">4 TEAMS</option>
+                                    <option value="8">8 TEAMS</option>
+                                    <option value="16" selected>16 TEAMS</option>
+                                    <option value="32">32 TEAMS</option>
+                                    <option value="64">64 TEAMS</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">MAX PLAYERS PER TEAM *</label>
+                                <select id="maxPlayersPerTeam" class="form-input" required>
+                                    <option value="1">1 PLAYER (1v1)</option>
+                                    <option value="2">2 PLAYERS (2v2)</option>
+                                    <option value="3">3 PLAYERS (3v3)</option>
+                                    <option value="4">4 PLAYERS (4v4)</option>
+                                    <option value="5" selected>5 PLAYERS (5v5)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">PRIZE POOL (OPTIONAL)</label>
+                                <input type="text" id="prizePool" class="form-input" placeholder="E.G., $1000, IN-GAME ITEMS, ETC.">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">DESCRIPTION</label>
+                                <textarea id="description" class="form-input" rows="3" placeholder="TOURNAMENT RULES, SCHEDULE, ETC."></textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1.2rem;">
+                                <i class="fas fa-rocket"></i> LAUNCH TOURNAMENT
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- My Tournaments Section -->
+            <section id="myTournamentsSection" class="section" style="display: none; padding: 6rem 0;">
+                <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+                    <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; margin-bottom: 2rem;">MY TOURNAMENTS</h2>
+                    
+                    <div class="tabs" style="display: flex; margin-bottom: 2rem; border-bottom: 2px solid rgba(220,38,38,0.3);">
+                        <button class="tab" style="flex: 1; padding: 1rem; background: none; border: none; color: var(--gray); font-family: 'Orbitron'; cursor: pointer; font-weight: 600;" onclick="showMyTournamentsTab('joined')">JOINED</button>
+                        <button class="tab" style="flex: 1; padding: 1rem; background: none; border: none; color: var(--gray); font-family: 'Orbitron'; cursor: pointer; font-weight: 600;" onclick="showMyTournamentsTab('hosting')">HOSTING</button>
+                        <button class="tab" style="flex: 1; padding: 1rem; background: none; border: none; color: var(--gray); font-family: 'Orbitron'; cursor: pointer; font-weight: 600;" onclick="showMyTournamentsTab('registered')">REGISTERED</button>
+                    </div>
+                    
+                    <div id="myTournamentsContent">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            LOADING YOUR TOURNAMENTS...
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Host Panel Section -->
+            <section id="hostPanelSection" class="section" style="display: none; padding: 6rem 0;">
+                <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+                    <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; margin-bottom: 2rem;">HOST PANEL</h2>
+                    
+                    <div id="hostTournamentsList" class="tournaments-grid">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            LOADING YOUR TOURNAMENTS...
+                        </div>
+                    </div>
+                    
+                    <!-- Tournament Pass Display -->
+                    <div id="tournamentPassDisplay" class="tournament-pass-container" style="display: none;">
+                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">
+                            <i class="fas fa-key"></i> TOURNAMENT HOST PASS
+                        </h3>
+                        <p style="color: var(--gray); margin-bottom: 1rem;">
+                            Use this code to manage your tournament brackets:
+                        </p>
+                        <div id="tournamentPassCode" class="tournament-pass-code"></div>
+                        <p style="color: var(--gray); font-size: 0.9rem; margin-top: 1rem;">
+                            Give this code to co-hosts for tournament management
+                        </p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Tournament Details Modal -->
+            <div id="tournamentDetailsModal" class="modal-overlay" style="display: none;">
+                <div class="modal-content" style="max-width: 800px; text-align: left;">
+                    <div style="text-align: right; margin-bottom: 1rem;">
+                        <button onclick="closeModal('tournamentDetailsModal')" style="background: none; border: none; color: var(--gray); cursor: pointer; font-size: 1.5rem;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="tournamentDetailsContent">
+                        <!-- Tournament details will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tournament Pass Modal -->
+            <div id="tournamentPassModal" class="modal-overlay" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-title">
+                        <i class="fas fa-key"></i> TOURNAMENT PASS
+                    </div>
+                    <div class="modal-subtitle">
+                        Enter the tournament pass code to manage brackets
+                    </div>
+                    
+                    <div id="tournamentPassAlert" class="alert" style="display: none;"></div>
+                    
+                    <div class="form-group">
+                        <input type="text" id="tournamentPassInput" class="form-input" placeholder="ENTER PASS CODE" style="text-align: center; letter-spacing: 2px;">
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <button class="btn btn-primary" onclick="useTournamentPass()" style="flex: 1;">
+                            <i class="fas fa-unlock"></i> ACCESS
+                        </button>
+                        <button class="btn btn-secondary" onclick="closeModal('tournamentPassModal')" style="flex: 1;">
+                            CANCEL
                         </button>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <section id="tournamentsSection" class="section" style="display: none;">
-        <div class="container">
-            <div class="section-header">
-                <div>
-                    <h2 class="section-title">FEATURED TOURNAMENTS</h2>
-                    <p class="section-subtitle">Join tournaments across connected servers</p>
-                </div>
-                <button class="btn btn-primary" onclick="showCreateTournament()" id="createTournamentBtn" style="display: none;">
-                    <i class="fas fa-plus"></i> CREATE TOURNAMENT
+            
+            <!-- Bracket View -->
+            <div class="bracket-view" id="bracketView">
+                <button class="close-bracket" onclick="closeBracket()">
+                    <i class="fas fa-times"></i> CLOSE BRACKET
                 </button>
-            </div>
-            
-            <div class="tournaments-grid" id="tournamentsGrid">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    LOADING TOURNAMENTS...
+                <div class="bracket-container" id="bracketContainer">
+                    <!-- Bracket will be loaded here -->
                 </div>
             </div>
-        </div>
-    </section>
-
-    <section id="serversSection" class="section" style="display: none;">
-        <div class="container">
-            <div class="section-header">
-                <div>
-                    <h2 class="section-title">MY DISCORD SERVERS</h2>
-                    <p class="section-subtitle">Manage tournaments across your connected servers</p>
+        </main>
+        
+        <!-- Footer -->
+        <footer style="background: rgba(0,0,0,0.95); padding: 5rem 0 3rem; margin-top: 4rem; border-top: 3px solid var(--primary);">
+            <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 3rem; margin-bottom: 2rem;">
+                    <div>
+                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1.5rem;">XTOURNEY</h3>
+                        <p style="color: var(--gray);">Professional tournament platform with simple authentication and host management.</p>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1.5rem;">QUICK LINKS</h3>
+                        <ul style="list-style: none;">
+                            <li><a href="#" onclick="showSection('home'); return false;" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Home</a></li>
+                            <li><a href="#" onclick="showSection('tournaments'); return false;" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Tournaments</a></li>
+                            <li><a href="#" onclick="showCreateTournament(); return false;" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Create Tournament</a></li>
+                        </ul>
+                    </div>
                 </div>
-                <button class="btn btn-primary" onclick="inviteBot()">
-                    <i class="fab fa-discord"></i> ADD BOT TO SERVER
-                </button>
-            </div>
-            
-            <div class="servers-grid" id="serversGrid">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    LOADING YOUR SERVERS...
-                </div>
-            </div>
-            
-            <div style="margin-top: 4rem;">
-                <h3 style="margin-bottom: 1.5rem; color: var(--primary); font-family: 'Orbitron';">CREATE TOURNAMENT ON SELECTED SERVER</h3>
-                <div class="form-container">
-                    <div id="createAlert" class="alert" style="display: none;"></div>
-                    <form id="createForm" onsubmit="event.preventDefault(); createTournament();">
-                        <div class="form-group">
-                            <label class="form-label">SELECT SERVER *</label>
-                            <select id="serverSelect" class="form-input" required>
-                                <option value="">SELECT A SERVER...</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">TOURNAMENT NAME *</label>
-                            <input type="text" id="tournamentName" class="form-input" 
-                                   placeholder="SUMMER CHAMPIONSHIP 2024" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">GAME *</label>
-                            <select id="tournamentGame" class="form-input" required>
-                                <option value="">SELECT A GAME...</option>
-                                <option value="Valorant">VALORANT</option>
-                                <option value="CS2">COUNTER-STRIKE 2</option>
-                                <option value="League of Legends">LEAGUE OF LEGENDS</option>
-                                <option value="Dota 2">DOTA 2</option>
-                                <option value="Fortnite">FORTNITE</option>
-                                <option value="Rocket League">ROCKET LEAGUE</option>
-                                <option value="Overwatch 2">OVERWATCH 2</option>
-                                <option value="Apex Legends">APEX LEGENDS</option>
-                                <option value="Call of Duty">CALL OF DUTY</option>
-                                <option value="Rainbow Six Siege">RAINBOW SIX SIEGE</option>
-                                <option value="Minecraft">MINECRAFT</option>
-                                <option value="Super Smash Bros">SUPER SMASH BROS</option>
-                                <option value="Street Fighter">STREET FIGHTER</option>
-                                <option value="Tekken">TEKKEN</option>
-                                <option value="Other">OTHER</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">REGION *</label>
-                            <select id="tournamentRegion" class="form-input" required>
-                                <option value="global">🌎 GLOBAL</option>
-                                <option value="na">🇺🇸 NORTH AMERICA</option>
-                                <option value="eu">🇪🇺 EUROPE</option>
-                                <option value="asia">🇦🇸 ASIA</option>
-                                <option value="oce">🇦🇺 OCEANIA</option>
-                                <option value="sa">🇧🇷 SOUTH AMERICA</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">DESCRIPTION</label>
-                            <textarea id="description" class="form-input" rows="3" 
-                                      placeholder="TOURNAMENT RULES, PRIZE POOL, SCHEDULE..."></textarea>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">MAX TEAMS *</label>
-                            <select id="maxTeams" class="form-input" required>
-                                <option value="4">4 TEAMS</option>
-                                <option value="8">8 TEAMS</option>
-                                <option value="16" selected>16 TEAMS</option>
-                                <option value="32">32 TEAMS</option>
-                                <option value="64">64 TEAMS</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">MAX PLAYERS PER TEAM *</label>
-                            <select id="maxPlayersPerTeam" class="form-input" required>
-                                <option value="1">1 PLAYER (1v1)</option>
-                                <option value="2">2 PLAYERS (2v2)</option>
-                                <option value="3">3 PLAYERS (3v3)</option>
-                                <option value="4">4 PLAYERS (4v4)</option>
-                                <option value="5" selected>5 PLAYERS (5v5)</option>
-                                <option value="6">6 PLAYERS (6v6)</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">PRIZE POOL (OPTIONAL)</label>
-                            <input type="text" id="prizePool" class="form-input" 
-                                   placeholder="E.G., $1000, FREE DISCORD NITRO, ETC.">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">START DATE & TIME *</label>
-                            <input type="datetime-local" id="startDate" class="form-input" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label" style="display: flex; align-items: center; gap: 10px;">
-                                <input type="checkbox" id="autoMatchmaking" checked>
-                                <span>ENABLE AUTO REGION-BASED MATCHMAKING</span>
-                            </label>
-                            <p style="color: var(--gray); font-size: 0.8rem; margin-top: 5px;">
-                                Teams will be automatically matched against opponents in the same region
-                            </p>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1.2rem; margin-top: 1rem;">
-                            <i class="fas fa-rocket"></i> LAUNCH TOURNAMENT
-                        </button>
-                    </form>
+                <div style="text-align: center; color: var(--gray); font-size: 0.8rem; padding-top: 3rem; border-top: 1px solid rgba(220, 38, 38, 0.2); font-family: 'Orbitron'; letter-spacing: 1px;">
+                    &copy; 2024 XTOURNEY. BUILT FOR ESPORTS.
                 </div>
             </div>
-        </div>
-    </section>
-
-    <!-- Login Modal -->
-    <div id="loginModal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-title">WELCOME CHAMPION</div>
-            <div class="modal-subtitle">Sign in to dominate the competition</div>
-            
-            <div id="loginAlert" class="alert" style="display: none;"></div>
-            
-            <div class="login-options">
-                <div class="login-option discord" onclick="loginWithDiscord()">
-                    <i class="fab fa-discord"></i>
-                    <span>CONTINUE WITH DISCORD</span>
-                </div>
-                
-                <div class="login-option email" onclick="showEmailLogin()">
-                    <i class="fas fa-envelope"></i>
-                    <span>LOGIN WITH EMAIL</span>
-                </div>
-                
-                <div class="login-option email" onclick="showEmailRegister()">
-                    <i class="fas fa-user-plus"></i>
-                    <span>REGISTER WITH EMAIL</span>
-                </div>
-            </div>
-            
-            <div style="margin-top: 2rem; font-size: 0.8rem; color: var(--gray); text-align: center;">
-                <p>By continuing, you agree to our Terms of Service</p>
-            </div>
-            
-            <button onclick="hideLoginModal()" style="margin-top: 1.5rem; background: none; border: none; color: var(--gray); cursor: pointer; font-family: 'Orbitron';">
-                CANCEL
-            </button>
-        </div>
+        </footer>
     </div>
-
-    <!-- Email Login Modal -->
-    <div id="emailLoginModal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-title">EMAIL LOGIN</div>
-            <div class="modal-subtitle">Enter your credentials to continue</div>
-            
-            <div id="emailLoginAlert" class="alert" style="display: none;"></div>
-            
-            <form id="emailLoginForm" onsubmit="event.preventDefault(); loginWithEmail();">
-                <div class="form-group">
-                    <input type="email" id="loginEmail" class="form-input" 
-                           placeholder="EMAIL ADDRESS" required>
-                </div>
-                
-                <div class="form-group">
-                    <input type="password" id="loginPassword" class="form-input" 
-                           placeholder="PASSWORD" required>
-                </div>
-                
-                <button type="submit" class="login-option discord" style="margin-top: 1rem; width: 100%; background: var(--gradient-primary);">
-                    <i class="fas fa-sign-in-alt"></i>
-                    <span>SIGN IN</span>
-                </button>
-            </form>
-            
-            <div style="margin-top: 1.5rem; text-align: center;">
-                <button onclick="showLoginModal()" style="background: none; border: none; color: var(--primary); cursor: pointer; font-family: 'Orbitron'; font-weight: 600;">
-                    ← BACK TO LOGIN OPTIONS
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Email Register Modal -->
-    <div id="emailRegisterModal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-title">CREATE ACCOUNT</div>
-            <div class="modal-subtitle">Register with email to get started</div>
-            
-            <div id="emailRegisterAlert" class="alert" style="display: none;"></div>
-            
-            <form id="emailRegisterForm" onsubmit="event.preventDefault(); registerWithEmail();">
-                <div class="form-group">
-                    <input type="text" id="regUsername" class="form-input" 
-                           placeholder="USERNAME (3-20 CHARACTERS)" required minlength="3" maxlength="20">
-                </div>
-                
-                <div class="form-group">
-                    <input type="email" id="regEmail" class="form-input" 
-                           placeholder="EMAIL ADDRESS" required>
-                </div>
-                
-                <div class="form-group">
-                    <input type="password" id="regPassword" class="form-input" 
-                           placeholder="PASSWORD (MIN 8 CHARACTERS)" required minlength="8">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label" style="display: flex; align-items: center; gap: 10px;">
-                        <input type="checkbox" id="termsCheckbox" required>
-                        <span>I AGREE TO TERMS & CONDITIONS</span>
-                    </label>
-                </div>
-                
-                <button type="submit" class="login-option discord" style="margin-top: 1rem; width: 100%; background: var(--gradient-primary);">
-                    <i class="fas fa-user-plus"></i>
-                    <span>CREATE ACCOUNT</span>
-                </button>
-            </form>
-            
-            <div style="margin-top: 1.5rem; text-align: center;">
-                <button onclick="showLoginModal()" style="background: none; border: none; color: var(--primary); cursor: pointer; font-family: 'Orbitron'; font-weight: 600;">
-                    ← BACK TO LOGIN OPTIONS
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Link Email Modal -->
-    <div id="linkEmailModal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-title">LINK EMAIL ADDRESS</div>
-            <div class="modal-subtitle">Link your email to avoid re-authentication</div>
-            
-            <div id="linkEmailAlert" class="alert" style="display: none;"></div>
-            
-            <form id="linkEmailForm" onsubmit="event.preventDefault(); linkEmailToAccount();">
-                <div class="form-group">
-                    <input type="email" id="linkEmailInput" class="form-input" 
-                           placeholder="your.email@example.com" required>
-                </div>
-                
-                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">
-                        <i class="fas fa-link"></i> LINK EMAIL
-                    </button>
-                    <button type="button" onclick="hideLinkEmailModal()" class="btn btn-secondary" style="flex: 1;">
-                        SKIP FOR NOW
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <footer style="background: rgba(0, 0, 0, 0.95); padding: 5rem 0 3rem; margin-top: 4rem; border-top: 3px solid var(--primary);">
-        <div class="container">
-            <div class="footer-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 3rem; margin-bottom: 2rem;">
-                <div>
-                    <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1.5rem;">XTOURNEY</h3>
-                    <p style="color: var(--gray);">Professional esports tournament platform with Discord integration and automated management.</p>
-                </div>
-                <div>
-                    <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1.5rem;">QUICK LINKS</h3>
-                    <ul style="list-style: none;">
-                        <li><a href="#" onclick="showSection('home'); return false;" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Home</a></li>
-                        <li><a href="#" onclick="showSection('tournaments'); return false;" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Tournaments</a></li>
-                        <li><a href="#" onclick="showSection('servers'); return false;" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">My Servers</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1.5rem;">SUPPORT</h3>
-                    <ul style="list-style: none;">
-                        <li><a href="#" onclick="inviteBot()" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Add Bot</a></li>
-                        <li><a href="#" onclick="showLoginModal()" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Login/Register</a></li>
-                        <li><a href="https://discord.gg/uYmG94J84y" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Support Server</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="copyright" style="text-align: center; color: var(--gray); font-size: 0.8rem; padding-top: 3rem; border-top: 1px solid rgba(220, 38, 38, 0.2); font-family: 'Orbitron'; letter-spacing: 1px;">
-                &copy; 2025 XTOURNEY. ALL RIGHTS RESERVED. BUILT FOR ESPORTS CHAMPIONS.
-            </div>
-        </div>
-    </footer>
 
     <script>
-        // ========== CONFIGURATION ==========
-        const CONFIG = {
-            API_URL: "https://compbot-lhuy.onrender.com",
-            DISCORD_CLIENT_ID: "1445127821742575726",
-            REDIRECT_URI: window.location.origin + window.location.pathname,
-            DISCORD_INVITE: "https://discord.com/oauth2/authorize?client_id=1445127821742575726&permissions=8&scope=bot%20applications.commands",
-            WEBSITE_URL: "https://www.xotiicsplaza.us/",
-            SESSION_TIMEOUT_DAYS: 30
-        };
-
-        // ========== STATE ==========
-        let currentUser = null;
-        let userToken = null;
-        let userServers = [];
-        let allTournaments = [];
-        let globalStats = {
-            liveMatches: 12,
-            activeTournaments: 45,
-            connectedServers: 128,
-            totalPlayers: 2500
-        };
-        let featuredServers = [];
-        let liveGames = [];
-        let bracketCache = {};
-        let isLoadingOAuth = false;
-        let isProcessingAuth = false;
-
-        // ========== INITIALIZATION ==========
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('XTourney Platform Initializing...');
-            
-            // Check if we're returning from Discord OAuth
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const error = urlParams.get('error');
-            
-            if (code && !isProcessingAuth) {
-                console.log('OAuth callback detected, processing...');
-                isProcessingAuth = true;
-                processOAuthCallback(code);
-            } else if (error) {
-                console.error('OAuth error:', error);
-                window.history.replaceState({}, document.title, window.location.pathname);
-                hideLoaderAndInitialize();
-                showError('Authentication failed: ' + error);
-            } else {
-                hideLoaderAndInitialize();
+        // ========== DATABASE SYSTEM ==========
+        class Database {
+            constructor() {
+                this.dbName = 'xtourney_db';
+                this.version = 4;
+                this.db = null;
+                this.init();
             }
-        });
 
-        async function processOAuthCallback(code) {
-            console.log('Processing OAuth callback with code:', code);
-            
-            showDiscordRedirect();
-            
-            try {
-                // Clean URL first
-                window.history.replaceState({}, document.title, window.location.pathname);
-                
-                // Try to exchange code for token
-                const tokenResponse = await fetch(`${CONFIG.API_URL}/api/auth/discord/token`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ 
-                        code: code,
-                        redirect_uri: CONFIG.REDIRECT_URI
-                    })
-                });
-                
-                if (!tokenResponse.ok) {
-                    const errorText = await tokenResponse.text();
-                    console.error('Token response error:', tokenResponse.status, errorText);
-                    throw new Error(`Server returned ${tokenResponse.status}`);
-                }
-                
-                const tokenData = await tokenResponse.json();
-                console.log('Token response data:', tokenData);
-                
-                if (tokenData.success) {
-                    console.log('OAuth successful');
-                    userToken = tokenData.access_token;
-                    currentUser = tokenData.user;
+            async init() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, this.version);
                     
-                    // Get user's servers
-                    let servers = [];
-                    try {
-                        const serversResponse = await fetch(`${CONFIG.API_URL}/api/auth/discord/servers`, {
-                            method: 'GET',
-                            headers: {
-                                'Authorization': `Bearer ${userToken}`,
-                                'Accept': 'application/json'
-                            }
-                        });
+                    request.onerror = () => {
+                        console.error('IndexedDB error:', request.error);
+                        reject(request.error);
+                    };
+                    
+                    request.onsuccess = () => {
+                        this.db = request.result;
+                        console.log('✅ Database initialized');
+                        resolve();
+                    };
+                    
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
                         
-                        if (serversResponse.ok) {
-                            const serversData = await serversResponse.json();
-                            if (serversData.success) {
-                                servers = serversData.servers || [];
-                            }
+                        // Create object stores
+                        if (!db.objectStoreNames.contains('users')) {
+                            const store = db.createObjectStore('users', { keyPath: 'id' });
+                            store.createIndex('username', 'username', { unique: true });
+                            store.createIndex('email', 'email', { unique: false });
                         }
-                    } catch (serverError) {
-                        console.error('Error fetching servers:', serverError);
+                        
+                        if (!db.objectStoreNames.contains('tournaments')) {
+                            const store = db.createObjectStore('tournaments', { keyPath: 'id' });
+                            store.createIndex('status', 'status', { unique: false });
+                            store.createIndex('createdBy', 'createdBy', { unique: false });
+                            store.createIndex('hostId', 'hostId', { unique: false });
+                        }
+                        
+                        if (!db.objectStoreNames.contains('teams')) {
+                            const store = db.createObjectStore('teams', { keyPath: 'id' });
+                            store.createIndex('tournamentId', 'tournamentId', { unique: false });
+                            store.createIndex('captainId', 'captainId', { unique: false });
+                        }
+                        
+                        if (!db.objectStoreNames.contains('matches')) {
+                            const store = db.createObjectStore('matches', { keyPath: 'id' });
+                            store.createIndex('tournamentId', 'tournamentId', { unique: false });
+                            store.createIndex('round', 'round', { unique: false });
+                        }
+                        
+                        if (!db.objectStoreNames.contains('brackets')) {
+                            db.createObjectStore('brackets', { keyPath: 'tournamentId' });
+                        }
+                        
+                        console.log('📊 Database schema created');
+                    };
+                });
+            }
+
+            async add(storeName, data) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction([storeName], 'readwrite');
+                    const store = transaction.objectStore(storeName);
+                    const request = store.add(data);
+                    
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async put(storeName, data) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction([storeName], 'readwrite');
+                    const store = transaction.objectStore(storeName);
+                    const request = store.put(data);
+                    
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async get(storeName, key) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction([storeName], 'readonly');
+                    const store = transaction.objectStore(storeName);
+                    const request = store.get(key);
+                    
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async getAll(storeName, indexName = null, query = null) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction([storeName], 'readonly');
+                    let store = transaction.objectStore(storeName);
+                    
+                    if (indexName) {
+                        store = store.index(indexName);
                     }
                     
-                    // Save to localStorage
-                    localStorage.setItem('xtourney_token', userToken);
-                    localStorage.setItem('xtourney_user', JSON.stringify(currentUser));
-                    localStorage.setItem('xtourney_servers', JSON.stringify(servers));
-                    localStorage.setItem('xtourney_last_login', Date.now().toString());
+                    const request = query ? store.getAll(query) : store.getAll();
                     
-                    userServers = servers;
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async delete(storeName, key) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction([storeName], 'readwrite');
+                    const store = transaction.objectStore(storeName);
+                    const request = store.delete(key);
                     
-                    // Hide redirect and initialize
-                    hideDiscordRedirect();
-                    hideLoaderAndInitialize();
-                    updateUIAfterLogin();
+                    request.onsuccess = () => resolve(true);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async count(storeName, indexName = null, query = null) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction([storeName], 'readonly');
+                    let store = transaction.objectStore(storeName);
                     
-                    showAlert(`✅ Successfully connected! Found ${servers.length} server(s) with bot`, 'success');
+                    if (indexName) {
+                        store = store.index(indexName);
+                    }
                     
-                } else {
-                    throw new Error(tokenData.detail || 'Authentication failed');
-                }
-            } catch (error) {
-                console.error('OAuth processing error:', error);
-                hideDiscordRedirect();
-                hideLoaderAndInitialize();
-                showError('Failed to authenticate with Discord. Please try again.');
-            } finally {
-                isProcessingAuth = false;
+                    const request = query ? store.count(query) : store.count();
+                    
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
             }
         }
 
-        function hideLoaderAndInitialize() {
-            setTimeout(() => {
+        // ========== GLOBAL STATE ==========
+        const db = new Database();
+        let currentUser = null;
+        let currentTournamentPass = null;
+        let stats = { liveMatches: 0, activeTournaments: 0, totalTeams: 0 };
+
+        // ========== INITIALIZATION ==========
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('XTourney Platform Initializing...');
+            
+            // Wait for database to initialize
+            await db.init();
+            
+            // Hide loader after delay
+            setTimeout(async () => {
                 const pageLoader = document.getElementById('pageLoader');
                 if (pageLoader) {
                     pageLoader.classList.add('hidden');
-                    setTimeout(() => {
-                        pageLoader.style.display = 'none';
-                    }, 500);
                 }
-            }, 300);
-            
-            setupIntersectionObserver();
-            checkExistingSession();
-            loadHomePageContent();
-            
-            // Set default tournament date
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setHours(19, 0, 0);
-            if (document.getElementById('startDate')) {
-                document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
-            }
-            
-            const today = new Date();
-            today.setHours(today.getHours() + 1);
-            if (document.getElementById('startDate')) {
-                document.getElementById('startDate').min = today.toISOString().slice(0, 16);
-            }
-        }
+                
+                await checkExistingSession();
+                setupDefaultTournamentDate();
+                
+            }, 1000);
+        });
 
-        function setupIntersectionObserver() {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('visible');
-                    }
-                });
-            }, { threshold: 0.1 });
-            
-            document.querySelectorAll('.section').forEach(section => {
-                observer.observe(section);
-            });
-        }
-
-        function showDiscordRedirect() {
-            document.getElementById('discordRedirect').style.display = 'flex';
-        }
-
-        function hideDiscordRedirect() {
-            const redirectEl = document.getElementById('discordRedirect');
-            if (redirectEl) {
-                redirectEl.style.display = 'none';
-            }
-        }
-
-        // ========== SESSION MANAGEMENT ==========
-        function checkExistingSession() {
-            const storedToken = localStorage.getItem('xtourney_token');
+        async function checkExistingSession() {
             const storedUser = localStorage.getItem('xtourney_user');
-            const storedServers = localStorage.getItem('xtourney_servers');
-            const lastLogin = localStorage.getItem('xtourney_last_login');
             
-            if (lastLogin) {
-                const daysSinceLogin = (Date.now() - parseInt(lastLogin)) / (1000 * 60 * 60 * 24);
-                if (daysSinceLogin > CONFIG.SESSION_TIMEOUT_DAYS) {
-                    console.log('Session expired');
-                    logout();
-                    return;
-                }
-            }
-            
-            if (storedToken && storedUser) {
+            if (storedUser) {
                 try {
                     currentUser = JSON.parse(storedUser);
-                    userToken = storedToken;
-                    userServers = storedServers ? JSON.parse(storedServers) : [];
                     
-                    console.log('Found existing session for user:', currentUser.username);
+                    // Verify user still exists in database
+                    const user = await db.get('users', currentUser.id);
+                    if (!user) {
+                        logout();
+                        return;
+                    }
+                    
+                    currentUser = user;
+                    
+                    console.log('✅ Found existing session for user:', currentUser.username);
+                    
+                    // Hide auth page, show main app
+                    document.getElementById('authPage').classList.add('hidden');
+                    document.getElementById('mainApp').style.display = 'block';
                     
                     updateUIAfterLogin();
+                    await loadDashboardData();
                     
                 } catch (e) {
                     console.error('Error parsing stored session:', e);
                     logout();
                 }
+            } else {
+                // Show auth page
+                document.getElementById('authPage').classList.remove('hidden');
             }
         }
 
-        // ========== HOME PAGE CONTENT ==========
-        function loadHomePageContent() {
-            loadGlobalStats();
-            loadLiveGames();
-            loadFeaturedServers();
-            loadTournaments();
+        function setupDefaultTournamentDate() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(19, 0, 0);
+            
+            if (document.getElementById('startDate')) {
+                document.getElementById('startDate').value = tomorrow.toISOString().slice(0, 16);
+            }
         }
 
-        function loadGlobalStats() {
-            // Update with actual data
-            updateStatsDisplay();
+        // ========== AUTH FUNCTIONS ==========
+        function showAuthTab(tabName) {
+            document.querySelectorAll('#authPage .tab').forEach(tab => {
+                tab.style.color = 'var(--gray)';
+                tab.style.borderBottom = 'none';
+            });
+            document.querySelectorAll('#authPage .form-container').forEach(form => form.style.display = 'none');
             
-            // Try to get real stats
-            fetch(`${CONFIG.API_URL}/api/stats/global`)
-                .then(response => response.ok ? response.json() : null)
-                .then(data => {
-                    if (data && data.success) {
-                        globalStats = data.stats;
-                        updateStatsDisplay();
-                    }
-                })
-                .catch(error => console.error('Error loading stats:', error));
+            const activeTab = document.querySelector(`#authPage .tab[onclick="showAuthTab('${tabName}')"]`);
+            if (activeTab) {
+                activeTab.style.color = 'var(--primary)';
+                activeTab.style.borderBottom = '3px solid var(--primary)';
+            }
+            
+            document.getElementById(`${tabName}Form`).style.display = 'block';
+            hideAuthAlert();
         }
 
-        function updateStatsDisplay() {
-            document.getElementById('liveMatchesCount').textContent = globalStats.liveMatches;
-            document.getElementById('activeTournaments').textContent = globalStats.activeTournaments;
-            document.getElementById('connectedServers').textContent = globalStats.connectedServers;
-            document.getElementById('totalPlayers').textContent = globalStats.totalPlayers.toLocaleString();
+        function showAuthAlert(message, type = 'error') {
+            const alertEl = document.getElementById('authAlert');
+            alertEl.textContent = message;
+            alertEl.className = `alert alert-${type}`;
+            alertEl.style.display = 'flex';
         }
 
-        function loadLiveGames() {
-            const container = document.getElementById('liveGamesContainer');
+        function hideAuthAlert() {
+            document.getElementById('authAlert').style.display = 'none';
+        }
+
+        async function register(event) {
+            event.preventDefault();
             
-            // Demo live games data
-            const demoLiveGames = [
-                {
-                    id: 1,
-                    serverName: "Esports Arena",
-                    serverIcon: "https://cdn.discordapp.com/icons/123456789012345678/abc123def456.png",
-                    tournamentName: "Valorant Summer Cup",
-                    game: "Valorant",
-                    team1: "Team Phoenix",
-                    team2: "Team Dragon",
-                    score1: 8,
-                    score2: 6,
-                    round: "Quarterfinals",
-                    bracketLink: "#",
-                    serverInvite: "https://discord.gg/esportsarena"
-                },
-                {
-                    id: 2,
-                    serverName: "Gaming Hub",
-                    serverIcon: "https://cdn.discordapp.com/icons/987654321098765432/xyz789abc456.png",
-                    tournamentName: "CS2 Championship",
-                    game: "CS2",
-                    team1: "Ninjas",
-                    team2: "Samurai",
-                    score1: 12,
-                    score2: 9,
-                    round: "Semifinals",
-                    bracketLink: "#",
-                    serverInvite: "https://discord.gg/gaminghub"
-                },
-                {
-                    id: 3,
-                    serverName: "Competitive Zone",
-                    serverIcon: "https://cdn.discordapp.com/icons/456789012345678901/def456ghi789.png",
-                    tournamentName: "League Tournament",
-                    game: "League of Legends",
-                    team1: "Blue Team",
-                    team2: "Red Team",
-                    score1: 2,
-                    score2: 1,
-                    round: "Finals",
-                    bracketLink: "#",
-                    serverInvite: "https://discord.gg/competitivezone"
-                }
-            ];
+            const username = document.getElementById('regUsername').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
             
-            liveGames = demoLiveGames;
+            if (!username || !password) {
+                showAuthAlert('Username and password are required');
+                return;
+            }
             
-            if (container) {
-                if (liveGames.length === 0) {
-                    container.innerHTML = `
-                        <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--gray);">
-                            <i class="fas fa-gamepad" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
-                            <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">NO LIVE GAMES</h3>
-                            <p>Check back later for ongoing tournaments</p>
-                        </div>
-                    `;
+            if (username.length < 3) {
+                showAuthAlert('Username must be at least 3 characters');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showAuthAlert('Password must be at least 6 characters');
+                return;
+            }
+            
+            try {
+                // Check if username exists
+                const users = await db.getAll('users', 'username', username);
+                if (users.length > 0) {
+                    showAuthAlert('Username already exists');
                     return;
                 }
                 
-                container.innerHTML = '';
-                liveGames.forEach(game => {
-                    const gameEl = document.createElement('div');
-                    gameEl.className = 'live-game-card';
-                    gameEl.innerHTML = `
-                        <div class="live-badge">LIVE</div>
-                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 1.5rem;">
-                            <img src="${game.serverIcon}" alt="${game.serverName}" 
-                                 style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--primary);">
-                            <div>
-                                <div style="font-weight: 800; font-size: 1.1rem; font-family: 'Orbitron';">${game.tournamentName}</div>
-                                <div style="font-size: 0.9rem; color: var(--gray);">${game.serverName}</div>
-                            </div>
-                        </div>
-                        
-                        <div style="margin-bottom: 1rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
-                                <div style="font-weight: 600; color: var(--primary);">${game.game}</div>
-                                <div style="font-size: 0.8rem; color: var(--gray);">${game.round}</div>
-                            </div>
-                            
-                            <div style="background: rgba(0,0,0,0.6); padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="font-weight: 600;">${game.team1}</span>
-                                    <span style="color: var(--primary); font-weight: 800;">${game.score1}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span style="font-weight: 600;">${game.team2}</span>
-                                    <span style="color: var(--primary); font-weight: 800;">${game.score2}</span>
-                                </div>
-                            </div>
-                            
-                            <div style="height: 10px; background: rgba(0,0,0,0.6); border-radius: 5px; overflow: hidden;">
-                                <div style="height: 100%; width: ${(game.score1 / (game.score1 + game.score2)) * 100}%; background: var(--gradient-primary);"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="server-invite" onclick="window.open('${game.serverInvite}', '_blank')">
-                            <i class="fab fa-discord" style="color: #5865F2;"></i>
-                            <div style="flex: 1;">
-                                <div style="font-size: 0.9rem; font-weight: 600;">Join ${game.serverName}</div>
-                                <div style="font-size: 0.75rem; color: var(--gray);">Watch live and participate</div>
-                            </div>
-                            <i class="fas fa-external-link-alt"></i>
-                        </div>
-                        
-                        <button class="btn btn-secondary" onclick="viewBracket('${game.bracketLink}')" style="width: 100%; margin-top: 1rem; padding: 0.8rem;">
-                            <i class="fas fa-bracket-curly"></i> VIEW BRACKET
-                        </button>
-                    `;
-                    container.appendChild(gameEl);
-                });
-            }
-        }
-
-        function loadFeaturedServers() {
-            const container = document.getElementById('featuredServers');
-            
-            // Demo featured servers
-            const demoFeaturedServers = [
-                {
-                    id: 1,
-                    name: "Esports Arena",
-                    icon: "https://cdn.discordapp.com/icons/123456789012345678/abc123def456.png",
-                    memberCount: 12500,
-                    activeTournaments: 8,
-                    description: "Premier competitive gaming community",
-                    inviteLink: "https://discord.gg/esportsarena"
-                },
-                {
-                    id: 2,
-                    name: "Gaming Hub",
-                    icon: "https://cdn.discordapp.com/icons/987654321098765432/xyz789abc456.png",
-                    memberCount: 8900,
-                    activeTournaments: 5,
-                    description: "Daily tournaments for all skill levels",
-                    inviteLink: "https://discord.gg/gaminghub"
-                },
-                {
-                    id: 3,
-                    name: "Competitive Zone",
-                    icon: "https://cdn.discordapp.com/icons/456789012345678901/def456ghi789.png",
-                    memberCount: 6700,
-                    activeTournaments: 6,
-                    description: "Professional esports organization",
-                    inviteLink: "https://discord.gg/competitivezone"
-                },
-                {
-                    id: 4,
-                    name: "Tournament Central",
-                    icon: "https://cdn.discordapp.com/icons/789012345678901234/ghi789jkl012.png",
-                    memberCount: 4200,
-                    activeTournaments: 4,
-                    description: "Weekly cash prize tournaments",
-                    inviteLink: "https://discord.gg/tournamentcentral"
-                }
-            ];
-            
-            featuredServers = demoFeaturedServers;
-            
-            if (container) {
-                container.innerHTML = '';
-                featuredServers.forEach(server => {
-                    const serverEl = document.createElement('div');
-                    serverEl.className = 'server-card';
-                    serverEl.innerHTML = `
-                        <img src="${server.icon}" alt="${server.name}" class="server-icon">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 800; font-size: 1.2rem; font-family: 'Orbitron';">${server.name}</div>
-                            <div style="font-size: 0.8rem; color: var(--gray); margin-top: 0.5rem;">
-                                <i class="fas fa-users"></i> ${server.memberCount.toLocaleString()} members
-                            </div>
-                            <div style="font-size: 0.8rem; color: var(--success); margin-top: 0.3rem;">
-                                <i class="fas fa-trophy"></i> ${server.activeTournaments} active tournaments
-                            </div>
-                            <div style="font-size: 0.8rem; color: var(--light); margin-top: 0.8rem;">
-                                ${server.description}
-                            </div>
-                            <div style="display: flex; gap: 10px; margin-top: 1.2rem;">
-                                <button class="btn btn-discord" onclick="window.open('${server.inviteLink}', '_blank')" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-family: 'Orbitron'; flex: 1;">
-                                    <i class="fab fa-discord"></i> JOIN SERVER
-                                </button>
-                                <button class="btn btn-secondary" onclick="viewServerTournaments('${server.id}')" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-family: 'Orbitron'; flex: 1;">
-                                    <i class="fas fa-eye"></i> VIEW TOURNAMENTS
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    container.appendChild(serverEl);
-                });
-            }
-        }
-
-        // ========== TOURNAMENTS ==========
-        async function loadTournaments() {
-            try {
-                const response = await fetch(`${CONFIG.API_URL}/api/tournaments/public`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        allTournaments = data.tournaments || [];
-                        updateTournamentsDisplay(allTournaments);
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading tournaments:', error);
-                showNoTournaments();
-            }
-        }
-
-        function updateTournamentsDisplay(tournaments) {
-            const container = document.getElementById('tournamentsGrid');
-            if (!container) return;
-            
-            if (tournaments.length === 0) {
-                showNoTournaments();
-                return;
-            }
-            
-            container.innerHTML = '';
-            tournaments.slice(0, 9).forEach(tournament => {
-                container.appendChild(createTournamentCard(tournament));
-            });
-        }
-
-        function createTournamentCard(tournament) {
-            const card = document.createElement('div');
-            card.className = 'tournament-card';
-            card.onclick = () => viewTournamentBracket(tournament.id);
-            
-            const teams = tournament.team_count || tournament.current_teams || 0;
-            const maxTeams = tournament.max_teams || 16;
-            const progressPercent = maxTeams > 0 ? Math.min((teams / maxTeams) * 100, 100) : 0;
-            const status = tournament.status || 'registration';
-            const statusClass = status === 'ongoing' ? 'ongoing' : 
-                               status === 'completed' ? 'completed' : 'registration';
-            const statusText = status === 'ongoing' ? 'IN PROGRESS' : 
-                              status === 'completed' ? 'COMPLETED' : 'REGISTERING';
-            
-            const regionFlags = {
-                'global': '🌎',
-                'na': '🇺🇸',
-                'eu': '🇪🇺',
-                'asia': '🇦🇸',
-                'oce': '🇦🇺',
-                'sa': '🇧🇷'
-            };
-            
-            card.innerHTML = `
-                <div class="tournament-header">
-                    <div class="tournament-title">${tournament.name}</div>
-                    <div class="tournament-status status-${statusClass}">
-                        ${statusText}
-                    </div>
-                </div>
-                
-                <div class="tournament-game">
-                    <i class="fas fa-gamepad"></i> ${tournament.game || 'ESPORTS'}
-                    ${tournament.region ? ` • ${regionFlags[tournament.region] || '🌍'} ${tournament.region.toUpperCase()}` : ''}
-                </div>
-                
-                ${tournament.prize_pool ? `
-                <div class="tournament-prize">
-                    <i class="fas fa-trophy"></i> ${tournament.prize_pool}
-                </div>
-                ` : ''}
-                
-                <div class="tournament-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${progressPercent}%"></div>
-                    </div>
-                    <div class="progress-text">
-                        <span>${teams}/${maxTeams} TEAMS</span>
-                        <span>${Math.round(progressPercent)}% FULL</span>
-                    </div>
-                </div>
-                
-                <div class="tournament-meta">
-                    <div><i class="fas fa-calendar"></i> ${tournament.start_date ? new Date(tournament.start_date).toLocaleDateString() : 'TBA'}</div>
-                    <div><i class="fas fa-users"></i> ${tournament.max_players_per_team || 5}v${tournament.max_players_per_team || 5}</div>
-                </div>
-                
-                <div style="text-align: center; margin-top: 2rem;">
-                    <button class="btn btn-${status === 'registration' ? 'primary' : 'secondary'}" 
-                            onclick="handleTournamentAction(event, '${tournament.id}', '${status}')" style="width: 100%; font-family: 'Orbitron';">
-                        <i class="fas fa-${status === 'registration' ? 'sign-in-alt' : 'eye'}"></i>
-                        ${status === 'registration' ? 'REGISTER NOW' : 'VIEW BRACKET'}
-                    </button>
-                </div>
-            `;
-            
-            return card;
-        }
-
-        function handleTournamentAction(event, tournamentId, status) {
-            event.stopPropagation();
-            if (status === 'registration') {
-                registerForTournament(tournamentId);
-            } else {
-                viewTournamentBracket(tournamentId);
-            }
-        }
-
-        // ========== AUTH MODAL FUNCTIONS ==========
-        function showLoginModal() {
-            document.getElementById('loginModal').style.display = 'flex';
-            document.getElementById('loginAlert').style.display = 'none';
-        }
-
-        function hideLoginModal() {
-            document.getElementById('loginModal').style.display = 'none';
-            document.getElementById('emailLoginModal').style.display = 'none';
-            document.getElementById('emailRegisterModal').style.display = 'none';
-        }
-
-        function showEmailLogin() {
-            hideLoginModal();
-            document.getElementById('emailLoginModal').style.display = 'flex';
-            document.getElementById('emailLoginAlert').style.display = 'none';
-        }
-
-        function showEmailRegister() {
-            hideLoginModal();
-            document.getElementById('emailRegisterModal').style.display = 'flex';
-            document.getElementById('emailRegisterAlert').style.display = 'none';
-        }
-
-        // ========== DISCORD AUTH ==========
-        function loginWithDiscord() {
-            console.log('Starting Discord OAuth...');
-            
-            if (window.location.search.includes('code=') || isProcessingAuth) {
-                console.log('Already in OAuth flow');
-                return;
-            }
-            
-            const scope = 'identify email guilds';
-            const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}&scope=${scope}&prompt=consent`;
-            
-            window.location.href = discordAuthUrl;
-        }
-
-        // ========== EMAIL AUTH ==========
-        async function registerWithEmail() {
-            const username = document.getElementById('regUsername').value.trim();
-            const email = document.getElementById('regEmail').value.trim().toLowerCase();
-            const password = document.getElementById('regPassword').value;
-            const termsAccepted = document.getElementById('termsCheckbox').checked;
-            
-            if (!username || !email || !password) {
-                showErrorInModal('emailRegisterAlert', 'Please fill all fields');
-                return;
-            }
-            
-            if (!termsAccepted) {
-                showErrorInModal('emailRegisterAlert', 'You must agree to the terms & conditions');
-                return;
-            }
-            
-            if (password.length < 8) {
-                showErrorInModal('emailRegisterAlert', 'Password must be at least 8 characters');
-                return;
-            }
-            
-            if (!isValidEmail(email)) {
-                showErrorInModal('emailRegisterAlert', 'Please enter a valid email address');
-                return;
-            }
-            
-            try {
-                // For demo purposes, create a local account
-                const demoUser = {
-                    id: Date.now(),
+                // Create user
+                const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                const userData = {
+                    id: userId,
                     username: username,
-                    email: email,
-                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=DC2626&color=fff&bold=true`
+                    email: email || '',
+                    password: await hashPassword(password),
+                    isHost: false, // Start as regular user
+                    isAdmin: false,
+                    createdAt: new Date().toISOString(),
+                    lastLogin: new Date().toISOString()
                 };
                 
-                const demoToken = 'demo_token_' + Date.now();
+                await db.add('users', userData);
                 
-                localStorage.setItem('xtourney_token', demoToken);
-                localStorage.setItem('xtourney_user', JSON.stringify(demoUser));
-                localStorage.setItem('xtourney_last_login', Date.now().toString());
-                currentUser = demoUser;
-                userToken = demoToken;
+                // Don't store password in localStorage
+                const safeUserData = { ...userData };
+                delete safeUserData.password;
                 
-                hideLoginModal();
+                localStorage.setItem('xtourney_user', JSON.stringify(safeUserData));
+                currentUser = safeUserData;
+                
+                // Hide auth page, show main app
+                document.getElementById('authPage').classList.add('hidden');
+                document.getElementById('mainApp').style.display = 'block';
+                
                 updateUIAfterLogin();
-                showAlert('✅ Account created successfully!', 'success');
+                await loadDashboardData();
+                
+                showToast(`✅ Welcome to XTourney, ${username}!`, 'success');
                 
             } catch (error) {
                 console.error('Registration error:', error);
-                showErrorInModal('emailRegisterAlert', 'Registration failed. Please try again.');
+                showAuthAlert('Registration failed. Please try again.');
             }
         }
 
-        async function loginWithEmail() {
-            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+        async function login(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value;
             
-            if (!email || !password) {
-                showErrorInModal('emailLoginAlert', 'Please fill all fields');
+            if (!username || !password) {
+                showAuthAlert('Username and password are required');
                 return;
             }
             
             try {
-                // For demo purposes, create a demo user
-                const demoUser = {
-                    id: Date.now(),
-                    username: email.split('@')[0],
-                    email: email,
-                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=DC2626&color=fff&bold=true`
-                };
+                // Find user by username
+                const users = await db.getAll('users', 'username', username);
+                if (users.length === 0) {
+                    showAuthAlert('Invalid username or password');
+                    return;
+                }
                 
-                const demoToken = 'demo_token_' + Date.now();
+                const user = users[0];
                 
-                localStorage.setItem('xtourney_token', demoToken);
-                localStorage.setItem('xtourney_user', JSON.stringify(demoUser));
-                localStorage.setItem('xtourney_last_login', Date.now().toString());
-                currentUser = demoUser;
-                userToken = demoToken;
+                // Verify password
+                const validPassword = await verifyPassword(password, user.password);
+                if (!validPassword) {
+                    showAuthAlert('Invalid username or password');
+                    return;
+                }
                 
-                hideLoginModal();
+                // Update last login
+                user.lastLogin = new Date().toISOString();
+                await db.put('users', user);
+                
+                // Don't store password in localStorage
+                const safeUserData = { ...user };
+                delete safeUserData.password;
+                
+                localStorage.setItem('xtourney_user', JSON.stringify(safeUserData));
+                currentUser = safeUserData;
+                
+                // Hide auth page, show main app
+                document.getElementById('authPage').classList.add('hidden');
+                document.getElementById('mainApp').style.display = 'block';
+                
                 updateUIAfterLogin();
-                showAlert('✅ Login successful!', 'success');
+                await loadDashboardData();
+                
+                showToast(`✅ Welcome back, ${username}!`, 'success');
                 
             } catch (error) {
                 console.error('Login error:', error);
-                showErrorInModal('emailLoginAlert', 'Login failed. Please try again.');
+                showAuthAlert('Login failed. Please check credentials.');
             }
         }
 
-        function isValidEmail(email) {
-            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return re.test(email);
+        async function hashPassword(password) {
+            // Simple hash for demo - use bcrypt in production
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password + 'xtourney_salt_2024');
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function verifyPassword(password, hash) {
+            const newHash = await hashPassword(password);
+            return newHash === hash;
+        }
+
+        function logout() {
+            localStorage.removeItem('xtourney_user');
+            currentUser = null;
+            currentTournamentPass = null;
+            
+            // Show auth page, hide main app
+            document.getElementById('authPage').classList.remove('hidden');
+            document.getElementById('mainApp').style.display = 'none';
+            
+            // Reset forms
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('regUsername').value = '';
+            document.getElementById('regEmail').value = '';
+            document.getElementById('regPassword').value = '';
+            
+            showAuthTab('login');
+            showToast('✅ Successfully logged out', 'success');
         }
 
         // ========== UI UPDATE FUNCTIONS ==========
         function updateUIAfterLogin() {
             if (!currentUser) return;
             
-            const authButtons = document.getElementById('authButtons');
-            const avatarUrl = currentUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.username)}&background=DC2626&color=fff&bold=true`;
+            // Update user info in header
+            document.getElementById('userName').textContent = currentUser.username;
+            document.getElementById('userStatus').textContent = currentUser.isHost ? 'Tournament Host' : 'Player';
+            document.getElementById('userStatus').style.color = currentUser.isHost ? 'var(--primary)' : 'var(--gray)';
             
-            authButtons.innerHTML = `
-                <div class="user-profile" onclick="showSection('servers')">
-                    <img src="${avatarUrl}" alt="Avatar" class="user-avatar">
-                    <div>
-                        <div style="font-weight: 700; font-family: 'Orbitron';">${currentUser.username}</div>
-                        ${currentUser.email ? 
-                            `<div style="font-size: 0.8rem; color: var(--gray);">${currentUser.email}</div>` : 
-                            `<div style="font-size: 0.8rem; color: var(--warning);">
-                                <i class="fas fa-user"></i> Demo Account
-                            </div>`
-                        }
-                    </div>
-                    <button onclick="logout(); event.stopPropagation();" style="margin-left: 10px; padding: 0.4rem 0.8rem; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-family: 'Orbitron';">
-                        LOGOUT
-                    </button>
-                </div>
-            `;
+            // Update avatar
+            const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.username)}&background=DC2626&color=fff&bold=true`;
+            document.getElementById('userAvatar').src = avatarUrl;
+            document.getElementById('menuUserAvatar').src = avatarUrl;
             
-            document.getElementById('serversLink').style.display = 'block';
-            document.getElementById('createTournamentBtn').style.display = 'block';
-            document.getElementById('quickCreateBtn').style.display = 'block';
+            // Update menu
+            document.getElementById('menuUserName').textContent = currentUser.username;
+            document.getElementById('menuUserRole').textContent = currentUser.isHost ? '🎮 TOURNAMENT HOST' : '👤 PLAYER';
+            
+            // Show/hide host features
+            if (currentUser.isHost) {
+                document.getElementById('hostPanelLink').style.display = 'block';
+                document.getElementById('createTournamentBtn').style.display = 'block';
+                document.getElementById('createTournamentHeaderBtn').style.display = 'block';
+                document.getElementById('createTournamentMenuBtn').style.display = 'block';
+                document.getElementById('hostPassBtn').style.display = 'block';
+            }
         }
 
-        // ========== UI FUNCTIONS ==========
+        function showUserMenu() {
+            document.getElementById('userMenu').style.display = 'flex';
+        }
+
+        function hideUserMenu(event) {
+            if (event.target.id === 'userMenu') {
+                document.getElementById('userMenu').style.display = 'none';
+            }
+        }
+
+        // ========== SECTION NAVIGATION ==========
         function showSection(sectionName) {
-            document.getElementById('homeSection').style.display = 'none';
-            document.getElementById('tournamentsSection').style.display = 'none';
-            document.getElementById('serversSection').style.display = 'none';
+            // Hide all sections
+            const sections = ['homeSection', 'tournamentsSection', 'createTournamentSection', 
+                             'myTournamentsSection', 'hostPanelSection'];
+            sections.forEach(section => {
+                const el = document.getElementById(section);
+                if (el) el.style.display = 'none';
+            });
             
-            const section = document.getElementById(sectionName + 'Section');
+            // Show selected section
+            const section = document.getElementById(sectionName);
             if (section) {
                 section.style.display = 'block';
-                setTimeout(() => section.classList.add('visible'), 50);
-                
-                if (sectionName === 'tournaments') loadTournaments();
-                else if (sectionName === 'servers') loadUserServers();
             }
             
+            // Update nav links
             document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-            const activeLink = document.querySelector(`.nav-link[onclick*="${sectionName}"]`);
+            const activeLink = document.querySelector(`.nav-link[onclick*="${sectionName.replace('Section', '')}"]`);
             if (activeLink) activeLink.classList.add('active');
             
+            // Load data for section
+            switch(sectionName) {
+                case 'homeSection':
+                    loadDashboardData();
+                    break;
+                case 'tournamentsSection':
+                    loadAllTournaments();
+                    break;
+                case 'myTournamentsSection':
+                    loadMyTournaments();
+                    break;
+                case 'hostPanelSection':
+                    loadHostTournaments();
+                    break;
+            }
+            
+            // Hide user menu
+            document.getElementById('userMenu').style.display = 'none';
+            
+            // Scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function loadUserServers() {
-            const serversGrid = document.getElementById('serversGrid');
-            if (!serversGrid) return;
-            
-            if (userServers.length === 0) {
-                serversGrid.innerHTML = `
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--gray);">
-                        <i class="fas fa-server" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
-                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">NO SERVERS FOUND</h3>
-                        <p>The XTourney bot needs to be added to your Discord server first.</p>
-                        <button class="btn btn-primary" onclick="inviteBot()" style="margin-top: 2rem;">
-                            <i class="fab fa-discord"></i> ADD BOT TO SERVER
-                        </button>
-                    </div>
-                `;
-                return;
-            }
-            
-            serversGrid.innerHTML = '';
-            userServers.forEach(server => {
-                const tournamentCount = allTournaments.filter(t => t.discord_server_id === server.id).length;
-                const serverEl = document.createElement('div');
-                serverEl.className = 'server-card';
-                serverEl.innerHTML = `
-                    <img src="${server.icon || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
-                         alt="${server.name}" class="server-icon">
-                    <div style="flex: 1;">
-                        <div style="font-weight: 800; font-size: 1.2rem; font-family: 'Orbitron';">${server.name}</div>
-                        <div style="font-size: 0.8rem; color: var(--gray); margin-top: 0.5rem;">
-                            <i class="fas fa-trophy"></i> ${tournamentCount} Active Tournaments
-                        </div>
-                        <div style="display: flex; gap: 10px; margin-top: 1.2rem;">
-                            <button class="btn btn-secondary" onclick="createTournamentForServer('${server.id}', '${server.name.replace("'", "\\'")}')" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-family: 'Orbitron'; flex: 1;">
-                                <i class="fas fa-plus"></i> CREATE
-                            </button>
-                            <button class="btn btn-secondary" onclick="viewServerTournaments('${server.id}', '${server.name.replace("'", "\\'")}')" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-family: 'Orbitron'; flex: 1;">
-                                <i class="fas fa-eye"></i> VIEW
-                            </button>
-                        </div>
-                    </div>
-                `;
-                serversGrid.appendChild(serverEl);
-            });
-        }
-
         function showCreateTournament() {
-            if (!userToken) {
-                showError('Please login to create tournaments');
-                showLoginModal();
+            if (!currentUser) {
+                showToast('Please login first', 'error');
+                showSection('home');
                 return;
             }
             
-            showSection('servers');
+            if (!currentUser.isHost) {
+                showToast('Only tournament hosts can create tournaments', 'error');
+                return;
+            }
+            
+            showSection('createTournamentSection');
         }
 
-        function logout() {
-            localStorage.removeItem('xtourney_token');
-            localStorage.removeItem('xtourney_user');
-            localStorage.removeItem('xtourney_servers');
-            localStorage.removeItem('xtourney_last_login');
+        function showMyTournamentsTab(tabName) {
+            // Update tabs
+            document.querySelectorAll('#myTournamentsSection .tab').forEach(tab => {
+                tab.style.color = 'var(--gray)';
+                tab.style.borderBottom = 'none';
+            });
             
-            currentUser = null;
-            userToken = null;
-            userServers = [];
+            const activeTab = document.querySelector(`#myTournamentsSection .tab[onclick="showMyTournamentsTab('${tabName}')"]`);
+            if (activeTab) {
+                activeTab.style.color = 'var(--primary)';
+                activeTab.style.borderBottom = '3px solid var(--primary)';
+            }
             
-            document.getElementById('authButtons').innerHTML = `
-                <button class="btn btn-primary" onclick="showLoginModal()">
-                    <i class="fas fa-sign-in-alt"></i> LOGIN
-                </button>
-            `;
-            
-            document.getElementById('serversLink').style.display = 'none';
-            document.getElementById('createTournamentBtn').style.display = 'none';
-            document.getElementById('quickCreateBtn').style.display = 'none';
-            
-            showSection('home');
-            showAlert('✅ Successfully logged out', 'success');
+            // Load content for tab
+            loadMyTournamentsTab(tabName);
         }
 
-        function inviteBot() {
-            window.open(CONFIG.DISCORD_INVITE, '_blank');
+        // ========== TOURNAMENT FUNCTIONS ==========
+        async function loadDashboardData() {
+            // Load stats
+            await updateStatsDisplay();
+            
+            // Load featured tournaments
+            await loadFeaturedTournaments();
         }
 
-        function showNoTournaments() {
-            const html = `
-                <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--gray);">
-                    <i class="fas fa-trophy" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--primary);"></i>
-                    <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">NO TOURNAMENTS AVAILABLE</h3>
-                    <p>Connect your Discord account to create tournaments</p>
-                    <button class="btn btn-primary" onclick="loginWithDiscord()" style="margin-top: 2rem;">
-                        <i class="fab fa-discord"></i> CONNECT DISCORD
-                    </button>
+        async function updateStatsDisplay() {
+            try {
+                // Get live matches
+                const allMatches = await db.getAll('matches');
+                const liveMatches = allMatches.filter(m => m.status === 'ongoing').length;
+                
+                // Get active tournaments
+                const activeTournaments = await db.getAll('tournaments', 'status', 'ongoing');
+                
+                // Get total teams
+                const allTeams = await db.getAll('teams');
+                
+                stats = {
+                    liveMatches: liveMatches,
+                    activeTournaments: activeTournaments.length,
+                    totalTeams: allTeams.length
+                };
+                
+                document.getElementById('liveMatchesCount').textContent = stats.liveMatches;
+                document.getElementById('activeTournaments').textContent = stats.activeTournaments;
+                document.getElementById('totalTeams').textContent = stats.totalTeams;
+                
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadFeaturedTournaments() {
+            const container = document.getElementById('featuredTournaments');
+            
+            try {
+                const tournaments = await db.getAll('tournaments');
+                const activeTournaments = tournaments
+                    .filter(t => t.status !== 'completed')
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    .slice(0, 3);
+                
+                if (container) {
+                    if (activeTournaments.length === 0) {
+                        container.innerHTML = `
+                            <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                                <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                                <h3 style="color: var(--primary); font-family: 'Orbitron';">NO TOURNAMENTS YET</h3>
+                                <p style="color: var(--gray);">Be the first to create a tournament!</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    container.innerHTML = '';
+                    activeTournaments.forEach(tournament => {
+                        container.appendChild(createTournamentCard(tournament));
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading featured tournaments:', error);
+                container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
+            }
+        }
+
+        async function loadAllTournaments() {
+            const container = document.getElementById('allTournaments');
+            
+            try {
+                const tournaments = await db.getAll('tournaments');
+                const activeTournaments = tournaments.filter(t => t.status !== 'completed');
+                
+                if (container) {
+                    if (activeTournaments.length === 0) {
+                        container.innerHTML = `
+                            <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                                <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                                <h3 style="color: var(--primary); font-family: 'Orbitron';">NO TOURNAMENTS AVAILABLE</h3>
+                                <p style="color: var(--gray);">Create the first tournament!</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    container.innerHTML = '';
+                    activeTournaments.forEach(tournament => {
+                        container.appendChild(createTournamentCard(tournament));
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading all tournaments:', error);
+                container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
+            }
+        }
+
+        async function loadMyTournaments() {
+            showMyTournamentsTab('joined');
+        }
+
+        async function loadMyTournamentsTab(tabName) {
+            const container = document.getElementById('myTournamentsContent');
+            
+            if (!currentUser) {
+                container.innerHTML = '<div class="alert alert-error">Please login first</div>';
+                return;
+            }
+            
+            try {
+                let tournaments = [];
+                const allTournaments = await db.getAll('tournaments');
+                const allTeams = await db.getAll('teams');
+                
+                switch(tabName) {
+                    case 'joined':
+                        // Tournaments where user is on a team
+                        const userTeams = allTeams.filter(t => t.captainId === currentUser.id);
+                        const joinedTournamentIds = [...new Set(userTeams.map(t => t.tournamentId))];
+                        tournaments = allTournaments.filter(t => joinedTournamentIds.includes(t.id));
+                        break;
+                        
+                    case 'hosting':
+                        // Tournaments created by user
+                        tournaments = allTournaments.filter(t => t.hostId === currentUser.id);
+                        break;
+                        
+                    case 'registered':
+                        // All active tournaments
+                        tournaments = allTournaments.filter(t => t.status === 'registration');
+                        break;
+                }
+                
+                if (container) {
+                    if (tournaments.length === 0) {
+                        container.innerHTML = `
+                            <div style="text-align: center; padding: 3rem;">
+                                <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                                <h3 style="color: var(--primary); font-family: 'Orbitron';">NO TOURNAMENTS FOUND</h3>
+                                <p style="color: var(--gray);">${getNoTournamentsMessage(tabName)}</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    container.innerHTML = '<div class="tournaments-grid"></div>';
+                    const grid = container.querySelector('.tournaments-grid');
+                    tournaments.forEach(tournament => {
+                        grid.appendChild(createTournamentCard(tournament, true));
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading my tournaments:', error);
+                container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
+            }
+        }
+
+        function getNoTournamentsMessage(tabName) {
+            switch(tabName) {
+                case 'joined': return "You haven't joined any tournaments yet";
+                case 'hosting': return "You haven't created any tournaments yet";
+                case 'registered': return "No tournaments are currently open for registration";
+                default: return "No tournaments found";
+            }
+        }
+
+        async function loadHostTournaments() {
+            const container = document.getElementById('hostTournamentsList');
+            const passDisplay = document.getElementById('tournamentPassDisplay');
+            
+            if (!currentUser || !currentUser.isHost) {
+                container.innerHTML = '<div class="alert alert-error">Host access required</div>';
+                return;
+            }
+            
+            try {
+                const tournaments = await db.getAll('tournaments', 'hostId', currentUser.id);
+                
+                if (container) {
+                    if (tournaments.length === 0) {
+                        container.innerHTML = `
+                            <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                                <i class="fas fa-crown" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                                <h3 style="color: var(--primary); font-family: 'Orbitron';">NO HOSTED TOURNAMENTS</h3>
+                                <p style="color: var(--gray);">Create your first tournament as a host!</p>
+                                <button class="btn btn-primary mt-2" onclick="showCreateTournament()">
+                                    <i class="fas fa-plus"></i> CREATE TOURNAMENT
+                                </button>
+                            </div>
+                        `;
+                        passDisplay.style.display = 'none';
+                        return;
+                    }
+                    
+                    container.innerHTML = '';
+                    tournaments.forEach(tournament => {
+                        container.appendChild(createTournamentCard(tournament, true, true));
+                    });
+                    
+                    // Show tournament pass for the first tournament
+                    if (tournaments.length > 0 && tournaments[0].tournamentPass) {
+                        document.getElementById('tournamentPassCode').textContent = tournaments[0].tournamentPass;
+                        passDisplay.style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading host tournaments:', error);
+                container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
+            }
+        }
+
+        function createTournamentCard(tournament, showActions = false, showHostActions = false) {
+            const card = document.createElement('div');
+            card.className = 'tournament-card';
+            card.dataset.id = tournament.id;
+            
+            const progressPercent = tournament.maxTeams > 0 ? 
+                Math.min((tournament.currentTeams || 0) / tournament.maxTeams * 100, 100) : 0;
+            
+            card.innerHTML = `
+                <div class="tournament-header">
+                    <div class="tournament-title">${tournament.name}</div>
+                    <div class="tournament-status status-${tournament.status}">
+                        ${tournament.status.toUpperCase()}
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <div style="color: var(--primary); font-weight: 700; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-gamepad"></i> ${tournament.game}
+                    </div>
+                    
+                    ${tournament.prizePool ? `
+                    <div style="color: var(--primary); font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-trophy"></i> ${tournament.prizePool}
+                    </div>
+                    ` : ''}
+                    
+                    <div class="tournament-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progressPercent}%"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--gray); font-family: 'Orbitron';">
+                            <span>${tournament.currentTeams || 0}/${tournament.maxTeams} TEAMS</span>
+                            <span>${Math.round(progressPercent)}% FULL</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="color: var(--gray); font-size: 0.9rem; margin-top: 1.5rem;">
+                    <div><i class="fas fa-user"></i> Host: ${tournament.createdBy}</div>
+                    <div><i class="fas fa-calendar"></i> ${new Date(tournament.createdAt).toLocaleDateString()}</div>
                 </div>
             `;
             
-            if (document.getElementById('tournamentsGrid')) {
-                document.getElementById('tournamentsGrid').innerHTML = html;
+            // Add actions if needed
+            if (showActions || showHostActions) {
+                const actionsDiv = document.createElement('div');
+                actionsDiv.style.marginTop = '1.5rem';
+                actionsDiv.style.display = 'flex';
+                actionsDiv.style.gap = '0.5rem';
+                
+                if (showActions) {
+                    if (tournament.status === 'registration') {
+                        const joinBtn = document.createElement('button');
+                        joinBtn.className = 'btn btn-primary';
+                        joinBtn.style.flex = '1';
+                        joinBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> JOIN';
+                        joinBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            showTournamentDetails(tournament.id);
+                        };
+                        actionsDiv.appendChild(joinBtn);
+                    } else {
+                        const viewBtn = document.createElement('button');
+                        viewBtn.className = 'btn btn-secondary';
+                        viewBtn.style.flex = '1';
+                        viewBtn.innerHTML = '<i class="fas fa-eye"></i> VIEW';
+                        viewBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            showTournamentDetails(tournament.id);
+                        };
+                        actionsDiv.appendChild(viewBtn);
+                    }
+                }
+                
+                if (showHostActions) {
+                    const manageBtn = document.createElement('button');
+                    manageBtn.className = 'btn btn-primary';
+                    manageBtn.style.flex = '1';
+                    manageBtn.innerHTML = '<i class="fas fa-cog"></i> MANAGE';
+                    manageBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        manageTournament(tournament.id);
+                    };
+                    actionsDiv.appendChild(manageBtn);
+                }
+                
+                card.appendChild(actionsDiv);
+            }
+            
+            // Add click handler for viewing details
+            card.onclick = () => showTournamentDetails(tournament.id);
+            
+            return card;
+        }
+
+        async function createTournament(event) {
+            event.preventDefault();
+            
+            if (!currentUser || !currentUser.isHost) {
+                showToast('Only hosts can create tournaments', 'error');
+                return;
+            }
+            
+            const name = document.getElementById('tournamentName').value.trim();
+            const game = document.getElementById('tournamentGame').value;
+            const maxTeams = parseInt(document.getElementById('maxTeams').value);
+            const maxPlayers = parseInt(document.getElementById('maxPlayersPerTeam').value);
+            const prizePool = document.getElementById('prizePool').value.trim();
+            const description = document.getElementById('description').value.trim();
+            
+            if (!name || !game) {
+                showAlert('createAlert', 'Please fill all required fields', 'error');
+                return;
+            }
+            
+            try {
+                const tournamentId = 'tournament_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                const tournamentPass = generateTournamentPass();
+                
+                const tournamentData = {
+                    id: tournamentId,
+                    name: name,
+                    game: game,
+                    description: description,
+                    maxTeams: maxTeams,
+                    maxPlayersPerTeam: maxPlayers,
+                    prizePool: prizePool,
+                    status: 'registration',
+                    createdBy: currentUser.username,
+                    hostId: currentUser.id,
+                    tournamentPass: tournamentPass,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    currentTeams: 0,
+                    currentRound: 0,
+                    totalRounds: calculateRounds(maxTeams)
+                };
+                
+                await db.add('tournaments', tournamentData);
+                
+                // Clear form
+                document.getElementById('tournamentName').value = '';
+                document.getElementById('tournamentGame').value = '';
+                document.getElementById('prizePool').value = '';
+                document.getElementById('description').value = '';
+                
+                showAlert('createAlert', '✅ Tournament created successfully!', 'success');
+                
+                // Show tournament pass
+                document.getElementById('tournamentPassCode').textContent = tournamentPass;
+                document.getElementById('tournamentPassDisplay').style.display = 'block';
+                
+                // Refresh tournament lists
+                setTimeout(() => {
+                    loadFeaturedTournaments();
+                    loadAllTournaments();
+                    loadHostTournaments();
+                    showSection('hostPanel');
+                }, 1500);
+                
+            } catch (error) {
+                console.error('Error creating tournament:', error);
+                showAlert('createAlert', 'Error creating tournament', 'error');
+            }
+        }
+
+        function generateTournamentPass() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let pass = '';
+            for (let i = 0; i < 8; i++) {
+                pass += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return pass;
+        }
+
+        function calculateRounds(teamCount) {
+            return Math.ceil(Math.log2(teamCount));
+        }
+
+        async function showTournamentDetails(tournamentId) {
+            try {
+                const tournament = await db.get('tournaments', tournamentId);
+                if (!tournament) {
+                    showToast('Tournament not found', 'error');
+                    return;
+                }
+                
+                // Get teams for this tournament
+                const teams = await db.getAll('teams', 'tournamentId', tournamentId);
+                
+                // Get matches for this tournament
+                const matches = await db.getAll('matches', 'tournamentId', tournamentId);
+                
+                const modalContent = document.getElementById('tournamentDetailsContent');
+                modalContent.innerHTML = `
+                    <h2 class="modal-title" style="text-align: left; margin-bottom: 1rem;">${tournament.name}</h2>
+                    <p style="color: var(--gray); margin-bottom: 2rem;">${tournament.game} • ${tournament.status.toUpperCase()}</p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                        <div style="padding: 1rem; background: rgba(0,0,0,0.5); border-radius: 10px; border-left: 3px solid var(--primary);">
+                            <div style="color: var(--gray); font-size: 0.9rem; font-family: 'Orbitron'; margin-bottom: 0.5rem;">TEAMS</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">${teams.length}/${tournament.maxTeams}</div>
+                        </div>
+                        <div style="padding: 1rem; background: rgba(0,0,0,0.5); border-radius: 10px; border-left: 3px solid var(--primary);">
+                            <div style="color: var(--gray); font-size: 0.9rem; font-family: 'Orbitron'; margin-bottom: 0.5rem;">PLAYERS PER TEAM</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">${tournament.maxPlayersPerTeam}</div>
+                        </div>
+                        <div style="padding: 1rem; background: rgba(0,0,0,0.5); border-radius: 10px; border-left: 3px solid var(--primary);">
+                            <div style="color: var(--gray); font-size: 0.9rem; font-family: 'Orbitron'; margin-bottom: 0.5rem;">PRIZE POOL</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">${tournament.prizePool || 'N/A'}</div>
+                        </div>
+                    </div>
+                    
+                    ${tournament.description ? `
+                    <div style="margin-bottom: 2rem;">
+                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">DESCRIPTION</h3>
+                        <p style="color: var(--light);">${tournament.description}</p>
+                    </div>
+                    ` : ''}
+                    
+                    <div style="margin-bottom: 2rem;">
+                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">TEAMS (${teams.length})</h3>
+                        ${teams.length > 0 ? `
+                        <div style="display: grid; gap: 0.5rem;">
+                            ${teams.map(team => `
+                                <div style="padding: 1rem; background: rgba(0,0,0,0.5); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                                    <div style="font-weight: 700; margin-bottom: 0.5rem;">${team.name}</div>
+                                    <div style="color: var(--gray); font-size: 0.9rem;">Captain: ${team.captainName}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        ` : `
+                        <p style="color: var(--gray); text-align: center; padding: 2rem;">No teams registered yet</p>
+                        `}
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        ${tournament.status === 'registration' && currentUser ? `
+                        <button class="btn btn-primary" onclick="registerForTournament('${tournamentId}')" style="flex: 1;">
+                            <i class="fas fa-sign-in-alt"></i> REGISTER TEAM
+                        </button>
+                        ` : ''}
+                        
+                        ${matches.length > 0 ? `
+                        <button class="btn btn-secondary" onclick="viewBracket('${tournamentId}')" style="flex: 1;">
+                            <i class="fas fa-bracket-curly"></i> VIEW BRACKET
+                        </button>
+                        ` : ''}
+                        
+                        ${currentUser && currentUser.isHost && tournament.hostId === currentUser.id ? `
+                        <button class="btn btn-secondary" onclick="startTournament('${tournamentId}')" style="flex: 1;">
+                            <i class="fas fa-play"></i> START TOURNAMENT
+                        </button>
+                        ` : ''}
+                    </div>
+                `;
+                
+                document.getElementById('tournamentDetailsModal').style.display = 'flex';
+                
+            } catch (error) {
+                console.error('Error loading tournament details:', error);
+                showToast('Error loading tournament details', 'error');
+            }
+        }
+
+        async function registerForTournament(tournamentId) {
+            if (!currentUser) {
+                showToast('Please login first', 'error');
+                closeModal('tournamentDetailsModal');
+                return;
+            }
+            
+            const teamName = prompt('Enter your team name:');
+            if (!teamName || teamName.trim() === '') {
+                showToast('Team name is required', 'error');
+                return;
+            }
+            
+            try {
+                const tournament = await db.get('tournaments', tournamentId);
+                if (!tournament || tournament.status !== 'registration') {
+                    showToast('Tournament not accepting registrations', 'error');
+                    return;
+                }
+                
+                // Check if user already has a team in this tournament
+                const existingTeams = await db.getAll('teams', 'tournamentId', tournamentId);
+                const userTeam = existingTeams.find(t => t.captainId === currentUser.id);
+                
+                if (userTeam) {
+                    showToast('You already have a team in this tournament', 'error');
+                    return;
+                }
+                
+                // Check if tournament is full
+                if (existingTeams.length >= tournament.maxTeams) {
+                    showToast('Tournament is full', 'error');
+                    return;
+                }
+                
+                const teamId = 'team_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                const teamData = {
+                    id: teamId,
+                    name: teamName.trim(),
+                    tournamentId: tournamentId,
+                    captainId: currentUser.id,
+                    captainName: currentUser.username,
+                    players: [currentUser.username],
+                    createdAt: new Date().toISOString(),
+                    wins: 0,
+                    losses: 0,
+                    seed: existingTeams.length + 1
+                };
+                
+                await db.add('teams', teamData);
+                
+                // Update tournament team count
+                tournament.currentTeams = existingTeams.length + 1;
+                await db.put('tournaments', tournament);
+                
+                showToast('✅ Team registered successfully!', 'success');
+                closeModal('tournamentDetailsModal');
+                
+                // Refresh tournament details
+                setTimeout(() => showTournamentDetails(tournamentId), 1000);
+                
+            } catch (error) {
+                console.error('Error registering team:', error);
+                showToast('Error registering team', 'error');
+            }
+        }
+
+        async function startTournament(tournamentId) {
+            if (!currentUser || !currentUser.isHost) {
+                showToast('Host access required', 'error');
+                return;
+            }
+            
+            try {
+                const tournament = await db.get('tournaments', tournamentId);
+                if (!tournament || tournament.hostId !== currentUser.id) {
+                    showToast('You are not the host of this tournament', 'error');
+                    return;
+                }
+                
+                if (tournament.status !== 'registration') {
+                    showToast('Tournament already started or completed', 'error');
+                    return;
+                }
+                
+                // Get teams
+                const teams = await db.getAll('teams', 'tournamentId', tournamentId);
+                if (teams.length < 2) {
+                    showToast('Need at least 2 teams to start', 'error');
+                    return;
+                }
+                
+                // Update tournament status
+                tournament.status = 'ongoing';
+                tournament.currentRound = 1;
+                tournament.updatedAt = new Date().toISOString();
+                await db.put('tournaments', tournament);
+                
+                // Generate bracket
+                await generateBracket(tournamentId, teams);
+                
+                showToast('✅ Tournament started! Bracket generated.', 'success');
+                closeModal('tournamentDetailsModal');
+                
+                // Refresh views
+                setTimeout(() => {
+                    loadDashboardData();
+                    loadAllTournaments();
+                    loadHostTournaments();
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error starting tournament:', error);
+                showToast('Error starting tournament', 'error');
+            }
+        }
+
+        async function generateBracket(tournamentId, teams) {
+            try {
+                // Shuffle teams for seeding
+                const shuffledTeams = [...teams].sort(() => Math.random() - 0.5);
+                
+                // Calculate bracket structure
+                const totalRounds = calculateRounds(teams.length);
+                const bracket = {
+                    tournamentId: tournamentId,
+                    rounds: [],
+                    createdAt: new Date().toISOString()
+                };
+                
+                // Create first round matches
+                const round1Matches = [];
+                for (let i = 0; i < shuffledTeams.length; i += 2) {
+                    const matchId = 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    const match = {
+                        id: matchId,
+                        tournamentId: tournamentId,
+                        round: 1,
+                        matchNumber: round1Matches.length + 1,
+                        team1Id: shuffledTeams[i].id,
+                        team2Id: shuffledTeams[i + 1] ? shuffledTeams[i + 1].id : null,
+                        team1Name: shuffledTeams[i].name,
+                        team2Name: shuffledTeams[i + 1] ? shuffledTeams[i + 1].name : 'BYE',
+                        status: shuffledTeams[i + 1] ? 'scheduled' : 'completed',
+                        winnerId: shuffledTeams[i + 1] ? null : shuffledTeams[i].id,
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    await db.add('matches', match);
+                    round1Matches.push(match);
+                }
+                
+                bracket.rounds.push({
+                    round: 1,
+                    matches: round1Matches.map(m => ({
+                        id: m.id,
+                        team1Name: m.team1Name,
+                        team2Name: m.team2Name,
+                        winnerId: m.winnerId
+                    }))
+                });
+                
+                // Create empty rounds for future
+                for (let round = 2; round <= totalRounds; round++) {
+                    const matchesInRound = Math.pow(2, totalRounds - round);
+                    const roundMatches = [];
+                    
+                    for (let i = 0; i < matchesInRound; i++) {
+                        const matchId = 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                        const match = {
+                            id: matchId,
+                            tournamentId: tournamentId,
+                            round: round,
+                            matchNumber: i + 1,
+                            team1Id: null,
+                            team2Id: null,
+                            team1Name: 'TBD',
+                            team2Name: 'TBD',
+                            status: 'pending',
+                            winnerId: null,
+                            createdAt: new Date().toISOString()
+                        };
+                        
+                        await db.add('matches', match);
+                        roundMatches.push({
+                            id: matchId,
+                            team1Name: 'TBD',
+                            team2Name: 'TBD',
+                            winnerId: null
+                        });
+                    }
+                    
+                    bracket.rounds.push({
+                        round: round,
+                        matches: roundMatches
+                    });
+                }
+                
+                // Save bracket
+                await db.put('brackets', bracket);
+                
+            } catch (error) {
+                console.error('Error generating bracket:', error);
+                throw error;
+            }
+        }
+
+        async function viewBracket(tournamentId) {
+            try {
+                const bracket = await db.get('brackets', tournamentId);
+                if (!bracket) {
+                    showToast('Bracket not generated yet', 'error');
+                    return;
+                }
+                
+                const container = document.getElementById('bracketContainer');
+                let html = '<h2 style="color: var(--primary); font-family: \'Orbitron\'; margin-bottom: 2rem;">TOURNAMENT BRACKET</h2>';
+                
+                bracket.rounds.forEach(round => {
+                    html += `
+                        <div style="margin-bottom: 3rem;">
+                            <h3 style="color: var(--light); font-family: \'Orbitron\'; margin-bottom: 1rem; border-bottom: 2px solid var(--primary); padding-bottom: 0.5rem;">
+                                ROUND ${round.round}
+                            </h3>
+                            <div style="display: grid; gap: 1rem;">
+                                ${round.matches.map(match => `
+                                    <div style="padding: 1rem; background: rgba(0,0,0,0.5); border-radius: 8px; border: 1px solid rgba(220,38,38,0.3);">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div>
+                                                <div style="font-weight: 700; ${match.winnerId ? 'color: var(--primary);' : ''}">
+                                                    ${match.team1Name}
+                                                </div>
+                                                <div style="font-weight: 700; ${match.winnerId ? 'color: var(--primary);' : ''} margin-top: 0.5rem;">
+                                                    ${match.team2Name}
+                                                </div>
+                                            </div>
+                                            ${match.winnerId ? `
+                                            <div style="color: var(--success); font-family: \'Orbitron\';">
+                                                <i class="fas fa-trophy"></i> WINNER
+                                            </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+                document.getElementById('bracketView').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading bracket:', error);
+                showToast('Error loading bracket', 'error');
+            }
+        }
+
+        function closeBracket() {
+            document.getElementById('bracketView').style.display = 'none';
+        }
+
+        async function manageTournament(tournamentId) {
+            // For now, just show the tournament details
+            showTournamentDetails(tournamentId);
+        }
+
+        function showTournamentPass() {
+            document.getElementById('tournamentPassModal').style.display = 'flex';
+        }
+
+        async function useTournamentPass() {
+            const passCode = document.getElementById('tournamentPassInput').value.trim().toUpperCase();
+            
+            if (!passCode) {
+                showAlert('tournamentPassAlert', 'Please enter a pass code', 'error');
+                return;
+            }
+            
+            try {
+                // Find tournament with this pass
+                const tournaments = await db.getAll('tournaments');
+                const tournament = tournaments.find(t => t.tournamentPass === passCode);
+                
+                if (!tournament) {
+                    showAlert('tournamentPassAlert', 'Invalid tournament pass', 'error');
+                    return;
+                }
+                
+                // Grant temporary host access to this tournament
+                currentTournamentPass = passCode;
+                showAlert('tournamentPassAlert', '✅ Access granted! You can now manage this tournament.', 'success');
+                
+                setTimeout(() => {
+                    closeModal('tournamentPassModal');
+                    showTournamentDetails(tournament.id);
+                }, 1500);
+                
+            } catch (error) {
+                console.error('Error using tournament pass:', error);
+                showAlert('tournamentPassAlert', 'Error validating pass', 'error');
             }
         }
 
         // ========== UTILITY FUNCTIONS ==========
-        function showAlert(message, type = 'success') {
-            document.querySelectorAll('.alert-toast').forEach(el => el.remove());
+        function showToast(message, type = 'success') {
+            // Remove existing toasts
+            document.querySelectorAll('.toast').forEach(toast => toast.remove());
             
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type} alert-toast`;
-            alertDiv.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
-                ${message}
-            `;
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type} toast`;
+            toast.style.position = 'fixed';
+            toast.style.top = '20px';
+            toast.style.right = '20px';
+            toast.style.zIndex = '9999';
+            toast.style.maxWidth = '300px';
+            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
             
-            document.body.appendChild(alertDiv);
+            document.body.appendChild(toast);
             
             setTimeout(() => {
-                alertDiv.classList.add('hiding');
-                setTimeout(() => alertDiv.remove(), 300);
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
 
-        function showError(message) {
-            showAlert(message, 'error');
-        }
-
-        function showErrorInModal(modalAlertId, message) {
-            const alert = document.getElementById(modalAlertId);
-            alert.textContent = message;
-            alert.className = 'alert alert-error';
-            alert.style.display = 'flex';
-        }
-
-        // ========== TOURNAMENT FUNCTIONS ==========
-        function registerForTournament(tournamentId) {
-            if (!userToken) {
-                showError('Please login first');
-                showLoginModal();
-                return;
-            }
+        function showAlert(alertId, message, type = 'error') {
+            const alertEl = document.getElementById(alertId);
+            alertEl.textContent = message;
+            alertEl.className = `alert alert-${type}`;
+            alertEl.style.display = 'flex';
             
-            showAlert('✅ Registration submitted! The tournament host will contact you.', 'success');
-        }
-
-        function viewTournamentBracket(tournamentId) {
-            const tournament = allTournaments.find(t => t.id === tournamentId);
-            if (!tournament) {
-                showAlert('Tournament bracket will be available soon!', 'success');
-                return;
-            }
-            
-            showAlert(`Viewing bracket for ${tournament.name}`, 'success');
-        }
-
-        function viewBracket(link) {
-            showAlert('Bracket view coming soon!', 'success');
-        }
-
-        function viewServerTournaments(serverId, serverName) {
-            showSection('tournaments');
             setTimeout(() => {
-                showAlert(`Viewing tournaments for ${serverName}`, 'success');
-            }, 100);
+                alertEl.style.display = 'none';
+            }, 5000);
         }
 
-        function createTournamentForServer(serverId, serverName) {
-            showSection('servers');
-            setTimeout(() => {
-                showAlert(`Creating tournament for ${serverName}`, 'success');
-            }, 100);
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
         }
 
-        // ========== AUTO-REFRESH ==========
-        let refreshInterval;
-
-        function startAutoRefresh() {
-            if (refreshInterval) clearInterval(refreshInterval);
-            
-            refreshInterval = setInterval(() => {
-                loadGlobalStats();
-                if (document.getElementById('homeSection').style.display === 'block') {
-                    loadLiveGames();
-                }
-            }, 30000);
-        }
-
-        function stopAutoRefresh() {
-            if (refreshInterval) {
-                clearInterval(refreshInterval);
-                refreshInterval = null;
-            }
-        }
-
-        // Start auto-refresh
-        startAutoRefresh();
-
-        // Clean up
-        window.addEventListener('beforeunload', stopAutoRefresh);
-
-        console.log('XTourney Platform initialized successfully');
+        // Initialize auth tabs
+        showAuthTab('login');
+        
+        // Initialize my tournaments tabs
+        document.querySelector('#myTournamentsSection .tab[onclick="showMyTournamentsTab(\'joined\')"]').style.color = 'var(--primary)';
+        document.querySelector('#myTournamentsSection .tab[onclick="showMyTournamentsTab(\'joined\')"]').style.borderBottom = '3px solid var(--primary)';
     </script>
 </body>
 </html>
-
