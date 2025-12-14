@@ -22,10 +22,8 @@ from postgrest.exceptions import APIError
 load_dotenv()
 
 # ========== CONFIGURATION ==========
-SECRET_KEY = os.getenv("SECRET_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")  # For admin operations
 
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY environment variable is required")
@@ -882,3 +880,4 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
