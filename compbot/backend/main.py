@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 # ========== CONFIGURATION ==========
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://ugaeaekzhocwqdzdtrry.supabase.co")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnYWVhZWt6aG9jd3FkemR0cnJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM0MDQzMzMsImV4cCI6MjA0ODk4MDMzM30.3r7y8ryqpH7FBy-HwKN5TVpeL6hQsCFgC-nonBRkYFQ")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 JWT_SECRET = os.getenv("JWT_SECRET", "xtourney-secret-key-2024")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://www.xotiicsplaza.us")
 
@@ -852,3 +852,4 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
