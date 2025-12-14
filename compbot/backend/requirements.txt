@@ -3,9 +3,9 @@ uvicorn[standard]==0.24.0
 python-dotenv==1.0.0
 PyJWT==2.8.0
 passlib[bcrypt]==1.7.4
-psycopg2-binary==2.9.9
 supabase==1.1.1
-pydantic==1.10.16  # <-- This is the fix
+pydantic==1.10.16
+
 
 
 
