@@ -1159,7 +1159,7 @@ async def handle_button_register(interaction: Interaction, tournament_id: str):
     """Handle team registration from button"""
     try:
         # Get tournament info first
-        response = await api_request(f'/api/tournaments/{tournament_id}")
+        response = await api_request(f'/api/tournaments/{tournament_id}')
         
         if not response.get('success'):
             await interaction.response.send_message(
@@ -1370,3 +1370,4 @@ if __name__ == "__main__":
         bot.run(DISCORD_TOKEN)
     except Exception as e:
         print(f"❌ ERROR: {e}")
+
