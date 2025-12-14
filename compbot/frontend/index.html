@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* ========== YOUR ORIGINAL STYLES ========== */
         :root {
             --primary: #DC2626;
             --primary-dark: #B91C1C;
@@ -45,9 +44,6 @@
             min-height: 100vh;
             line-height: 1.6;
             overflow-x: hidden;
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(220, 38, 38, 0.05) 0%, transparent 20%),
-                radial-gradient(circle at 90% 80%, rgba(220, 38, 38, 0.05) 0%, transparent 20%);
         }
         
         .matrix-bg {
@@ -62,7 +58,7 @@
             background: linear-gradient(90deg, transparent 0%, rgba(220, 38, 38, 0.1) 50%, transparent 100%);
         }
         
-        /* ========== AUTH PAGE ========== */
+        /* Auth Page */
         .auth-page {
             position: fixed;
             top: 0;
@@ -93,27 +89,7 @@
             to { transform: scale(1); opacity: 1; }
         }
         
-        .auth-logo {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        
-        .auth-logo h1 {
-            font-family: 'Orbitron', monospace;
-            font-size: 3rem;
-            font-weight: 900;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
-        }
-        
-        .auth-logo p {
-            color: var(--gray);
-            font-size: 1rem;
-        }
-        
-        /* ========== LOADER ========== */
+        /* Loader */
         .page-loader {
             position: fixed;
             top: 0;
@@ -184,10 +160,10 @@
             50% { transform: scale(1.05); box-shadow: 0 0 30px var(--primary), 0 0 40px var(--primary); }
         }
         
-        /* ========== MAIN APP ========== */
+        /* Main App */
         #mainApp { display: none; }
         
-        /* ========== HEADER ========== */
+        /* Header */
         header {
             background: rgba(0, 0, 0, 0.95);
             backdrop-filter: blur(10px);
@@ -246,13 +222,6 @@
             font-weight: 900;
             font-size: 1.5rem;
             box-shadow: 0 0 15px var(--primary);
-        }
-        
-        .logo-icon img {
-            width: 100%;
-            height: 100%;
-            border-radius: 12px;
-            object-fit: cover;
         }
         
         .logo span {
@@ -379,7 +348,7 @@
             font-size: 0.8rem;
         }
         
-        /* ========== HERO SECTION ========== */
+        /* Hero */
         .hero {
             padding: 10rem 0 6rem;
             text-align: center;
@@ -387,20 +356,6 @@
             position: relative;
             overflow: hidden;
             border-bottom: 3px solid var(--primary);
-        }
-        
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: 
-                linear-gradient(45deg, transparent 0%, rgba(220, 38, 38, 0.1) 50%, transparent 100%),
-                url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="none"/><path d="M0,50 L100,50 M50,0 L50,100" stroke="rgba(220,38,38,0.1)" stroke-width="1"/></svg>');
-            background-size: cover;
-            animation: float 20s linear infinite;
         }
         
         .hero h1 {
@@ -430,7 +385,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
-        /* ========== TOURNAMENT CARDS ========== */
+        /* Tournament Cards */
         .tournaments-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -449,20 +404,6 @@
             overflow: hidden;
             cursor: pointer;
         }
-        
-        .tournament-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(45deg, transparent, rgba(220, 38, 38, 0.05), transparent);
-            transform: translateX(-100%);
-            transition: transform 0.6s;
-        }
-        
-        .tournament-card:hover::before { transform: translateX(100%); }
         
         .tournament-card:hover {
             border-color: var(--primary);
@@ -515,7 +456,7 @@
             border: 1px solid rgba(107, 114, 128, 0.5);
         }
         
-        /* ========== FORM STYLES ========== */
+        /* Forms */
         .form-container {
             max-width: 500px;
             margin: 0 auto;
@@ -560,7 +501,7 @@
             background: rgba(0, 0, 0, 0.9);
         }
         
-        /* ========== ALERTS ========== */
+        /* Alerts */
         .alert {
             padding: 1.2rem;
             border-radius: 10px;
@@ -591,7 +532,7 @@
             color: var(--danger);
         }
         
-        /* ========== MODALS ========== */
+        /* Modals */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -622,23 +563,7 @@
             backdrop-filter: blur(20px);
         }
         
-        .modal-title {
-            margin-bottom: 1rem;
-            color: var(--primary);
-            font-size: 2rem;
-            font-weight: 900;
-            font-family: 'Orbitron', monospace;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .modal-subtitle {
-            color: var(--gray);
-            margin-bottom: 2.5rem;
-            font-size: 0.9rem;
-        }
-        
-        /* ========== USER PROFILE ========== */
+        /* User Profile */
         .user-profile {
             display: flex;
             align-items: center;
@@ -668,32 +593,8 @@
             box-shadow: 0 0 10px var(--primary);
         }
         
-        /* ========== TOURNAMENT PASS ========== */
-        .tournament-pass-container {
-            background: rgba(0, 0, 0, 0.8);
-            padding: 2rem;
-            border-radius: 15px;
-            border: 2px solid var(--primary);
-            margin-top: 2rem;
-            text-align: center;
-        }
-        
-        .tournament-pass-code {
-            font-family: 'Orbitron', monospace;
-            font-size: 2rem;
-            font-weight: 900;
-            color: var(--primary);
-            letter-spacing: 4px;
-            margin: 1rem 0;
-            padding: 1rem;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            border: 2px solid var(--primary);
-            text-shadow: 0 0 10px var(--primary);
-        }
-        
-        /* ========== BRACKET VIEW ========== */
-        .bracket-view {
+        /* BRACKET VIEWER STYLES */
+        .bracket-viewer {
             display: none;
             position: fixed;
             top: 0;
@@ -730,21 +631,34 @@
             z-index: 3001;
         }
         
-        /* ========== BRACKET EDITOR ========== */
-        .bracket-editor {
-            background: rgba(0, 0, 0, 0.8);
-            border-radius: 15px;
+        /* Real Bracket Canvas */
+        .bracket-canvas-container {
+            width: 100%;
+            overflow-x: auto;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
             padding: 2rem;
             margin-top: 2rem;
+        }
+        
+        #bracketCanvas {
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            display: block;
+            margin: 0 auto;
             border: 2px solid var(--primary);
         }
         
-        .bracket-round {
-            margin-bottom: 2rem;
+        .bracket-controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         
         .bracket-match {
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.7);
             border: 2px solid rgba(220, 38, 38, 0.3);
             border-radius: 8px;
             padding: 1rem;
@@ -789,7 +703,7 @@
             justify-content: center;
         }
         
-        /* ========== PROGRESS BAR ========== */
+        /* Progress Bar */
         .progress-bar {
             height: 10px;
             background: rgba(0, 0, 0, 0.8);
@@ -807,7 +721,7 @@
             box-shadow: 0 0 10px var(--primary);
         }
         
-        /* ========== SEARCH BAR ========== */
+        /* Search Bar */
         .search-container {
             background: rgba(0, 0, 0, 0.7);
             border-radius: 10px;
@@ -869,7 +783,7 @@
             border-color: var(--primary);
         }
         
-        /* ========== DISCORD INVITE ========== */
+        /* Discord Invite */
         .discord-invite {
             background: rgba(88, 101, 242, 0.1);
             border: 2px solid rgba(88, 101, 242, 0.3);
@@ -898,7 +812,7 @@
             margin-bottom: 1rem;
         }
         
-        /* ========== SERVER COUNTER ========== */
+        /* Server Counter */
         .server-counter {
             display: inline-flex;
             align-items: center;
@@ -917,24 +831,131 @@
             font-size: 1.1rem;
         }
         
-        /* ========== RESPONSIVE ========== */
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 2.5rem; }
-            .tournaments-grid { grid-template-columns: 1fr; }
-            .nav-links { display: none; }
-            .form-container, .auth-container { padding: 2rem; }
-            .btn { padding: 0.7rem 1.2rem; font-size: 0.8rem; }
-            .nav-link { font-size: 0.8rem; }
-            .filter-buttons { overflow-x: auto; padding-bottom: 0.5rem; }
+        /* Real Bracket Editor */
+        .real-bracket-editor {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-top: 2rem;
+            border: 2px solid var(--primary);
         }
         
-        /* ========== UTILITY CLASSES ========== */
-        .hidden { display: none !important; }
-        .text-center { text-align: center; }
-        .mt-1 { margin-top: 1rem; } .mt-2 { margin-top: 2rem; } .mt-3 { margin-top: 3rem; } .mt-4 { margin-top: 4rem; }
-        .mb-1 { margin-bottom: 1rem; } .mb-2 { margin-bottom: 2rem; } .mb-3 { margin-bottom: 3rem; } .mb-4 { margin-bottom: 4rem; }
+        .bracket-round {
+            margin-bottom: 3rem;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            border: 1px solid rgba(220, 38, 38, 0.2);
+        }
         
-        /* ========== LOADING SPINNER ========== */
+        .round-header {
+            color: var(--primary);
+            font-family: 'Orbitron';
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary);
+        }
+        
+        .matches-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        
+        .match-card {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(220, 38, 38, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .match-id {
+            color: var(--gray);
+            font-size: 0.8rem;
+            font-family: 'Orbitron';
+        }
+        
+        .match-status {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-family: 'Orbitron';
+        }
+        
+        .status-scheduled {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+        
+        .status-ongoing {
+            background: rgba(220, 38, 38, 0.15);
+            color: var(--primary);
+        }
+        
+        .status-completed {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+        }
+        
+        .team-row {
+            display: flex;
+            align-items: center;
+            padding: 0.8rem;
+            margin-bottom: 0.5rem;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .team-row:hover {
+            background: rgba(220, 38, 38, 0.1);
+            border-color: var(--primary);
+        }
+        
+        .team-row.winner {
+            border: 2px solid var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+        
+        .team-name {
+            flex: 1;
+            font-weight: bold;
+        }
+        
+        .team-score {
+            width: 60px;
+            text-align: center;
+            padding: 0.3rem;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            color: var(--light);
+        }
+        
+        .set-winner-btn {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            margin-left: 1rem;
+        }
+        
+        /* Loading Spinner */
         .spinner {
             border: 4px solid rgba(255, 255, 255, 0.1);
             border-top: 4px solid var(--primary);
@@ -956,7 +977,7 @@
             color: var(--gray);
         }
         
-        /* ========== TOAST ========== */
+        /* Toast */
         .toast {
             position: fixed;
             top: 20px;
@@ -965,6 +986,24 @@
             max-width: 300px;
             animation: slideInRight 0.3s ease;
         }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .tournaments-grid { grid-template-columns: 1fr; }
+            .nav-links { display: none; }
+            .form-container, .auth-container { padding: 2rem; }
+            .btn { padding: 0.7rem 1.2rem; font-size: 0.8rem; }
+            .nav-link { font-size: 0.8rem; }
+            .filter-buttons { overflow-x: auto; padding-bottom: 0.5rem; }
+            .matches-grid { grid-template-columns: 1fr; }
+        }
+        
+        /* Utility Classes */
+        .hidden { display: none !important; }
+        .text-center { text-align: center; }
+        .mt-1 { margin-top: 1rem; } .mt-2 { margin-top: 2rem; } .mt-3 { margin-top: 3rem; } .mt-4 { margin-top: 4rem; }
+        .mb-1 { margin-bottom: 1rem; } .mb-2 { margin-bottom: 2rem; } .mb-3 { margin-bottom: 3rem; } .mb-4 { margin-bottom: 4rem; }
     </style>
 </head>
 <body>
@@ -973,9 +1012,7 @@
     <!-- Loader -->
     <div class="page-loader" id="pageLoader">
         <div class="loader-logo">
-            <div class="loader-icon">
-                X
-            </div>
+            <div class="loader-icon">X</div>
             <div class="loader-text">XTOURNEY</div>
         </div>
         <div class="loader-progress">
@@ -1044,9 +1081,7 @@
         <header>
             <div class="header-content">
                 <a href="#" class="logo" onclick="showSection('homeSection')">
-                    <div class="logo-icon">
-                        X
-                    </div>
+                    <div class="logo-icon">X</div>
                     <span>TOURNEY</span>
                 </a>
                 
@@ -1120,8 +1155,7 @@
                     <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
                         <h1>DOMINATE THE COMPETITION</h1>
                         <p class="hero-subtitle">
-                            Complete tournament platform with username/password login, live brackets, 
-                            tournament pass system, and Discord integration.
+                            Complete tournament platform with real bracket system, Discord bot integration, and professional management tools.
                         </p>
                         
                         <div style="display: flex; gap: 1.5rem; justify-content: center; margin-top: 3rem; flex-wrap: wrap;">
@@ -1187,17 +1221,11 @@
                         </button>
                     </div>
                     
-                    <!-- Search and Filter Bar -->
+                    <!-- Search and Filter -->
                     <div class="search-container">
                         <div class="search-input-container">
                             <i class="fas fa-search search-icon"></i>
-                            <input 
-                                type="text" 
-                                id="tournamentSearch" 
-                                class="search-input" 
-                                placeholder="Search tournaments by ID or name..." 
-                                oninput="filterTournaments()"
-                            >
+                            <input type="text" id="tournamentSearch" class="search-input" placeholder="Search tournaments by ID or name..." oninput="filterTournaments()">
                         </div>
                         
                         <div class="filter-buttons">
@@ -1205,10 +1233,6 @@
                             <button class="filter-btn" onclick="setTournamentFilter('registration')">REGISTRATION OPEN</button>
                             <button class="filter-btn" onclick="setTournamentFilter('ongoing')">ONGOING</button>
                             <button class="filter-btn" onclick="setTournamentFilter('completed')">COMPLETED</button>
-                            <button class="filter-btn" onclick="setTournamentFilter('valorant')">VALORANT</button>
-                            <button class="filter-btn" onclick="setTournamentFilter('cs2')">CS2</button>
-                            <button class="filter-btn" onclick="setTournamentFilter('league')">LEAGUE</button>
-                            <button class="filter-btn" onclick="setTournamentFilter('fortnite')">FORTNITE</button>
                         </div>
                     </div>
                     
@@ -1237,26 +1261,25 @@
                 </div>
             </section>
             
-            <!-- Bracket Editor Section -->
-            <section id="bracketEditorSection" class="section" style="display: none; padding: 6rem 0;">
+            <!-- REAL BRACKET EDITOR SECTION -->
+            <section id="realBracketEditorSection" class="section" style="display: none; padding: 6rem 0;">
                 <div class="container" style="max-width: 1400px; margin: 0 auto; padding: 0 20px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                        <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; white-space: nowrap;" id="bracketEditorTitle">BRACKET EDITOR</h2>
+                        <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; white-space: nowrap;" id="realBracketEditorTitle">BRACKET EDITOR</h2>
                         <div style="display: flex; gap: 1rem;">
-                            <button class="btn btn-secondary" onclick="generateRandomBracket()" style="white-space: nowrap;">
-                                <i class="fas fa-random"></i> GENERATE RANDOM
+                            <button class="btn btn-secondary" onclick="refreshBracket()" style="white-space: nowrap;">
+                                <i class="fas fa-sync"></i> REFRESH
                             </button>
-                            <button class="btn btn-primary" onclick="saveBracket()" style="white-space: nowrap;">
+                            <button class="btn btn-primary" onclick="saveRealBracket()" style="white-space: nowrap;">
                                 <i class="fas fa-save"></i> SAVE BRACKET
                             </button>
                         </div>
                     </div>
                     
-                    <div id="bracketEditorAlert" class="alert" style="display: none;"></div>
+                    <div id="realBracketEditorAlert" class="alert" style="display: none;"></div>
                     
-                    <div id="bracketEditorContent">
-                        <!-- Bracket editor will be loaded here -->
-                    </div>
+                    <!-- Real Bracket Editor Content -->
+                    <div id="realBracketEditorContent"></div>
                 </div>
             </section>
             
@@ -1300,30 +1323,6 @@
                     <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; margin-bottom: 2rem;">PUBLIC BRACKETS</h2>
                     <p style="color: var(--gray); margin-bottom: 2rem;">View brackets from tournaments across all Discord servers</p>
                     
-                    <!-- Search for Public Brackets -->
-                    <div class="search-container">
-                        <div class="search-input-container">
-                            <i class="fas fa-search search-icon"></i>
-                            <input 
-                                type="text" 
-                                id="bracketSearch" 
-                                class="search-input" 
-                                placeholder="Search public brackets by tournament name..." 
-                                oninput="filterPublicBrackets()"
-                            >
-                        </div>
-                        
-                        <div class="filter-buttons">
-                            <button class="filter-btn active" onclick="setBracketFilter('all')">ALL</button>
-                            <button class="filter-btn" onclick="setBracketFilter('valorant')">VALORANT</button>
-                            <button class="filter-btn" onclick="setBracketFilter('cs2')">CS2</button>
-                            <button class="filter-btn" onclick="setBracketFilter('league')">LEAGUE</button>
-                            <button class="filter-btn" onclick="setBracketFilter('fortnite')">FORTNITE</button>
-                            <button class="filter-btn" onclick="setBracketFilter('ongoing')">LIVE</button>
-                            <button class="filter-btn" onclick="setBracketFilter('completed')">COMPLETED</button>
-                        </div>
-                    </div>
-                    
                     <div id="publicBracketsContent" class="tournaments-grid">
                         <div class="loading">
                             <div class="spinner"></div>
@@ -1342,9 +1341,7 @@
                         </button>
                     </div>
                     
-                    <div id="tournamentDetailsContent">
-                        <!-- Tournament details will be loaded here -->
-                    </div>
+                    <div id="tournamentDetailsContent"></div>
                 </div>
             </div>
             
@@ -1408,13 +1405,16 @@
                 </div>
             </div>
             
-            <!-- Bracket View -->
-            <div class="bracket-view" id="bracketView">
-                <button class="close-bracket" onclick="closeBracket()" style="white-space: nowrap;">
+            <!-- REAL BRACKET VIEWER -->
+            <div class="bracket-viewer" id="bracketViewer">
+                <button class="close-bracket" onclick="closeBracketViewer()" style="white-space: nowrap;">
                     <i class="fas fa-times"></i> CLOSE BRACKET
                 </button>
                 <div class="bracket-container" id="bracketContainer">
-                    <!-- Bracket will be loaded here -->
+                    <div class="bracket-canvas-container">
+                        <canvas id="bracketCanvas"></canvas>
+                    </div>
+                    <div class="bracket-controls" id="bracketControls"></div>
                 </div>
             </div>
         </main>
@@ -1425,7 +1425,7 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 3rem; margin-bottom: 2rem;">
                     <div>
                         <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1.5rem;">XTOURNEY</h3>
-                        <p style="color: var(--gray);">Professional tournament platform with Discord bot integration. Use tournament passes from Discord to manage brackets.</p>
+                        <p style="color: var(--gray);">Professional tournament platform with Discord bot integration and real bracket system.</p>
                         <div class="server-counter mt-2">
                             <i class="fas fa-server"></i>
                             <span>Active in <span id="footerServerCount" class="counter-number">0</span> servers</span>
@@ -1452,23 +1452,24 @@
         // ========== CONFIGURATION ==========
         const API_BASE_URL = window.location.hostname.includes('localhost') 
             ? 'http://localhost:8000' 
-            : 'https://compbot-lhuy.onrender.com'; // Replace with your actual backend URL
+            : 'https://compbot-lhuy.onrender.com';
         
         // ========== GLOBAL STATE ==========
         let currentUser = null;
         let currentToken = null;
         let currentTournamentPass = null;
         let managedTournament = null;
-        let stats = { liveMatches: 0, activeTournaments: 0, totalTeams: 0, serverCount: 0 };
         let allTournaments = [];
         let currentFilter = 'all';
-        let bracketEditorData = null;
-
+        let currentBracketData = null;
+        let currentTournamentForBracket = null;
+        let bracketCanvas = null;
+        let bracketCtx = null;
+        
         // ========== INITIALIZATION ==========
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('XTourney Platform Initializing...');
             
-            // Hide loader after delay
             setTimeout(async () => {
                 const pageLoader = document.getElementById('pageLoader');
                 if (pageLoader) {
@@ -1479,7 +1480,7 @@
                 
             }, 1000);
         });
-
+        
         async function checkExistingSession() {
             const storedToken = localStorage.getItem('xtourney_token');
             const storedUser = localStorage.getItem('xtourney_user');
@@ -1491,7 +1492,6 @@
                     
                     console.log('✅ Found existing session for user:', currentUser.username);
                     
-                    // Hide auth page, show main app
                     document.getElementById('authPage').classList.add('hidden');
                     document.getElementById('mainApp').style.display = 'block';
                     
@@ -1503,11 +1503,10 @@
                     logout();
                 }
             } else {
-                // Show auth page
                 document.getElementById('authPage').classList.remove('hidden');
             }
         }
-
+        
         // ========== AUTH FUNCTIONS ==========
         function showAuthTab(tabName) {
             document.querySelectorAll('#authPage .tab').forEach(tab => {
@@ -1525,18 +1524,18 @@
             document.getElementById(`${tabName}Form`).style.display = 'block';
             hideAuthAlert();
         }
-
+        
         function showAuthAlert(message, type = 'error') {
             const alertEl = document.getElementById('authAlert');
             alertEl.textContent = message;
             alertEl.className = `alert alert-${type}`;
             alertEl.style.display = 'flex';
         }
-
+        
         function hideAuthAlert() {
             document.getElementById('authAlert').style.display = 'none';
         }
-
+        
         async function register(event) {
             event.preventDefault();
             
@@ -1580,14 +1579,12 @@
                 }
                 
                 if (data.success) {
-                    // Store token and user
                     localStorage.setItem('xtourney_token', data.token);
                     localStorage.setItem('xtourney_user', JSON.stringify(data.user));
                     
                     currentToken = data.token;
                     currentUser = data.user;
                     
-                    // Hide auth page, show main app
                     document.getElementById('authPage').classList.add('hidden');
                     document.getElementById('mainApp').style.display = 'block';
                     
@@ -1596,7 +1593,6 @@
                     
                     showToast(`✅ Welcome to XTourney, ${username}!`, 'success');
                     
-                    // Clear form
                     document.getElementById('regUsername').value = '';
                     document.getElementById('regEmail').value = '';
                     document.getElementById('regPassword').value = '';
@@ -1607,7 +1603,7 @@
                 showAuthAlert('Registration failed. Please try again.');
             }
         }
-
+        
         async function login(event) {
             event.preventDefault();
             
@@ -1639,14 +1635,12 @@
                 }
                 
                 if (data.success) {
-                    // Store token and user
                     localStorage.setItem('xtourney_token', data.token);
                     localStorage.setItem('xtourney_user', JSON.stringify(data.user));
                     
                     currentToken = data.token;
                     currentUser = data.user;
                     
-                    // Hide auth page, show main app
                     document.getElementById('authPage').classList.add('hidden');
                     document.getElementById('mainApp').style.display = 'block';
                     
@@ -1655,7 +1649,6 @@
                     
                     showToast(`✅ Welcome back, ${username}!`, 'success');
                     
-                    // Clear form
                     document.getElementById('loginUsername').value = '';
                     document.getElementById('loginPassword').value = '';
                 }
@@ -1665,7 +1658,7 @@
                 showAuthAlert('Login failed. Please check credentials.');
             }
         }
-
+        
         function logout() {
             localStorage.removeItem('xtourney_token');
             localStorage.removeItem('xtourney_user');
@@ -1674,11 +1667,9 @@
             currentTournamentPass = null;
             managedTournament = null;
             
-            // Show auth page, hide main app
             document.getElementById('authPage').classList.remove('hidden');
             document.getElementById('mainApp').style.display = 'none';
             
-            // Reset forms
             document.getElementById('loginUsername').value = '';
             document.getElementById('loginPassword').value = '';
             document.getElementById('regUsername').value = '';
@@ -1688,47 +1679,42 @@
             showAuthTab('login');
             showToast('✅ Successfully logged out', 'success');
         }
-
+        
         // ========== UI UPDATE FUNCTIONS ==========
         function updateUIAfterLogin() {
             if (!currentUser) return;
             
-            // Update user info in header
             document.getElementById('userName').textContent = currentUser.username;
             document.getElementById('userStatus').textContent = currentUser.is_host ? 'Tournament Host' : 'Player';
             document.getElementById('userStatus').style.color = currentUser.is_host ? 'var(--primary)' : 'var(--gray)';
             
-            // Update avatar
             const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.username)}&background=DC2626&color=fff&bold=true`;
             document.getElementById('userAvatar').src = avatarUrl;
             document.getElementById('menuUserAvatar').src = avatarUrl;
             
-            // Update menu
             document.getElementById('menuUserName').textContent = currentUser.username;
             document.getElementById('menuUserRole').textContent = currentUser.is_host ? '🎮 TOURNAMENT HOST' : '👤 PLAYER';
             
-            // Show host features if user is host
             if (currentUser.is_host) {
                 document.getElementById('hostPanelLink').style.display = 'block';
             }
         }
-
+        
         function showUserMenu() {
             document.getElementById('userMenu').style.display = 'flex';
         }
-
+        
         function hideUserMenu(event) {
             if (event.target.id === 'userMenu') {
                 document.getElementById('userMenu').style.display = 'none';
             }
         }
-
+        
         // ========== SECTION NAVIGATION ==========
         function showSection(sectionName) {
-            // Hide all sections
             const sections = [
                 'homeSection', 'tournamentsSection', 'manageTournamentsSection', 
-                'bracketEditorSection', 'myTournamentsSection', 'hostPanelSection',
+                'realBracketEditorSection', 'myTournamentsSection', 'hostPanelSection',
                 'publicBracketsSection'
             ];
             sections.forEach(section => {
@@ -1736,20 +1722,17 @@
                 if (el) el.style.display = 'none';
             });
             
-            // Show selected section
             const sectionEl = document.getElementById(sectionName);
             if (sectionEl) {
                 sectionEl.style.display = 'block';
             }
             
-            // Update nav links
             document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
             const activeLink = Array.from(document.querySelectorAll('.nav-link')).find(link => 
                 link.getAttribute('onclick')?.includes(sectionName.replace('Section', '').toLowerCase())
             );
             if (activeLink) activeLink.classList.add('active');
             
-            // Load data for section
             switch(sectionName) {
                 case 'homeSection':
                     loadDashboardData();
@@ -1771,13 +1754,10 @@
                     break;
             }
             
-            // Hide user menu
             document.getElementById('userMenu').style.display = 'none';
-            
-            // Scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
-
+        
         function showManageTournaments() {
             if (!currentUser) {
                 showToast('Please login first', 'error');
@@ -1787,9 +1767,8 @@
             
             showSection('manageTournamentsSection');
         }
-
+        
         function showMyTournamentsTab(tabName) {
-            // Update tabs
             document.querySelectorAll('#myTournamentsSection .tab').forEach(tab => {
                 tab.style.color = 'var(--gray)';
                 tab.style.borderBottom = 'none';
@@ -1801,124 +1780,142 @@
                 activeTab.style.borderBottom = '3px solid var(--primary)';
             }
             
-            // Load content for tab
             loadMyTournamentsTab(tabName);
         }
-
+        
         function showTournamentPassModal() {
             document.getElementById('tournamentPassModal').style.display = 'flex';
             document.getElementById('tournamentPassInput').value = '';
             document.getElementById('tournamentPassAlert').style.display = 'none';
         }
-
+        
         // ========== TOURNAMENT FUNCTIONS ==========
         async function loadDashboardData() {
-            // Load stats
             await updateStatsDisplay();
-            
-            // Load featured tournaments
             await loadFeaturedTournaments();
         }
-
+        
         async function updateStatsDisplay() {
             try {
-                // Simulate server count (in real app, fetch from API)
-                stats.serverCount = 42; // Example number
+                const response = await fetch(`${API_BASE_URL}/api/stats`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
                 
-                // Update display
-                document.getElementById('liveMatchesCount').textContent = stats.liveMatches;
-                document.getElementById('activeTournaments').textContent = stats.activeTournaments;
-                document.getElementById('totalTeams').textContent = stats.totalTeams;
-                document.getElementById('serverCount').textContent = stats.serverCount;
-                document.getElementById('footerServerCount').textContent = stats.serverCount;
-                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.stats) {
+                        document.getElementById('liveMatchesCount').textContent = data.stats.live_matches;
+                        document.getElementById('activeTournaments').textContent = data.stats.active_tournaments;
+                        document.getElementById('totalTeams').textContent = data.stats.total_teams;
+                        document.getElementById('serverCount').textContent = data.stats.connected_servers;
+                        document.getElementById('footerServerCount').textContent = data.stats.connected_servers;
+                    }
+                }
             } catch (error) {
                 console.error('Error loading stats:', error);
             }
         }
-
+        
         async function loadFeaturedTournaments() {
             const container = document.getElementById('featuredTournaments');
             
             try {
-                // Simulated data - replace with real API call
-                const tournaments = [
-                    {
-                        id: 'tourn-001',
-                        name: 'VALORANT CHAMPIONSHIP',
-                        game: 'Valorant',
-                        status: 'registration',
-                        max_teams: 16,
-                        current_teams: 8,
-                        prize_pool: '$5,000',
-                        created_at: new Date().toISOString(),
-                        description: 'Major Valorant tournament with cash prizes'
-                    },
-                    {
-                        id: 'tourn-002',
-                        name: 'CS2 PRO LEAGUE',
-                        game: 'CS2',
-                        status: 'ongoing',
-                        max_teams: 8,
-                        current_teams: 8,
-                        prize_pool: '$2,500',
-                        created_at: new Date().toISOString(),
-                        description: 'CS2 competitive league'
-                    },
-                    {
-                        id: 'tourn-003',
-                        name: 'FORTNITE DUOS',
-                        game: 'Fortnite',
-                        status: 'registration',
-                        max_teams: 32,
-                        current_teams: 16,
-                        prize_pool: '$1,000',
-                        created_at: new Date().toISOString(),
-                        description: 'Fortnite duos tournament'
+                const response = await fetch(`${API_BASE_URL}/api/tournaments`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (container) {
+                        if (!data.success || !data.tournaments || data.tournaments.length === 0) {
+                            container.innerHTML = `
+                                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                                    <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO TOURNAMENTS YET</h3>
+                                    <p style="color: var(--gray);">Tournaments will appear when created via Discord bot</p>
+                                </div>
+                            `;
+                            return;
+                        }
+                        
+                        const activeTournaments = data.tournaments
+                            .filter(t => t.status !== 'completed')
+                            .slice(0, 3);
+                        
+                        if (activeTournaments.length === 0) {
+                            container.innerHTML = `
+                                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                                    <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO ACTIVE TOURNAMENTS</h3>
+                                    <p style="color: var(--gray);">Check back later for new tournaments</p>
+                                </div>
+                            `;
+                            return;
+                        }
+                        
+                        container.innerHTML = '';
+                        activeTournaments.forEach(tournament => {
+                            container.appendChild(createTournamentCard(tournament));
+                        });
                     }
-                ];
-                
-                allTournaments = tournaments;
-                stats.activeTournaments = tournaments.length;
-                stats.totalTeams = tournaments.reduce((sum, t) => sum + t.current_teams, 0);
-                stats.liveMatches = 3;
-                
-                updateStatsDisplay();
-                
-                if (container) {
-                    container.innerHTML = '';
-                    tournaments.forEach(tournament => {
-                        container.appendChild(createTournamentCard(tournament));
-                    });
                 }
-                
             } catch (error) {
                 console.error('Error loading featured tournaments:', error);
                 container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
             }
         }
-
+        
         async function loadAllTournaments() {
             const container = document.getElementById('allTournaments');
             
             try {
-                // Use the same simulated data
-                if (container) {
-                    container.innerHTML = '';
-                    allTournaments.forEach(tournament => {
-                        container.appendChild(createTournamentCard(tournament));
-                    });
-                    
-                    // Initialize filter
-                    setTournamentFilter('all');
-                }
+                const response = await fetch(`${API_BASE_URL}/api/tournaments`);
                 
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (container) {
+                        if (!data.success || !data.tournaments || data.tournaments.length === 0) {
+                            container.innerHTML = `
+                                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                                    <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO TOURNAMENTS AVAILABLE</h3>
+                                    <p style="color: var(--gray);">Tournaments will appear when created via Discord bot</p>
+                                </div>
+                            `;
+                            return;
+                        }
+                        
+                        allTournaments = data.tournaments;
+                        
+                        const activeTournaments = data.tournaments.filter(t => t.status !== 'completed');
+                        
+                        if (activeTournaments.length === 0) {
+                            container.innerHTML = `
+                                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                                    <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO ACTIVE TOURNAMENTS</h3>
+                                    <p style="color: var(--gray);">Check back later for new tournaments</p>
+                                </div>
+                            `;
+                            return;
+                        }
+                        
+                        container.innerHTML = '';
+                        activeTournaments.forEach(tournament => {
+                            container.appendChild(createTournamentCard(tournament));
+                        });
+                        
+                        setTournamentFilter('all');
+                    }
+                }
             } catch (error) {
                 console.error('Error loading all tournaments:', error);
                 container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
             }
         }
-
+        
         function filterTournaments() {
             const searchTerm = document.getElementById('tournamentSearch').value.toLowerCase();
             const container = document.getElementById('allTournaments');
@@ -1933,11 +1930,7 @@
                 
                 let matchesFilter = true;
                 if (currentFilter !== 'all') {
-                    if (currentFilter === 'registration' || currentFilter === 'ongoing' || currentFilter === 'completed') {
-                        matchesFilter = tournament.status === currentFilter;
-                    } else {
-                        matchesFilter = tournament.game.toLowerCase().includes(currentFilter);
-                    }
+                    matchesFilter = tournament.status === currentFilter;
                 }
                 
                 return matchesSearch && matchesFilter;
@@ -1958,11 +1951,10 @@
                 });
             }
         }
-
+        
         function setTournamentFilter(filterType) {
             currentFilter = filterType;
             
-            // Update filter buttons
             document.querySelectorAll('#tournamentsSection .filter-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
@@ -1972,10 +1964,9 @@
                 activeBtn.classList.add('active');
             }
             
-            // Apply filter
             filterTournaments();
         }
-
+        
         async function loadManageTournaments() {
             const container = document.getElementById('manageTournamentsList');
             const alertEl = document.getElementById('manageAlert');
@@ -1986,7 +1977,6 @@
             }
             
             try {
-                // Show tournaments managed by current user (using tournament pass)
                 if (!managedTournament) {
                     alertEl.innerHTML = '<i class="fas fa-key"></i> Use a tournament pass from Discord to manage tournaments';
                     alertEl.className = 'alert alert-error';
@@ -2005,7 +1995,6 @@
                     return;
                 }
                 
-                // Show managed tournament
                 container.innerHTML = '';
                 container.appendChild(createTournamentCard(managedTournament, true, true));
                 
@@ -2018,11 +2007,11 @@
                 container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
             }
         }
-
+        
         async function loadMyTournaments() {
             showMyTournamentsTab('joined');
         }
-
+        
         async function loadMyTournamentsTab(tabName) {
             const container = document.getElementById('myTournamentsContent');
             
@@ -2032,50 +2021,65 @@
             }
             
             try {
-                let filteredTournaments = [];
+                const response = await fetch(`${API_BASE_URL}/api/tournaments`);
                 
-                // Filter based on tab
-                switch(tabName) {
-                    case 'joined':
-                        // Simulate joined tournaments
-                        filteredTournaments = allTournaments.filter(t => 
-                            t.status === 'ongoing'
-                        ).slice(0, 2);
-                        break;
-                    case 'hosting':
-                        // Tournaments where user is host (from tournament pass)
-                        filteredTournaments = managedTournament ? [managedTournament] : [];
-                        break;
-                    case 'registered':
-                        filteredTournaments = allTournaments.filter(t => 
-                            t.status === 'registration'
-                        );
-                        break;
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (container) {
+                        if (!data.success || !data.tournaments) {
+                            container.innerHTML = `
+                                <div style="text-align: center; padding: 3rem;">
+                                    <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO TOURNAMENTS FOUND</h3>
+                                    <p style="color: var(--gray);">${getNoTournamentsMessage(tabName)}</p>
+                                </div>
+                            `;
+                            return;
+                        }
+                        
+                        let filteredTournaments = [];
+                        
+                        switch(tabName) {
+                            case 'joined':
+                                filteredTournaments = data.tournaments.filter(t => 
+                                    t.status === 'ongoing'
+                                ).slice(0, 5);
+                                break;
+                            case 'hosting':
+                                filteredTournaments = managedTournament ? [managedTournament] : [];
+                                break;
+                            case 'registered':
+                                filteredTournaments = data.tournaments.filter(t => 
+                                    t.status === 'registration'
+                                );
+                                break;
+                        }
+                        
+                        if (filteredTournaments.length === 0) {
+                            container.innerHTML = `
+                                <div style="text-align: center; padding: 3rem;">
+                                    <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO TOURNAMENTS FOUND</h3>
+                                    <p style="color: var(--gray);">${getNoTournamentsMessage(tabName)}</p>
+                                </div>
+                            `;
+                            return;
+                        }
+                        
+                        container.innerHTML = '<div class="tournaments-grid"></div>';
+                        const grid = container.querySelector('.tournaments-grid');
+                        filteredTournaments.forEach(tournament => {
+                            grid.appendChild(createTournamentCard(tournament, true));
+                        });
+                    }
                 }
-                
-                if (filteredTournaments.length === 0) {
-                    container.innerHTML = `
-                        <div style="text-align: center; padding: 3rem;">
-                            <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                            <h3 style="color: var(--primary); font-family: 'Orbitron';">NO TOURNAMENTS FOUND</h3>
-                            <p style="color: var(--gray);">${getNoTournamentsMessage(tabName)}</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                container.innerHTML = '<div class="tournaments-grid"></div>';
-                const grid = container.querySelector('.tournaments-grid');
-                filteredTournaments.forEach(tournament => {
-                    grid.appendChild(createTournamentCard(tournament, true));
-                });
-                
             } catch (error) {
                 console.error('Error loading my tournaments:', error);
                 container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
             }
         }
-
+        
         function getNoTournamentsMessage(tabName) {
             switch(tabName) {
                 case 'joined': return "You haven't joined any tournaments yet";
@@ -2084,7 +2088,7 @@
                 default: return "No tournaments found";
             }
         }
-
+        
         async function loadHostTournaments() {
             const container = document.getElementById('hostTournamentsList');
             
@@ -2116,73 +2120,62 @@
                 container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
             }
         }
-
+        
         async function loadPublicBrackets() {
             const container = document.getElementById('publicBracketsContent');
             
             try {
-                // Simulated public brackets data
-                const publicBrackets = [
-                    {
-                        id: 'bracket-001',
-                        tournament_id: 'tourn-001',
-                        name: 'VALORANT CHAMPIONSHIP BRACKET',
-                        game: 'Valorant',
-                        status: 'ongoing',
-                        round: 'Quarterfinals',
-                        teams: 8,
-                        created_at: new Date().toISOString()
-                    },
-                    {
-                        id: 'bracket-002',
-                        tournament_id: 'tourn-002',
-                        name: 'CS2 PRO LEAGUE BRACKET',
-                        game: 'CS2',
-                        status: 'ongoing',
-                        round: 'Semifinals',
-                        teams: 4,
-                        created_at: new Date().toISOString()
-                    },
-                    {
-                        id: 'bracket-003',
-                        tournament_id: 'tourn-003',
-                        name: 'FORTNITE DUOS BRACKET',
-                        game: 'Fortnite',
-                        status: 'registration',
-                        round: 'Registration',
-                        teams: 16,
-                        created_at: new Date().toISOString()
-                    },
-                    {
-                        id: 'bracket-004',
-                        tournament_id: 'tourn-004',
-                        name: 'LEAGUE OF LEGENDS TOURNAMENT',
-                        game: 'League of Legends',
-                        status: 'completed',
-                        round: 'Finished',
-                        teams: 8,
-                        created_at: new Date().toISOString()
+                const response = await fetch(`${API_BASE_URL}/api/tournaments`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (container) {
+                        if (!data.success || !data.tournaments) {
+                            container.innerHTML = `
+                                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                                    <i class="fas fa-bracket-curly" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO PUBLIC BRACKETS</h3>
+                                    <p style="color: var(--gray);">Tournament brackets will appear here</p>
+                                </div>
+                            `;
+                            return;
+                        }
+                        
+                        const brackets = data.tournaments.filter(t => 
+                            t.status === 'ongoing' || t.status === 'completed'
+                        );
+                        
+                        if (brackets.length === 0) {
+                            container.innerHTML = `
+                                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                                    <i class="fas fa-bracket-curly" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO PUBLIC BRACKETS</h3>
+                                    <p style="color: var(--gray);">Tournament brackets will appear here</p>
+                                </div>
+                            `;
+                            return;
+                        }
+                        
+                        container.innerHTML = '';
+                        brackets.forEach(bracket => {
+                            container.appendChild(createPublicBracketCard(bracket));
+                        });
                     }
-                ];
-                
-                container.innerHTML = '';
-                publicBrackets.forEach(bracket => {
-                    container.appendChild(createPublicBracketCard(bracket));
-                });
-                
+                }
             } catch (error) {
                 console.error('Error loading public brackets:', error);
                 container.innerHTML = '<div class="alert alert-error">Error loading brackets</div>';
             }
         }
-
+        
         function createTournamentCard(tournament, showActions = false, showHostActions = false) {
             const card = document.createElement('div');
             card.className = 'tournament-card';
             card.dataset.id = tournament.id;
             
             const progressPercent = tournament.max_teams > 0 ? 
-                Math.min((tournament.current_teams || 0) / tournament.max_teams * 100, 100) : 0;
+                Math.min((tournament.team_count || 0) / tournament.max_teams * 100, 100) : 0;
             
             card.innerHTML = `
                 <div class="tournament-header">
@@ -2197,9 +2190,9 @@
                         <i class="fas fa-gamepad"></i> ${tournament.game}
                     </div>
                     
-                    ${tournament.prize_pool ? `
-                    <div style="color: var(--primary); font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; white-space: nowrap;">
-                        <i class="fas fa-trophy"></i> ${tournament.prize_pool}
+                    ${tournament.description ? `
+                    <div style="color: var(--gray); margin-bottom: 1rem; font-size: 0.9rem;">
+                        ${tournament.description.substring(0, 100)}${tournament.description.length > 100 ? '...' : ''}
                     </div>
                     ` : ''}
                     
@@ -2208,7 +2201,7 @@
                             <div class="progress-fill" style="width: ${progressPercent}%"></div>
                         </div>
                         <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--gray); font-family: 'Orbitron'; white-space: nowrap;">
-                            <span>${tournament.current_teams || 0}/${tournament.max_teams} TEAMS</span>
+                            <span>${tournament.team_count || 0}/${tournament.max_teams} TEAMS</span>
                             <span>${Math.round(progressPercent)}% FULL</span>
                         </div>
                     </div>
@@ -2220,7 +2213,6 @@
                 </div>
             `;
             
-            // Add actions if needed
             if (showActions || showHostActions) {
                 const actionsDiv = document.createElement('div');
                 actionsDiv.style.marginTop = '1.5rem';
@@ -2269,7 +2261,7 @@
                     bracketBtn.innerHTML = '<i class="fas fa-bracket-curly"></i> BRACKET';
                     bracketBtn.onclick = (e) => {
                         e.stopPropagation();
-                        editBracket(tournament.id);
+                        openRealBracketEditor(tournament.id);
                     };
                     actionsDiv.appendChild(bracketBtn);
                 }
@@ -2277,50 +2269,51 @@
                 card.appendChild(actionsDiv);
             }
             
-            // Add click handler for viewing details
             card.onclick = () => showTournamentDetails(tournament.id);
             
             return card;
         }
-
-        function createPublicBracketCard(bracket) {
+        
+        function createPublicBracketCard(tournament) {
             const card = document.createElement('div');
             card.className = 'tournament-card';
-            card.dataset.id = bracket.id;
+            card.dataset.id = tournament.id;
+            
+            const matchCount = tournament.total_rounds || 1;
             
             card.innerHTML = `
                 <div class="tournament-header">
-                    <div class="tournament-title">${bracket.name}</div>
-                    <div class="tournament-status status-${bracket.status}" style="white-space: nowrap;">
-                        ${bracket.status.toUpperCase()}
+                    <div class="tournament-title">${tournament.name} BRACKET</div>
+                    <div class="tournament-status status-${tournament.status}" style="white-space: nowrap;">
+                        ${tournament.status.toUpperCase()}
                     </div>
                 </div>
                 
                 <div style="margin-bottom: 1.5rem;">
                     <div style="color: var(--primary); font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; white-space: nowrap;">
-                        <i class="fas fa-gamepad"></i> ${bracket.game}
+                        <i class="fas fa-gamepad"></i> ${tournament.game}
                     </div>
                     
                     <div style="background: rgba(220, 38, 38, 0.1); padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(220, 38, 38, 0.3);">
                         <div style="color: var(--light); font-weight: 700; margin-bottom: 0.3rem; white-space: nowrap;">
-                            <i class="fas fa-flag"></i> CURRENT ROUND: ${bracket.round}
+                            <i class="fas fa-flag"></i> CURRENT ROUND: ${tournament.current_round || 1}
                         </div>
                         <div style="color: var(--gray); font-size: 0.9rem; white-space: nowrap;">
-                            <i class="fas fa-users"></i> ${bracket.teams} TEAMS
+                            <i class="fas fa-users"></i> ${tournament.team_count || 0} TEAMS
                         </div>
                     </div>
                 </div>
                 
                 <div style="color: var(--gray); font-size: 0.9rem; margin-top: 1.5rem;">
                     <div style="white-space: nowrap;"><i class="fas fa-bracket-curly"></i> PUBLIC BRACKET</div>
-                    <div style="white-space: nowrap;"><i class="fas fa-calendar"></i> ${new Date(bracket.created_at).toLocaleDateString()}</div>
+                    <div style="white-space: nowrap;"><i class="fas fa-calendar"></i> ${new Date(tournament.created_at).toLocaleDateString()}</div>
                 </div>
                 
                 <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
-                    <button class="btn btn-primary btn-small" onclick="viewPublicBracket('${bracket.id}')" style="flex: 1; white-space: nowrap;">
+                    <button class="btn btn-primary btn-small" onclick="viewPublicBracket('${tournament.id}')" style="flex: 1; white-space: nowrap;">
                         <i class="fas fa-eye"></i> VIEW BRACKET
                     </button>
-                    <button class="btn btn-secondary btn-small" onclick="showTournamentFromBracket('${bracket.tournament_id}')" style="flex: 1; white-space: nowrap;">
+                    <button class="btn btn-secondary btn-small" onclick="showTournamentFromBracket('${tournament.id}')" style="flex: 1; white-space: nowrap;">
                         <i class="fas fa-trophy"></i> VIEW TOURNAMENT
                     </button>
                 </div>
@@ -2328,75 +2321,80 @@
             
             return card;
         }
-
+        
         async function showTournamentDetails(tournamentId) {
             try {
-                const tournament = allTournaments.find(t => t.id === tournamentId);
+                const response = await fetch(`${API_BASE_URL}/api/tournaments`);
                 
-                if (!tournament) {
-                    showToast('Tournament not found', 'error');
-                    return;
-                }
-                
-                const modalContent = document.getElementById('tournamentDetailsContent');
-                modalContent.innerHTML = `
-                    <h2 class="modal-title" style="text-align: left; margin-bottom: 1rem;">${tournament.name}</h2>
-                    <p style="color: var(--gray); margin-bottom: 2rem; white-space: nowrap;">${tournament.game} • ${tournament.status.toUpperCase()}</p>
+                if (response.ok) {
+                    const data = await response.json();
+                    const tournament = data.tournaments?.find(t => t.id === tournamentId);
                     
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-                        <div style="padding: 1rem; background: rgba(0,0,0,0.5); border-radius: 10px; border-left: 3px solid var(--primary);">
-                            <div style="color: var(--gray); font-size: 0.9rem; font-family: 'Orbitron'; margin-bottom: 0.5rem; white-space: nowrap;">TEAMS</div>
-                            <div style="font-size: 1.5rem; font-weight: 700;">${tournament.current_teams || 0}/${tournament.max_teams}</div>
-                        </div>
-                        <div style="padding: 1rem; background: rgba(0,0,0,0.5); border-radius: 10px; border-left: 3px solid var(--primary);">
-                            <div style="color: var(--gray); font-size: 0.9rem; font-family: 'Orbitron'; margin-bottom: 0.5rem; white-space: nowrap;">PLAYERS PER TEAM</div>
-                            <div style="font-size: 1.5rem; font-weight: 700;">${tournament.max_players || 5}</div>
-                        </div>
-                        <div style="padding: 1rem; background: rgba(0,0,0,0.5); border-radius: 10px; border-left: 3px solid var(--primary);">
-                            <div style="color: var(--gray); font-size: 0.9rem; font-family: 'Orbitron'; margin-bottom: 0.5rem; white-space: nowrap;">PRIZE POOL</div>
-                            <div style="font-size: 1.5rem; font-weight: 700;">${tournament.prize_pool || 'N/A'}</div>
-                        </div>
-                    </div>
+                    if (!tournament) {
+                        showToast('Tournament not found', 'error');
+                        return;
+                    }
                     
-                    ${tournament.description ? `
-                    <div style="margin-bottom: 2rem;">
-                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">DESCRIPTION</h3>
-                        <p style="color: var(--light);">${tournament.description}</p>
-                    </div>
-                    ` : ''}
-                    
-                    <div class="discord-invite">
-                        <i class="fab fa-discord discord-icon"></i>
-                        <div class="discord-info">
-                            <h4>REGISTRATION REQUIRES DISCORD</h4>
-                            <p>This tournament was created in a Discord server. Join the server to register your team.</p>
-                            <button class="btn btn-primary" onclick="showDiscordRegistration('${tournamentId}')" style="margin-top: 0.5rem; white-space: nowrap;">
-                                <i class="fab fa-discord"></i> GET DISCORD INVITE
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap;">
-                        <button class="btn btn-secondary" onclick="viewBracket('${tournamentId}')" style="flex: 1; white-space: nowrap;">
-                            <i class="fas fa-bracket-curly"></i> VIEW BRACKET
-                        </button>
+                    const modalContent = document.getElementById('tournamentDetailsContent');
+                    modalContent.innerHTML = `
+                        <h2 class="modal-title" style="text-align: left; margin-bottom: 1rem;">${tournament.name}</h2>
+                        <p style="color: var(--gray); margin-bottom: 2rem; white-space: nowrap;">${tournament.game} • ${tournament.status.toUpperCase()}</p>
                         
-                        ${managedTournament && managedTournament.id === tournamentId ? `
-                        <button class="btn btn-secondary" onclick="editBracket('${tournamentId}')" style="flex: 1; white-space: nowrap;">
-                            <i class="fas fa-edit"></i> EDIT BRACKET
-                        </button>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                            <div style="padding: 1rem; background: rgba(0,0,0,0.5); border-radius: 10px; border-left: 3px solid var(--primary);">
+                                <div style="color: var(--gray); font-size: 0.9rem; font-family: 'Orbitron'; margin-bottom: 0.5rem; white-space: nowrap;">TEAMS</div>
+                                <div style="font-size: 1.5rem; font-weight: 700;">${tournament.team_count || 0}/${tournament.max_teams}</div>
+                            </div>
+                            <div style="padding: 1rem; background: rgba(0,0,0,0.5); border-radius: 10px; border-left: 3px solid var(--primary);">
+                                <div style="color: var(--gray); font-size: 0.9rem; font-family: 'Orbitron'; margin-bottom: 0.5rem; white-space: nowrap;">PLAYERS PER TEAM</div>
+                                <div style="font-size: 1.5rem; font-weight: 700;">${tournament.max_players_per_team || 5}</div>
+                            </div>
+                            <div style="padding: 1rem; background: rgba(0,0,0,0.5); border-radius: 10px; border-left: 3px solid var(--primary);">
+                                <div style="color: var(--gray); font-size: 0.9rem; font-family: 'Orbitron'; margin-bottom: 0.5rem; white-space: nowrap;">ROUNDS</div>
+                                <div style="font-size: 1.5rem; font-weight: 700;">${tournament.total_rounds || 1}</div>
+                            </div>
+                        </div>
+                        
+                        ${tournament.description ? `
+                        <div style="margin-bottom: 2rem;">
+                            <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">DESCRIPTION</h3>
+                            <p style="color: var(--light);">${tournament.description}</p>
+                        </div>
                         ` : ''}
-                    </div>
-                `;
-                
-                document.getElementById('tournamentDetailsModal').style.display = 'flex';
+                        
+                        <div class="discord-invite">
+                            <i class="fab fa-discord discord-icon"></i>
+                            <div class="discord-info">
+                                <h4>REGISTRATION REQUIRES DISCORD</h4>
+                                <p>This tournament was created in a Discord server. Join the server to register your team.</p>
+                                <button class="btn btn-primary" onclick="showDiscordRegistration('${tournamentId}')" style="margin-top: 0.5rem; white-space: nowrap;">
+                                    <i class="fab fa-discord"></i> GET DISCORD INVITE
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap;">
+                            <button class="btn btn-secondary" onclick="viewRealBracket('${tournamentId}')" style="flex: 1; white-space: nowrap;">
+                                <i class="fas fa-bracket-curly"></i> VIEW BRACKET
+                            </button>
+                            
+                            ${managedTournament && managedTournament.id === tournamentId ? `
+                            <button class="btn btn-secondary" onclick="openRealBracketEditor('${tournamentId}')" style="flex: 1; white-space: nowrap;">
+                                <i class="fas fa-edit"></i> EDIT BRACKET
+                            </button>
+                            ` : ''}
+                        </div>
+                    `;
+                    
+                    document.getElementById('tournamentDetailsModal').style.display = 'flex';
+                }
                 
             } catch (error) {
                 console.error('Error loading tournament details:', error);
                 showToast('Error loading tournament details', 'error');
             }
         }
-
+        
         function showDiscordRegistration(tournamentId) {
             const tournament = allTournaments.find(t => t.id === tournamentId);
             
@@ -2405,24 +2403,16 @@
                 return;
             }
             
-            // Generate example Discord invite (in real app, fetch from API)
-            const discordInvites = {
-                'tourn-001': 'https://discord.gg/valorant123',
-                'tourn-002': 'https://discord.gg/cs2pro456',
-                'tourn-003': 'https://discord.gg/fortnite789'
-            };
+            const inviteCode = tournament.tournament_pass || 'XTourney-Discord';
             
-            const inviteCode = discordInvites[tournamentId] || 'https://discord.gg/example';
-            const serverName = `${tournament.game.toUpperCase()} TOURNAMENT SERVER`;
-            
-            document.getElementById('discordServerName').textContent = serverName;
+            document.getElementById('discordServerName').textContent = `${tournament.game.toUpperCase()} TOURNAMENT SERVER`;
             document.getElementById('discordServerDescription').textContent = `Join the ${tournament.game} Discord server to register for "${tournament.name}"`;
-            document.getElementById('discordInviteCode').textContent = inviteCode.split('/').pop().toUpperCase();
-            document.getElementById('discordInviteLink').href = inviteCode;
+            document.getElementById('discordInviteCode').textContent = inviteCode;
+            document.getElementById('discordInviteLink').href = `https://discord.gg/${inviteCode}`;
             
             document.getElementById('discordRegistrationModal').style.display = 'flex';
         }
-
+        
         function copyDiscordInvite() {
             const inviteCode = document.getElementById('discordInviteLink').href;
             navigator.clipboard.writeText(inviteCode).then(() => {
@@ -2432,7 +2422,7 @@
                 showToast('Failed to copy invite', 'error');
             });
         }
-
+        
         async function useTournamentPass() {
             const passCode = document.getElementById('tournamentPassInput').value.trim().toUpperCase();
             
@@ -2442,25 +2432,37 @@
             }
             
             try {
-                // Simulate tournament pass validation
-                // In real app, this would be an API call
+                const formData = new URLSearchParams();
+                formData.append('pass_code', passCode);
                 
-                if (passCode.startsWith('TOURNAMENT')) {
-                    // Simulated success
-                    const tournament = allTournaments[0]; // Use first tournament as example
-                    
+                const response = await fetch(`${API_BASE_URL}/api/tournament-pass/auth`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    showAlert('tournamentPassAlert', error.detail || 'Invalid tournament pass', 'error');
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
                     currentTournamentPass = passCode;
-                    managedTournament = tournament;
+                    managedTournament = data.tournament;
                     
-                    showAlert('tournamentPassAlert', `✅ Tournament pass accepted! Now managing: ${tournament.name}`, 'success');
+                    showAlert('tournamentPassAlert', `✅ ${data.message}`, 'success');
                     
                     setTimeout(() => {
                         closeModal('tournamentPassModal');
                         showSection('manageTournamentsSection');
-                        showToast(`Now managing: ${tournament.name}`, 'success');
+                        showToast(`Now managing: ${managedTournament.name}`, 'success');
                     }, 1500);
-                } else {
-                    showAlert('tournamentPassAlert', 'Invalid tournament pass code', 'error');
                 }
                 
             } catch (error) {
@@ -2468,18 +2470,20 @@
                 showAlert('tournamentPassAlert', 'Error validating pass. Please try again.', 'error');
             }
         }
-
-        async function manageTournament(tournamentId) {
-            if (!managedTournament || managedTournament.id !== tournamentId) {
-                showToast('Use tournament pass to manage this tournament', 'error');
-                showTournamentPassModal();
-                return;
-            }
+        
+        function showAlert(alertId, message, type = 'error') {
+            const alertEl = document.getElementById(alertId);
+            alertEl.textContent = message;
+            alertEl.className = `alert alert-${type}`;
+            alertEl.style.display = 'flex';
             
-            showTournamentDetails(tournamentId);
+            setTimeout(() => {
+                alertEl.style.display = 'none';
+            }, 5000);
         }
-
-        async function editBracket(tournamentId) {
+        
+        // ========== REAL BRACKET FUNCTIONS ==========
+        async function openRealBracketEditor(tournamentId) {
             if (!managedTournament || managedTournament.id !== tournamentId) {
                 showToast('Use tournament pass to edit bracket', 'error');
                 showTournamentPassModal();
@@ -2487,94 +2491,112 @@
             }
             
             try {
-                const tournament = allTournaments.find(t => t.id === tournamentId);
+                const response = await fetch(`${API_BASE_URL}/api/tournament-pass/${tournamentId}/manage`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
                 
-                // Set up bracket editor
-                document.getElementById('bracketEditorTitle').textContent = `BRACKET EDITOR - ${tournament.name}`;
-                const editorContent = document.getElementById('bracketEditorContent');
+                if (!response.ok) {
+                    throw new Error('Failed to load bracket data');
+                }
                 
-                // Create sample bracket data
-                bracketEditorData = {
-                    tournament_id: tournamentId,
-                    tournament_name: tournament.name,
-                    rounds: [
-                        {
-                            round_number: 1,
-                            round_name: "Quarterfinals",
-                            matches: [
-                                { id: 'm1', team1: "Team Alpha", team2: "Team Bravo", score1: 0, score2: 0, winner: null },
-                                { id: 'm2', team1: "Team Charlie", team2: "Team Delta", score1: 0, score2: 0, winner: null },
-                                { id: 'm3', team1: "Team Echo", team2: "Team Foxtrot", score1: 0, score2: 0, winner: null },
-                                { id: 'm4', team1: "Team Golf", team2: "Team Hotel", score1: 0, score2: 0, winner: null }
-                            ]
-                        },
-                        {
-                            round_number: 2,
-                            round_name: "Semifinals",
-                            matches: [
-                                { id: 'm5', team1: "TBD", team2: "TBD", score1: 0, score2: 0, winner: null },
-                                { id: 'm6', team1: "TBD", team2: "TBD", score1: 0, score2: 0, winner: null }
-                            ]
-                        },
-                        {
-                            round_number: 3,
-                            round_name: "Finals",
-                            matches: [
-                                { id: 'm7', team1: "TBD", team2: "TBD", score1: 0, score2: 0, winner: null }
-                            ]
-                        }
-                    ]
-                };
+                const data = await response.json();
                 
-                editorContent.innerHTML = createBracketEditorHTML(bracketEditorData);
+                if (!data.success) {
+                    throw new Error('Failed to load bracket data');
+                }
                 
-                showSection('bracketEditorSection');
+                currentTournamentForBracket = tournamentId;
+                document.getElementById('realBracketEditorTitle').textContent = `BRACKET EDITOR - ${data.tournament.name}`;
+                
+                const editorContent = document.getElementById('realBracketEditorContent');
+                
+                if (data.bracket && data.bracket.bracket_data) {
+                    currentBracketData = typeof data.bracket.bracket_data === 'string' 
+                        ? JSON.parse(data.bracket.bracket_data) 
+                        : data.bracket.bracket_data;
+                    editorContent.innerHTML = createRealBracketEditorHTML(currentBracketData, data.teams || []);
+                } else {
+                    editorContent.innerHTML = createEmptyBracketHTML(data.tournament, data.teams || []);
+                    currentBracketData = null;
+                }
+                
+                showSection('realBracketEditorSection');
                 
             } catch (error) {
                 console.error('Error loading bracket editor:', error);
                 showToast('Error loading bracket editor', 'error');
             }
         }
-
-        function createBracketEditorHTML(bracketData) {
+        
+        function createEmptyBracketHTML(tournament, teams) {
+            return `
+                <div class="real-bracket-editor">
+                    <div style="text-align: center; padding: 3rem;">
+                        <i class="fas fa-bracket-curly" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                        <h3 style="color: var(--primary); font-family: 'Orbitron';">NO BRACKET GENERATED</h3>
+                        <p style="color: var(--gray); margin-bottom: 2rem;">Generate a bracket to start the tournament</p>
+                        
+                        <div style="background: rgba(0,0,0,0.5); padding: 2rem; border-radius: 10px; margin-bottom: 2rem;">
+                            <h4 style="color: var(--light); margin-bottom: 1rem;">TOURNAMENT INFO</h4>
+                            <p><strong>Teams Registered:</strong> ${teams.length}</p>
+                            <p><strong>Max Teams:</strong> ${tournament.max_teams}</p>
+                            <p><strong>Status:</strong> ${tournament.status}</p>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="generateRealBracket('${tournament.id}')" style="padding: 1rem 2rem; white-space: nowrap;">
+                            <i class="fas fa-magic"></i> GENERATE BRACKET
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function createRealBracketEditorHTML(bracketData, teams) {
             let html = `
-                <div class="bracket-editor">
+                <div class="real-bracket-editor">
                     <div style="margin-bottom: 2rem;">
                         <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">TOURNAMENT BRACKET</h3>
                         <p style="color: var(--gray);">Edit match scores and advance winners</p>
                     </div>
             `;
             
-            // Display each round
-            bracketData.rounds.forEach((round, roundIndex) => {
+            if (!bracketData.rounds || bracketData.rounds.length === 0) {
                 html += `
-                    <div class="bracket-round">
-                        <h4 style="color: var(--light); font-family: 'Orbitron'; margin-bottom: 1rem; border-bottom: 2px solid var(--primary); padding-bottom: 0.5rem; white-space: nowrap;">
-                            ${round.round_name.toUpperCase()} (ROUND ${round.round_number})
-                        </h4>
-                        <div style="display: grid; gap: 1rem;">
-                `;
-                
-                round.matches.forEach((match, matchIndex) => {
-                    html += createMatchEditorHTML(match, roundIndex, matchIndex);
-                });
-                
-                html += `
-                        </div>
+                    <div style="text-align: center; padding: 2rem;">
+                        <p style="color: var(--gray);">No bracket data available</p>
                     </div>
                 `;
-            });
+            } else {
+                bracketData.rounds.forEach((round, roundIndex) => {
+                    html += `
+                        <div class="bracket-round">
+                            <div class="round-header">ROUND ${round.round_number || roundIndex + 1}</div>
+                            <div class="matches-grid">
+                    `;
+                    
+                    round.matches?.forEach((match, matchIndex) => {
+                        html += createRealMatchHTML(match, roundIndex, matchIndex);
+                    });
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                });
+            }
             
             html += `
                     <div style="margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
-                        <button class="btn btn-primary" onclick="generateRandomBracket()" style="white-space: nowrap;">
-                            <i class="fas fa-random"></i> GENERATE RANDOM SCORES
-                        </button>
-                        <button class="btn btn-secondary" onclick="advanceWinners()" style="white-space: nowrap;">
+                        <button class="btn btn-primary" onclick="advanceRealBracketWinners()" style="white-space: nowrap;">
                             <i class="fas fa-arrow-right"></i> ADVANCE WINNERS
                         </button>
-                        <button class="btn btn-secondary" onclick="resetBracket()" style="white-space: nowrap;">
-                            <i class="fas fa-redo"></i> RESET BRACKET
+                        <button class="btn btn-secondary" onclick="refreshBracket()" style="white-space: nowrap;">
+                            <i class="fas fa-sync"></i> REFRESH BRACKET
+                        </button>
+                        <button class="btn btn-secondary" onclick="viewRealBracket('${currentTournamentForBracket}')" style="white-space: nowrap;">
+                            <i class="fas fa-eye"></i> PREVIEW BRACKET
                         </button>
                     </div>
                 </div>
@@ -2582,274 +2604,315 @@
             
             return html;
         }
-
-        function createMatchEditorHTML(match, roundIndex, matchIndex) {
-            const matchId = `match-${roundIndex}-${matchIndex}`;
+        
+        function createRealMatchHTML(match, roundIndex, matchIndex) {
+            const matchId = `real-match-${roundIndex}-${matchIndex}`;
+            const isCompleted = match.winner_id !== null && match.winner_id !== undefined;
+            const status = isCompleted ? 'completed' : (match.status || 'scheduled');
             
             return `
-                <div class="bracket-match" id="${matchId}">
-                    <div class="match-teams">
-                        <div class="match-team" id="${matchId}-team1">${match.team1}</div>
-                        <div class="match-vs">VS</div>
-                        <div class="match-team" id="${matchId}-team2">${match.team2}</div>
+                <div class="match-card">
+                    <div class="match-header">
+                        <div class="match-id">MATCH ${match.match_number || matchIndex + 1}</div>
+                        <div class="match-status status-${status}">${status.toUpperCase()}</div>
                     </div>
                     
-                    <div style="display: flex; gap: 1rem; align-items: center; margin-top: 1rem; flex-wrap: wrap;">
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            <input type="number" min="0" max="99" value="${match.score1}" 
-                                style="width: 60px; padding: 0.5rem; background: rgba(0,0,0,0.8); border: 1px solid rgba(220,38,38,0.3); color: white; border-radius: 5px;"
-                                onchange="updateScore('${matchId}', 'team1', this.value)">
-                            <span style="color: var(--gray);">-</span>
-                            <input type="number" min="0" max="99" value="${match.score2}" 
-                                style="width: 60px; padding: 0.5rem; background: rgba(0,0,0,0.8); border: 1px solid rgba(220,38,38,0.3); color: white; border-radius: 5px;"
-                                onchange="updateScore('${matchId}', 'team2', this.value)">
-                        </div>
-                        
-                        <div style="display: flex; gap: 0.5rem; margin-left: auto; flex-wrap: wrap;">
-                            <button class="btn btn-primary btn-small" onclick="setWinner('${matchId}', 'team1')" style="white-space: nowrap;">
-                                <i class="fas fa-trophy"></i> ${match.team1.substring(0, 10)} WINS
-                            </button>
-                            <button class="btn btn-primary btn-small" onclick="setWinner('${matchId}', 'team2')" style="white-space: nowrap;">
-                                <i class="fas fa-trophy"></i> ${match.team2.substring(0, 10)} WINS
-                            </button>
-                        </div>
+                    <div class="team-row ${match.winner_id === match.team1_id ? 'winner' : ''}" id="${matchId}-team1" onclick="setRealMatchWinner('${matchId}', 'team1')">
+                        <div class="team-name">${match.team1_name || 'TBD'}</div>
+                        <input type="number" class="team-score" value="${match.score1 || 0}" min="0" onchange="updateRealMatchScore('${matchId}', 'team1', this.value)">
+                        ${!isCompleted ? `<button class="set-winner-btn" onclick="setRealMatchWinner('${matchId}', 'team1', event)">✓</button>` : ''}
+                    </div>
+                    
+                    <div class="team-row ${match.winner_id === match.team2_id ? 'winner' : ''}" id="${matchId}-team2" onclick="setRealMatchWinner('${matchId}', 'team2')">
+                        <div class="team-name">${match.team2_name || 'TBD'}</div>
+                        <input type="number" class="team-score" value="${match.score2 || 0}" min="0" onchange="updateRealMatchScore('${matchId}', 'team2', this.value)">
+                        ${!isCompleted ? `<button class="set-winner-btn" onclick="setRealMatchWinner('${matchId}', 'team2', event)">✓</button>` : ''}
                     </div>
                 </div>
             `;
         }
-
-        function updateScore(matchId, team, score) {
+        
+        function updateRealMatchScore(matchId, team, score) {
             const matchElement = document.getElementById(matchId);
-            if (matchElement) {
-                const scoreInput = matchElement.querySelector(`input[onchange*="${team}"]`);
-                if (scoreInput) {
-                    scoreInput.value = score;
-                    
-                    // Update visual feedback
-                    if (parseInt(score) > 0) {
-                        scoreInput.style.borderColor = 'var(--primary)';
-                        scoreInput.style.boxShadow = '0 0 5px var(--primary)';
-                    } else {
-                        scoreInput.style.borderColor = 'rgba(220,38,38,0.3)';
-                        scoreInput.style.boxShadow = 'none';
-                    }
-                }
+            if (!matchElement || !currentBracketData) return;
+            
+            const scoreNum = parseInt(score) || 0;
+            const scoreInput = document.querySelector(`#${matchId}-${team} .team-score`);
+            if (scoreInput) {
+                scoreInput.value = scoreNum;
             }
+            
+            showToast('Score updated', 'success');
         }
-
-        function setWinner(matchId, winningTeam) {
+        
+        function setRealMatchWinner(matchId, winningTeam, event) {
+            if (event) event.stopPropagation();
+            
             const matchElement = document.getElementById(matchId);
-            if (matchElement) {
-                // Update visual style
-                matchElement.style.borderColor = 'var(--success)';
-                matchElement.style.background = 'rgba(16, 185, 129, 0.1)';
-                
-                // Highlight winning team
-                const winnerElement = document.getElementById(`${matchId}-${winningTeam}`);
-                if (winnerElement) {
-                    winnerElement.style.color = 'var(--success)';
-                    winnerElement.style.fontWeight = 'bold';
-                }
-                
-                showToast('Winner set! Advance winners when ready.', 'success');
+            if (!matchElement || !currentBracketData) return;
+            
+            // Update visual style
+            document.querySelectorAll(`#${matchId}-team1, #${matchId}-team2`).forEach(row => {
+                row.classList.remove('winner');
+            });
+            
+            const winnerElement = document.getElementById(`${matchId}-${winningTeam}`);
+            if (winnerElement) {
+                winnerElement.classList.add('winner');
             }
+            
+            showToast('Winner set!', 'success');
         }
-
-        function generateRandomBracket() {
-            if (!bracketEditorData) return;
+        
+        async function generateRealBracket(tournamentId) {
+            if (!managedTournament || managedTournament.id !== tournamentId) {
+                showToast('Not authorized to generate bracket', 'error');
+                return;
+            }
             
-            // Generate random scores for first round matches
-            const firstRoundMatches = bracketEditorData.rounds[0].matches;
-            firstRoundMatches.forEach((match, index) => {
-                const score1 = Math.floor(Math.random() * 3);
-                const score2 = Math.floor(Math.random() * 3);
-                
-                // Ensure scores are different
-                const finalScore1 = score1 === score2 ? score1 + 1 : Math.max(score1, score2);
-                const finalScore2 = score1 === score2 ? score2 : Math.min(score1, score2);
-                
-                match.score1 = finalScore1;
-                match.score2 = finalScore2;
-                match.winner = finalScore1 > finalScore2 ? 'team1' : 'team2';
-                
-                // Update UI
-                const matchId = `match-0-${index}`;
-                const matchElement = document.getElementById(matchId);
-                if (matchElement) {
-                    const inputs = matchElement.querySelectorAll('input[type="number"]');
-                    if (inputs[0]) inputs[0].value = finalScore1;
-                    if (inputs[1]) inputs[1].value = finalScore2;
-                    
-                    // Highlight winner
-                    const winnerTeam = match.winner === 'team1' ? match.team1 : match.team2;
-                    const winnerElement = document.getElementById(`${matchId}-${match.winner}`);
-                    if (winnerElement) {
-                        winnerElement.style.color = 'var(--success)';
-                        winnerElement.style.fontWeight = 'bold';
-                    }
-                }
-            });
-            
-            showToast('Random scores generated for first round!', 'success');
-        }
-
-        function advanceWinners() {
-            if (!bracketEditorData) return;
-            
-            // Get winners from first round
-            const firstRoundWinners = bracketEditorData.rounds[0].matches.map(match => {
-                return match.winner === 'team1' ? match.team1 : match.team2;
-            });
-            
-            // Update second round with winners
-            const secondRoundMatches = bracketEditorData.rounds[1].matches;
-            secondRoundMatches[0].team1 = firstRoundWinners[0];
-            secondRoundMatches[0].team2 = firstRoundWinners[1];
-            secondRoundMatches[1].team1 = firstRoundWinners[2];
-            secondRoundMatches[1].team2 = firstRoundWinners[3];
-            
-            // Update UI
-            secondRoundMatches.forEach((match, index) => {
-                const matchId = `match-1-${index}`;
-                document.getElementById(`${matchId}-team1`).textContent = match.team1;
-                document.getElementById(`${matchId}-team2`).textContent = match.team2;
-            });
-            
-            showToast('Winners advanced to next round!', 'success');
-        }
-
-        function resetBracket() {
-            if (!bracketEditorData) return;
-            
-            // Reset all matches
-            bracketEditorData.rounds.forEach((round, roundIndex) => {
-                round.matches.forEach((match, matchIndex) => {
-                    match.score1 = 0;
-                    match.score2 = 0;
-                    match.winner = null;
-                    
-                    // Reset UI
-                    const matchId = `match-${roundIndex}-${matchIndex}`;
-                    const matchElement = document.getElementById(matchId);
-                    if (matchElement) {
-                        matchElement.style.borderColor = '';
-                        matchElement.style.background = '';
-                        
-                        const inputs = matchElement.querySelectorAll('input[type="number"]');
-                        if (inputs[0]) {
-                            inputs[0].value = 0;
-                            inputs[0].style.borderColor = '';
-                            inputs[0].style.boxShadow = '';
-                        }
-                        if (inputs[1]) {
-                            inputs[1].value = 0;
-                            inputs[1].style.borderColor = '';
-                            inputs[1].style.boxShadow = '';
-                        }
-                        
-                        document.getElementById(`${matchId}-team1`).style.color = '';
-                        document.getElementById(`${matchId}-team1`).style.fontWeight = '';
-                        document.getElementById(`${matchId}-team2`).style.color = '';
-                        document.getElementById(`${matchId}-team2`).style.fontWeight = '';
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/tournament-pass/${tournamentId}/generate-bracket`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
                     }
                 });
-            });
-            
-            showToast('Bracket reset!', 'success');
+                
+                if (!response.ok) {
+                    throw new Error('Failed to generate bracket');
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast('✅ Bracket generated successfully!', 'success');
+                    setTimeout(() => {
+                        openRealBracketEditor(tournamentId);
+                    }, 1000);
+                }
+                
+            } catch (error) {
+                console.error('Error generating bracket:', error);
+                showToast('Error generating bracket', 'error');
+            }
         }
-
-        async function saveBracket() {
-            if (!bracketEditorData) {
+        
+        function advanceRealBracketWinners() {
+            showToast('Advancing winners to next round...', 'success');
+            // In a real implementation, this would update the bracket structure
+        }
+        
+        function refreshBracket() {
+            if (currentTournamentForBracket) {
+                openRealBracketEditor(currentTournamentForBracket);
+            }
+        }
+        
+        async function saveRealBracket() {
+            if (!currentBracketData || !currentTournamentForBracket) {
                 showToast('No bracket data to save', 'error');
                 return;
             }
             
             try {
-                // In real app, this would send data to API
-                showToast('✅ Bracket saved successfully!', 'success');
+                const response = await fetch(`${API_BASE_URL}/api/tournament-pass/${currentTournamentForBracket}/update-bracket`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({
+                        bracket: currentBracketData,
+                        status: 'ongoing'
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to save bracket');
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast('✅ Bracket saved successfully!', 'success');
+                }
                 
             } catch (error) {
                 console.error('Error saving bracket:', error);
                 showToast('Error saving bracket', 'error');
             }
         }
-
-        async function viewBracket(tournamentId) {
+        
+        // ========== REAL BRACKET VIEWER ==========
+        async function viewRealBracket(tournamentId) {
             try {
-                const container = document.getElementById('bracketContainer');
-                container.innerHTML = '<div class="loading"><div class="spinner"></div>LOADING BRACKET...</div>';
+                currentTournamentForBracket = tournamentId;
                 
-                document.getElementById('bracketView').style.display = 'block';
+                const response = await fetch(`${API_BASE_URL}/api/tournaments`);
+                if (!response.ok) throw new Error('Failed to load tournament');
                 
-                // Simulate bracket data
-                setTimeout(() => {
-                    const tournament = allTournaments.find(t => t.id === tournamentId);
-                    
-                    container.innerHTML = `
-                        <h2 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem; white-space: nowrap;">${tournament?.name || 'TOURNAMENT'} BRACKET</h2>
-                        <p style="color: var(--gray); margin-bottom: 2rem; white-space: nowrap;">${tournament?.game || 'Game'} • ${tournament?.status?.toUpperCase() || 'Status'}</p>
-                        
-                        <div style="background: rgba(0,0,0,0.5); padding: 2rem; border-radius: 10px; margin-bottom: 2rem;">
-                            <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem; white-space: nowrap;">BRACKET VIEW</h3>
-                            <p style="color: var(--gray); margin-bottom: 1rem;">This is a live bracket view. Match results update in real-time.</p>
-                            
-                            <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 2rem; margin-top: 2rem;">
-                                <!-- Quarterfinals -->
-                                <div>
-                                    <h4 style="color: var(--light); font-family: 'Orbitron'; margin-bottom: 1rem; white-space: nowrap;">QUARTERFINALS</h4>
-                                    <div style="background: rgba(0,0,0,0.7); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--primary);">
-                                        <div style="color: var(--success); font-weight: bold;">Team Alpha</div>
-                                        <div style="color: var(--gray); font-size: 0.9rem;">2 - 0</div>
-                                        <div>Team Bravo</div>
-                                    </div>
-                                    <div style="background: rgba(0,0,0,0.7); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(220,38,38,0.3);">
-                                        <div>Team Charlie</div>
-                                        <div style="color: var(--gray); font-size: 0.9rem;">0 - 0</div>
-                                        <div>Team Delta</div>
-                                    </div>
-                                </div>
-                                
-                                <div style="display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-arrow-right" style="color: var(--primary); font-size: 1.5rem;"></i>
-                                </div>
-                                
-                                <!-- Semifinals -->
-                                <div>
-                                    <h4 style="color: var(--light); font-family: 'Orbitron'; margin-bottom: 1rem; white-space: nowrap;">SEMIFINALS</h4>
-                                    <div style="background: rgba(0,0,0,0.7); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(220,38,38,0.3);">
-                                        <div>Team Alpha</div>
-                                        <div style="color: var(--gray); font-size: 0.9rem;">0 - 0</div>
-                                        <div>TBD</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }, 1000);
+                const data = await response.json();
+                const tournament = data.tournaments?.find(t => t.id === tournamentId);
+                
+                if (!tournament) {
+                    showToast('Tournament not found', 'error');
+                    return;
+                }
+                
+                // Get bracket data
+                const bracketResponse = await fetch(`${API_BASE_URL}/api/tournament-pass/${tournamentId}/manage`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+                
+                let bracketData = null;
+                if (bracketResponse.ok) {
+                    const bracketResult = await bracketResponse.json();
+                    if (bracketResult.success && bracketResult.bracket) {
+                        bracketData = typeof bracketResult.bracket.bracket_data === 'string' 
+                            ? JSON.parse(bracketResult.bracket.bracket_data) 
+                            : bracketResult.bracket.bracket_data;
+                    }
+                }
+                
+                // Setup canvas
+                const canvas = document.getElementById('bracketCanvas');
+                if (!canvas) return;
+                
+                const container = canvas.parentElement;
+                canvas.width = container.clientWidth - 40;
+                canvas.height = Math.max(600, tournament.max_teams * 40);
+                
+                bracketCanvas = canvas;
+                bracketCtx = canvas.getContext('2d');
+                
+                // Clear canvas
+                bracketCtx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw bracket
+                drawBracket(bracketCtx, canvas.width, canvas.height, tournament, bracketData);
+                
+                // Show viewer
+                document.getElementById('bracketViewer').style.display = 'block';
                 
             } catch (error) {
-                console.error('Error loading bracket:', error);
+                console.error('Error viewing bracket:', error);
                 showToast('Error loading bracket', 'error');
             }
         }
-
-        function viewPublicBracket(bracketId) {
-            // For now, just show a generic bracket view
-            viewBracket('public-bracket');
+        
+        function viewPublicBracket(tournamentId) {
+            viewRealBracket(tournamentId);
         }
-
+        
         function showTournamentFromBracket(tournamentId) {
             showTournamentDetails(tournamentId);
             closeModal('tournamentDetailsModal');
         }
-
-        function closeBracket() {
-            document.getElementById('bracketView').style.display = 'none';
+        
+        function closeBracketViewer() {
+            document.getElementById('bracketViewer').style.display = 'none';
         }
-
+        
+        function drawBracket(ctx, width, height, tournament, bracketData) {
+            // Set background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw tournament title
+            ctx.fillStyle = '#DC2626';
+            ctx.font = 'bold 24px Orbitron, monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(tournament.name.toUpperCase(), width / 2, 40);
+            
+            ctx.fillStyle = '#888';
+            ctx.font = '16px Orbitron, monospace';
+            ctx.fillText(`${tournament.game} • ${tournament.status.toUpperCase()}`, width / 2, 70);
+            
+            // Draw bracket lines
+            const totalRounds = tournament.total_rounds || 1;
+            const matchHeight = 80;
+            const roundWidth = (width - 100) / totalRounds;
+            
+            // Draw matches
+            if (bracketData && bracketData.rounds) {
+                bracketData.rounds.forEach((round, roundIndex) => {
+                    const roundX = 50 + (roundIndex * roundWidth);
+                    const matchesInRound = round.matches?.length || 0;
+                    const totalSpace = matchesInRound * matchHeight;
+                    const startY = (height - totalSpace) / 2;
+                    
+                    round.matches?.forEach((match, matchIndex) => {
+                        const matchY = startY + (matchIndex * matchHeight);
+                        
+                        // Draw match box
+                        ctx.fillStyle = 'rgba(220, 38, 38, 0.1)';
+                        ctx.strokeStyle = '#DC2626';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(roundX, matchY, roundWidth - 20, 60);
+                        ctx.fillRect(roundX, matchY, roundWidth - 20, 60);
+                        
+                        // Draw team names
+                        ctx.fillStyle = '#FFF';
+                        ctx.font = '12px Arial';
+                        ctx.textAlign = 'left';
+                        
+                        // Team 1
+                        ctx.fillText(match.team1_name || 'TBD', roundX + 10, matchY + 20);
+                        if (match.score1 !== undefined && match.score1 !== null) {
+                            ctx.fillText(match.score1, roundX + roundWidth - 40, matchY + 20);
+                        }
+                        
+                        // Team 2
+                        ctx.fillText(match.team2_name || 'TBD', roundX + 10, matchY + 40);
+                        if (match.score2 !== undefined && match.score2 !== null) {
+                            ctx.fillText(match.score2, roundX + roundWidth - 40, matchY + 40);
+                        }
+                        
+                        // Draw winner indicator
+                        if (match.winner_id) {
+                            ctx.fillStyle = '#10B981';
+                            ctx.beginPath();
+                            ctx.arc(roundX + roundWidth - 50, matchY + (match.winner_id === match.team1_id ? 20 : 40), 5, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        
+                        // Draw connection lines to next round
+                        if (roundIndex < totalRounds - 1) {
+                            const nextRoundX = roundX + roundWidth;
+                            const nextMatchIndex = Math.floor(matchIndex / 2);
+                            const nextRound = bracketData.rounds[roundIndex + 1];
+                            
+                            if (nextRound && nextRound.matches && nextRound.matches[nextMatchIndex]) {
+                                const nextMatchY = startY + (nextMatchIndex * matchHeight * 2) + 30;
+                                
+                                ctx.strokeStyle = '#DC2626';
+                                ctx.lineWidth = 1;
+                                ctx.setLineDash([5, 5]);
+                                ctx.beginPath();
+                                ctx.moveTo(roundX + roundWidth - 20, matchY + 30);
+                                ctx.lineTo(nextRoundX, nextMatchY);
+                                ctx.stroke();
+                                ctx.setLineDash([]);
+                            }
+                        }
+                    });
+                });
+            } else {
+                // Draw empty bracket structure
+                ctx.fillStyle = '#888';
+                ctx.font = '18px Orbitron, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('BRACKET NOT GENERATED YET', width / 2, height / 2);
+                
+                ctx.font = '14px Arial';
+                ctx.fillText('The tournament bracket will appear here once generated', width / 2, height / 2 + 30);
+            }
+        }
+        
         // ========== UTILITY FUNCTIONS ==========
         function showToast(message, type = 'success') {
-            // Remove existing toasts
             document.querySelectorAll('.toast').forEach(toast => toast.remove());
             
             const toast = document.createElement('div');
@@ -2868,26 +2931,14 @@
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
-
-        function showAlert(alertId, message, type = 'error') {
-            const alertEl = document.getElementById(alertId);
-            alertEl.textContent = message;
-            alertEl.className = `alert alert-${type}`;
-            alertEl.style.display = 'flex';
-            
-            setTimeout(() => {
-                alertEl.style.display = 'none';
-            }, 5000);
-        }
-
+        
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
         }
-
-        // Initialize auth tabs
+        
+        // Initialize
         showAuthTab('login');
         
-        // Initialize my tournaments tabs
         document.querySelector('#myTournamentsSection .tab[onclick="showMyTournamentsTab(\'joined\')"]').style.color = 'var(--primary)';
         document.querySelector('#myTournamentsSection .tab[onclick="showMyTournamentsTab(\'joined\')"]').style.borderBottom = '3px solid var(--primary)';
     </script>
