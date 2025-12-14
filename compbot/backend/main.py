@@ -1,4 +1,4 @@
-# main.py - Production FastAPI Backend with Supabase
+# main.py - Production FastAPI Backend with Supabase (FIXED VERSION)
 from fastapi import FastAPI, HTTPException, Depends, status, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -12,7 +12,6 @@ import random
 import string
 import os
 import json
-import asyncpg
 from dotenv import load_dotenv
 from passlib.context import CryptContext
 import asyncio
@@ -191,19 +190,6 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         )
 
 # ========== DATABASE HELPER FUNCTIONS ==========
-async def execute_query(query: str, params: dict = None):
-    """Execute a raw SQL query on Supabase"""
-    try:
-        if params:
-            # Use supabase's rpc for parameterized queries
-            result = supabase.rpc('exec_sql', {'query': query, 'params': json.dumps(params)}).execute()
-        else:
-            result = supabase.rpc('exec_sql', {'query': query}).execute()
-        return result
-    except Exception as e:
-        print(f"Query error: {e}")
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
 async def check_tournament_pass(pass_code: str):
     """Check if tournament pass exists and get tournament"""
     try:
