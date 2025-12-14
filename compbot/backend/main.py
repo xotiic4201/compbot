@@ -1,883 +1,1121 @@
-# main.py - Production FastAPI Backend with Supabase (FIXED VERSION)
-from fastapi import FastAPI, HTTPException, Depends, status, Request, Form
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any, Union
-from datetime import datetime, timedelta
-import jwt
-import uuid
-import random
-import string
-import os
+# backend/main.py - FULLY UPDATED FOR NEW SCHEMA
+from fastapi import FastAPI, HTTPException, Request, Depends, status, Form, WebSocket, WebSocketDisconnect
 import json
-from dotenv import load_dotenv
-from passlib.context import CryptContext
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import os
+import requests
+import hashlib
+from datetime import datetime, timedelta
+from typing import Optional, Dict, List, Any
+from pydantic import BaseModel, EmailStr, Field
+import jwt
+from uuid import uuid4
+import logging
+import math
+import random
 import asyncio
-from supabase import create_client, Client
-from postgrest.exceptions import APIError
+from collections import defaultdict
 
-# Load environment variables
-load_dotenv()
+# ========== SETUP LOGGING ==========
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # ========== CONFIGURATION ==========
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+JWT_SECRET = os.getenv("JWT_SECRET", "xtourney-secret-key-2024")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://www.xotiicsplaza.us")
+DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
+DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "")
 
-if not SECRET_KEY:
-    raise ValueError("SECRET_KEY environment variable is required")
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise ValueError("SUPABASE_URL and SUPABASE_KEY environment variables are required")
+# Headers for Supabase
+headers = {
+    "apikey": SUPABASE_KEY,
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {SUPABASE_KEY}"
+}
 
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+# ========== APP INITIALIZATION ==========
+app = FastAPI(title="XTourney API", version="3.0")
 
-# ========== SUPABASE SETUP ==========
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-supabase_admin: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY) if SUPABASE_SERVICE_KEY else supabase
-
-# ========== FASTAPI SETUP ==========
-app = FastAPI(
-    title="XTourney API",
-    description="Production Tournament Management Backend with Supabase",
-    version="3.0.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc"
-)
-
-# Add CORS middleware
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://www.xotiicsplaza.us",
-        "https://xotiicsplaza.us",
-        "http://localhost:3000",
-        "http://localhost:8000"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ========== SECURITY ==========
-security = HTTPBearer()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# ========== WEBSOCKET MANAGER ==========
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, List[WebSocket]] = defaultdict(list)
+    
+    async def connect(self, websocket: WebSocket, tournament_id: str):
+        await websocket.accept()
+        self.active_connections[tournament_id].append(websocket)
+        logger.info(f"WebSocket connected for tournament {tournament_id}")
+    
+    def disconnect(self, websocket: WebSocket, tournament_id: str):
+        if tournament_id in self.active_connections:
+            self.active_connections[tournament_id].remove(websocket)
+    
+    async def broadcast(self, tournament_id: str, message: dict):
+        if tournament_id in self.active_connections:
+            for connection in self.active_connections[tournament_id]:
+                try:
+                    await connection.send_json(message)
+                except:
+                    pass
+
+manager = ConnectionManager()
 
 # ========== MODELS ==========
-class UserCreate(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50)
-    password: str = Field(..., min_length=8)
-    email: Optional[str] = Field(None, max_length=100)
-    discord_id: Optional[str] = Field(None, max_length=50)
+class UserRegister(BaseModel):
+    username: str = Field(..., min_length=3, max_length=20)
+    password: str = Field(..., min_length=6)
+    email: Optional[EmailStr] = None
 
 class UserLogin(BaseModel):
     username: str
     password: str
 
 class TournamentCreate(BaseModel):
-    name: str = Field(..., max_length=100)
-    game: str = Field(..., max_length=50)
-    max_teams: int = Field(..., ge=2, le=128)
-    max_players_per_team: int = Field(..., ge=1, le=10)
-    description: Optional[str] = Field(None, max_length=500)
-    tournament_pass: str = Field(..., max_length=50)
+    name: str
+    game: str
+    max_teams: int = 16
+    max_players: int = 5
+    prize_pool: Optional[str] = None
+    description: Optional[str] = None
+
+class DiscordTournamentCreate(BaseModel):
+    name: str
+    game: str
+    max_teams: int = 16
+    max_players_per_team: int = 5
+    prize_pool: Optional[str] = None
+    description: Optional[str] = None
+    tournament_pass: str
     host_id: str
-    created_by: str = Field(..., max_length=100)
+    created_by: str
     discord_server_id: Optional[str] = None
 
-class TournamentUpdate(BaseModel):
-    name: Optional[str] = Field(None, max_length=100)
-    game: Optional[str] = Field(None, max_length=50)
-    status: Optional[str] = Field(None, pattern="^(registration|ongoing|completed|cancelled)$")
-    description: Optional[str] = Field(None, max_length=500)
-    team_count: Optional[int] = Field(None, ge=0)
-    current_round: Optional[int] = Field(None, ge=0)
+class BracketUpdate(BaseModel):
+    bracket_data: Dict[str, Any]
+    status: Optional[str] = None
 
-class TeamCreate(BaseModel):
-    team_name: str = Field(..., max_length=100)
+class MatchResult(BaseModel):
+    match_id: str
+    winner_id: Optional[str] = None
+    team1_score: Optional[int] = 0
+    team2_score: Optional[int] = 0
+    round_number: int
+    match_number: int
+
+class TeamRegister(BaseModel):
+    team_name: str
     tournament_id: str
     captain_id: str
-    captain_name: str = Field(..., max_length=100)
+    captain_name: str
     members: List[str]
-    region: str = Field(..., pattern="^(NA|EU|ASIA|OCE|SA|GLOBAL)$")
-    tag: Optional[str] = Field(None, max_length=10)
-    player_ids: List[str]
+    region: str = "GLOBAL"
+    tag: Optional[str] = None
+    player_ids: Optional[List[str]] = None
 
-class MatchCreate(BaseModel):
-    tournament_id: str
-    round_number: int = Field(..., ge=1)
-    match_number: int = Field(..., ge=1)
-    team1_id: Optional[str] = None
-    team2_id: Optional[str] = None
-    team1_name: Optional[str] = Field(None, max_length=100)
-    team2_name: Optional[str] = Field(None, max_length=100)
-    winner_id: Optional[str] = None
-    score1: int = Field(0, ge=0)
-    score2: int = Field(0, ge=0)
-    status: str = Field("scheduled", pattern="^(scheduled|ongoing|completed|cancelled)$")
+# ========== SUPABASE HELPERS ==========
+def supabase_request(method: str, endpoint: str, data: dict = None, params: dict = None):
+    url = f"{SUPABASE_URL}/rest/v1/{endpoint}"
+    
+    if params:
+        query_params = "&".join([f"{k}={v}" for k, v in params.items()])
+        url = f"{url}?{query_params}"
+    
+    try:
+        if method == "GET":
+            response = requests.get(url, headers=headers)
+        elif method == "POST":
+            response = requests.post(url, json=data, headers=headers)
+        elif method == "PATCH":
+            response = requests.patch(url, json=data, headers=headers)
+        elif method == "DELETE":
+            response = requests.delete(url, headers=headers)
+        elif method == "PUT":
+            response = requests.put(url, json=data, headers=headers)
+        else:
+            raise ValueError(f"Invalid method: {method}")
+        
+        logger.debug(f"Supabase {method} to {endpoint}: {response.status_code}")
+        
+        if response.status_code in [200, 201, 204]:
+            try:
+                return response.json()
+            except:
+                return {"success": True}
+        elif response.status_code == 404:
+            return []
+        else:
+            error_text = response.text[:500]
+            logger.error(f"Supabase error {response.status_code}: {error_text}")
+            
+            if response.status_code == 400 and "column" in error_text and "not found" in error_text:
+                logger.error(f"SCHEMA MISMATCH: Missing column. Run database migration.")
+                raise HTTPException(status_code=400, detail=f"Database schema mismatch: {error_text}")
+            
+            raise HTTPException(status_code=500, detail=f"Database error: {response.status_code}")
+            
+    except Exception as e:
+        logger.error(f"Supabase request error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Database connection failed")
 
-class BracketCreate(BaseModel):
-    tournament_id: str
-    bracket_data: Dict[str, Any]
-    total_rounds: int = Field(..., ge=1)
-    current_round: int = Field(1, ge=1)
+# ========== DISCORD INVITE HELPER ==========
+async def create_discord_invite(server_id: str) -> Optional[str]:
+    """Create Discord invite using Discord API"""
+    if not DISCORD_BOT_TOKEN or not server_id:
+        return None
+    
+    try:
+        discord_headers = {
+            "Authorization": f"Bot {DISCORD_BOT_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        # Get guild channels
+        channels_url = f"https://discord.com/api/v10/guilds/{server_id}/channels"
+        channels_response = requests.get(channels_url, headers=discord_headers, timeout=10)
+        
+        if channels_response.status_code != 200:
+            logger.error(f"Failed to get channels: {channels_response.status_code}")
+            return None
+        
+        channels = channels_response.json()
+        
+        # Find first text channel
+        text_channels = [c for c in channels if c.get('type') == 0]  # Type 0 = text channel
+        
+        if not text_channels:
+            logger.error("No text channels found")
+            return None
+        
+        channel_id = text_channels[0]['id']
+        
+        # Create invite
+        invite_data = {
+            "max_age": 604800,  # 7 days
+            "max_uses": 0,      # Unlimited
+            "temporary": False,
+            "unique": True
+        }
+        
+        invite_url = f"https://discord.com/api/v10/channels/{channel_id}/invites"
+        invite_response = requests.post(invite_url, headers=discord_headers, json=invite_data, timeout=10)
+        
+        if invite_response.status_code == 200:
+            invite = invite_response.json()
+            invite_code = invite.get('code')
+            return f"https://discord.gg/{invite_code}"
+        else:
+            logger.error(f"Failed to create invite: {invite_response.status_code}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Discord invite error: {e}")
+        return None
 
-class ServerStatsUpdate(BaseModel):
-    server_id: str
-    server_name: str = Field(..., max_length=100)
-    member_count: int = Field(..., ge=0)
-    icon_url: Optional[str] = None
+# ========== AUTH HELPERS ==========
+def create_token(user_data: dict) -> str:
+    payload = {
+        "sub": user_data.get("id"),
+        "username": user_data.get("username"),
+        "is_host": user_data.get("is_host", False),
+        "is_admin": user_data.get("is_admin", False),
+        "iat": datetime.utcnow(),
+        "exp": datetime.utcnow() + timedelta(days=30)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
-class TournamentPassAuth(BaseModel):
-    pass_code: str
+def verify_token(token: str) -> Optional[Dict]:
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except:
+        return None
 
-# ========== AUTH FUNCTIONS ==========
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+security = HTTPBearer()
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        if username is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except jwt.JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    payload = verify_token(token)
     
-    # Check if user exists in Supabase
-    try:
-        response = supabase.table("users").select("*").eq("username", username).execute()
-        if not response.data:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Error fetching user",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    user_id = payload.get("sub")
+    users = supabase_request("GET", f"users?id=eq.{user_id}")
+    
+    if not users or len(users) == 0:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return users[0]
 
-# ========== DATABASE HELPER FUNCTIONS ==========
-async def check_tournament_pass(pass_code: str):
-    """Check if tournament pass exists and get tournament"""
-    try:
-        response = supabase.table("tournaments").select("*").eq("tournament_pass", pass_code).execute()
-        if not response.data:
-            return None
-        return response.data[0]
-    except Exception as e:
-        print(f"Error checking tournament pass: {e}")
-        return None
+# ========== BRACKET HELPER FUNCTIONS ==========
+def generate_bracket_structure(teams: List[Dict], tournament: Dict) -> Dict:
+    """Generate complete bracket structure"""
+    total_teams = len(teams)
+    if total_teams < 2:
+        raise HTTPException(status_code=400, detail="Need at least 2 teams")
+    
+    # Calculate rounds (power of 2)
+    next_power_of_two = 2 ** math.ceil(math.log2(total_teams))
+    total_rounds = int(math.log2(next_power_of_two))
+    
+    # Shuffle teams for random seeding
+    shuffled_teams = teams.copy()
+    random.shuffle(shuffled_teams)
+    
+    # Add BYEs if needed
+    while len(shuffled_teams) < next_power_of_two:
+        shuffled_teams.append({
+            "id": f"bye_{uuid4().hex[:8]}",
+            "name": "BYE",
+            "is_bye": True
+        })
+    
+    bracket = {
+        "tournament_id": tournament["id"],
+        "tournament_name": tournament["name"],
+        "total_rounds": total_rounds,
+        "current_round": 1,
+        "teams_count": total_teams,
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+        "rounds": []
+    }
+    
+    # Generate first round matches
+    round1_matches = []
+    match_number = 1
+    
+    for i in range(0, len(shuffled_teams), 2):
+        team1 = shuffled_teams[i]
+        team2 = shuffled_teams[i + 1] if i + 1 < len(shuffled_teams) else {"id": "bye", "name": "BYE", "is_bye": True}
+        
+        match_id = f"match_{tournament['id']}_r1_m{match_number}"
+        
+        match = {
+            "match_id": match_id,
+            "round_number": 1,
+            "match_number": match_number,
+            "team1_id": team1["id"],
+            "team1_name": team1["name"],
+            "team1_seed": i + 1,
+            "team2_id": team2["id"],
+            "team2_name": team2["name"],
+            "team2_seed": i + 2,
+            "winner_id": None,
+            "team1_score": 0,
+            "team2_score": 0,
+            "status": "pending",
+            "is_bye": team1.get("is_bye") or team2.get("is_bye"),
+            "next_match": None,
+            "next_team_slot": None
+        }
+        
+        round1_matches.append(match)
+        match_number += 1
+    
+    bracket["rounds"].append({
+        "round_number": 1,
+        "matches": round1_matches
+    })
+    
+    # Generate empty future rounds with connections
+    for round_num in range(2, total_rounds + 1):
+        matches_in_round = next_power_of_two // (2 ** round_num)
+        round_matches = []
+        
+        for match_num in range(1, matches_in_round + 1):
+            match_id = f"match_{tournament['id']}_r{round_num}_m{match_num}"
+            
+            # Calculate which matches from previous round feed into this one
+            prev_match1_num = (match_num * 2) - 1
+            prev_match2_num = match_num * 2
+            
+            match = {
+                "match_id": match_id,
+                "round_number": round_num,
+                "match_number": match_num,
+                "team1_id": None,
+                "team1_name": "TBD",
+                "team1_seed": None,
+                "team2_id": None,
+                "team2_name": "TBD",
+                "team2_seed": None,
+                "winner_id": None,
+                "team1_score": 0,
+                "team2_score": 0,
+                "status": "pending",
+                "is_bye": False,
+                "next_match": None,
+                "next_team_slot": None,
+                "source_matches": [
+                    f"match_{tournament['id']}_r{round_num-1}_m{prev_match1_num}",
+                    f"match_{tournament['id']}_r{round_num-1}_m{prev_match2_num}"
+                ]
+            }
+            
+            # Update previous matches to point to this one
+            if round_num > 1:
+                prev_round = bracket["rounds"][round_num - 2]
+                if prev_match1_num <= len(prev_round["matches"]):
+                    prev_round["matches"][prev_match1_num - 1]["next_match"] = match_id
+                    prev_round["matches"][prev_match1_num - 1]["next_team_slot"] = "team1"
+                if prev_match2_num <= len(prev_round["matches"]):
+                    prev_round["matches"][prev_match2_num - 1]["next_match"] = match_id
+                    prev_round["matches"][prev_match2_num - 1]["next_team_slot"] = "team2"
+            
+            round_matches.append(match)
+        
+        bracket["rounds"].append({
+            "round_number": round_num,
+            "matches": round_matches
+        })
+    
+    return bracket
 
-# ========== API ENDPOINTS ==========
+def update_bracket_with_result(bracket: Dict, match_result: MatchResult) -> Dict:
+    """Update bracket with match result and propagate winners"""
+    for round_data in bracket["rounds"]:
+        if round_data["round_number"] == match_result.round_number:
+            for match in round_data["matches"]:
+                if match["match_number"] == match_result.match_number:
+                    # Update match result
+                    match["winner_id"] = match_result.winner_id
+                    match["team1_score"] = match_result.team1_score
+                    match["team2_score"] = match_result.team2_score
+                    match["status"] = "completed"
+                    
+                    # Propagate winner to next round if applicable
+                    if match["next_match"] and match["winner_id"]:
+                        winner_team_id = match["winner_id"]
+                        winner_team_name = match["team1_name"] if winner_team_id == match["team1_id"] else match["team2_name"]
+                        
+                        # Find next match and update team slot
+                        for next_round in bracket["rounds"]:
+                            if next_round["round_number"] == match["round_number"] + 1:
+                                for next_match in next_round["matches"]:
+                                    if next_match["match_id"] == match["next_match"]:
+                                        if match["next_team_slot"] == "team1":
+                                            next_match["team1_id"] = winner_team_id
+                                            next_match["team1_name"] = winner_team_name
+                                        else:
+                                            next_match["team2_id"] = winner_team_id
+                                            next_match["team2_name"] = winner_team_name
+                                        
+                                        # If both teams are set, mark as ready
+                                        if next_match["team1_id"] and next_match["team2_id"]:
+                                            next_match["status"] = "ready"
+                                        break
+                                break
+                    
+                    break
+    
+    bracket["updated_at"] = datetime.utcnow().isoformat()
+    return bracket
+
+def calculate_total_rounds(max_teams: int) -> int:
+    """Calculate total rounds based on max teams"""
+    if max_teams <= 2:
+        return 1
+    elif max_teams <= 4:
+        return 2
+    elif max_teams <= 8:
+        return 3
+    elif max_teams <= 16:
+        return 4
+    elif max_teams <= 32:
+        return 5
+    else:
+        return 6
+
+# ========== ROUTES ==========
 @app.get("/")
 async def root():
-    return {
-        "status": "online",
-        "service": "XTourney API",
-        "version": "3.0.0",
-        "database": "Supabase PostgreSQL",
-        "timestamp": datetime.utcnow().isoformat()
-    }
+    return {"message": "XTourney API v3.0", "status": "running", "schema": "compatible"}
 
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
+    """Health check endpoint"""
     try:
         # Test database connection
-        supabase.table("users").select("count", count="exact").limit(1).execute()
+        users = supabase_request("GET", "users?limit=1")
+        tournaments = supabase_request("GET", "tournaments?limit=1")
+        
         return {
             "status": "healthy",
             "database": "connected",
+            "schema_check": {
+                "users_table": len(users) > 0 if users else False,
+                "tournaments_table": len(tournaments) > 0 if tournaments else False
+            },
             "timestamp": datetime.utcnow().isoformat()
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database connection failed: {str(e)}")
+        logger.error(f"Health check failed: {e}")
+        raise HTTPException(status_code=503, detail="Service unavailable")
 
-# ========== AUTH ENDPOINTS ==========
-@app.post("/api/register", response_model=Dict[str, Any])
-async def register(user: UserCreate):
+# ========== USER ROUTES ==========
+@app.post("/api/register")
+async def register(user: UserRegister):
+    """Register new user"""
     try:
         # Check if username exists
-        existing = supabase.table("users").select("id").eq("username", user.username).execute()
-        if existing.data:
+        existing = supabase_request("GET", f"users?username=eq.{user.username}")
+        if existing and len(existing) > 0:
             raise HTTPException(status_code=400, detail="Username already exists")
         
-        # Check if email exists
+        # Check if email exists (if provided)
         if user.email:
-            existing_email = supabase.table("users").select("id").eq("email", user.email).execute()
-            if existing_email.data:
-                raise HTTPException(status_code=400, detail="Email already exists")
+            existing_email = supabase_request("GET", f"users?email=eq.{user.email}")
+            if existing_email and len(existing_email) > 0:
+                raise HTTPException(status_code=400, detail="Email already registered")
         
-        # Hash password
-        hashed_password = get_password_hash(user.password)
+        # Hash password - using SHA256 to match SQL schema
+        password_hash = hashlib.sha256(user.password.encode()).hexdigest()
         
         # Create user
+        user_id = str(uuid4())
         user_data = {
+            "id": user_id,
             "username": user.username,
-            "email": user.email,
-            "password_hash": hashed_password,
-            "discord_id": user.discord_id,
-            "is_host": False
+            "email": user.email if user.email else None,
+            "password_hash": password_hash,
+            "account_type": "email",
+            "is_verified": False,
+            "is_host": False,
+            "is_admin": False,
+            "created_at": datetime.utcnow().isoformat(),
+            "last_login": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
         }
         
-        response = supabase.table("users").insert(user_data).execute()
+        logger.info(f"Creating user: {user.username}")
+        result = supabase_request("POST", "users", user_data)
         
-        if not response.data:
-            raise HTTPException(status_code=500, detail="Failed to create user")
+        # Create token without sensitive data
+        token_data = {
+            "id": user_id,
+            "username": user.username,
+            "email": user.email if user.email else None,
+            "is_host": False,
+            "is_admin": False
+        }
         
-        new_user = response.data[0]
-        
-        # Create JWT token
-        access_token = create_access_token(data={"sub": user.username})
+        token = create_token(token_data)
         
         return {
             "success": True,
-            "token": access_token,
-            "user": {
-                "id": new_user["id"],
-                "username": new_user["username"],
-                "email": new_user["email"],
-                "is_host": new_user["is_host"]
-            }
+            "token": token,
+            "user": token_data
         }
         
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+        logger.error(f"Register error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Registration failed")
 
-@app.post("/api/login", response_model=Dict[str, Any])
+@app.post("/api/login")
 async def login(user: UserLogin):
+    """Login user"""
     try:
-        # Get user
-        response = supabase.table("users").select("*").eq("username", user.username).execute()
-        
-        if not response.data:
+        # Find user by username
+        users = supabase_request("GET", f"users?username=eq.{user.username}")
+        if not users or len(users) == 0:
             raise HTTPException(status_code=401, detail="Invalid credentials")
         
-        db_user = response.data[0]
+        db_user = users[0]
         
         # Verify password
-        if not verify_password(user.password, db_user["password_hash"]):
+        password_hash = hashlib.sha256(user.password.encode()).hexdigest()
+        
+        if password_hash != db_user.get("password_hash"):
             raise HTTPException(status_code=401, detail="Invalid credentials")
         
-        # Create JWT token
-        access_token = create_access_token(data={"sub": user.username})
+        # Update last login
+        update_data = {
+            "last_login": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        supabase_request("PATCH", f"users?id=eq.{db_user['id']}", update_data)
+        
+        # Create token without sensitive data
+        token_data = {
+            "id": db_user["id"],
+            "username": db_user["username"],
+            "email": db_user.get("email"),
+            "is_host": db_user.get("is_host", False),
+            "is_admin": db_user.get("is_admin", False)
+        }
+        
+        token = create_token(token_data)
         
         return {
             "success": True,
-            "token": access_token,
-            "user": {
-                "id": db_user["id"],
-                "username": db_user["username"],
-                "email": db_user["email"],
-                "is_host": db_user["is_host"]
-            }
+            "token": token,
+            "user": token_data
         }
         
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
+        logger.error(f"Login error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Login failed")
 
-# ========== TOURNAMENT ENDPOINTS ==========
-@app.post("/api/tournaments/discord", response_model=Dict[str, Any])
-async def create_tournament_discord(tournament: TournamentCreate):
+# ========== TOURNAMENT ROUTES ==========
+@app.get("/api/tournaments")
+async def get_tournaments():
+    """Get all tournaments"""
     try:
-        # Check if tournament pass already exists
-        existing = supabase.table("tournaments").select("id").eq("tournament_pass", tournament.tournament_pass).execute()
-        if existing.data:
-            # Generate new pass if duplicate
-            tournament.tournament_pass = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        tournaments = supabase_request("GET", "tournaments?order=created_at.desc")
         
-        # Create tournament
-        tournament_data = {
-            "name": tournament.name,
-            "game": tournament.game,
-            "max_teams": tournament.max_teams,
-            "max_players_per_team": tournament.max_players_per_team,
-            "description": tournament.description,
-            "tournament_pass": tournament.tournament_pass,
-            "host_id": tournament.host_id,
-            "created_by": tournament.created_by,
-            "discord_server_id": tournament.discord_server_id,
-            "status": "registration",
-            "team_count": 0,
-            "current_round": 0,
-            "total_rounds": 0
-        }
-        
-        response = supabase.table("tournaments").insert(tournament_data).execute()
-        
-        if not response.data:
-            raise HTTPException(status_code=500, detail="Failed to create tournament")
-        
-        new_tournament = response.data[0]
+        if tournaments:
+            for tournament in tournaments:
+                # Get team counts for each tournament
+                teams = supabase_request("GET", f"teams?tournament_id=eq.{tournament['id']}")
+                tournament["team_count"] = len(teams) if teams else 0
+                
+                # Make sure fields exist for frontend
+                tournament["current_teams"] = tournament.get("team_count", 0)
+                tournament["currentTeams"] = tournament.get("team_count", 0)
+                tournament["max_players"] = tournament.get("max_players_per_team", 5)
         
         return {
             "success": True,
-            "tournament_id": new_tournament["id"],
-            "tournament_pass": new_tournament["tournament_pass"],
+            "tournaments": tournaments if tournaments else [],
+            "count": len(tournaments) if tournaments else 0
+        }
+        
+    except Exception as e:
+        logger.error(f"Get tournaments error: {e}")
+        return {"success": True, "tournaments": [], "count": 0}
+
+@app.get("/api/tournaments/{tournament_id}")
+async def get_tournament(tournament_id: str):
+    """Get specific tournament by ID"""
+    try:
+        tournaments = supabase_request("GET", f"tournaments?id=eq.{tournament_id}")
+        
+        if not tournaments or len(tournaments) == 0:
+            raise HTTPException(status_code=404, detail="Tournament not found")
+        
+        tournament = tournaments[0]
+        
+        # Get teams for this tournament
+        teams = supabase_request("GET", f"teams?tournament_id=eq.{tournament_id}")
+        tournament["teams"] = teams if teams else []
+        tournament["team_count"] = len(teams) if teams else 0
+        
+        # Get bracket if exists
+        brackets = supabase_request("GET", f"brackets?tournament_id=eq.{tournament_id}")
+        if brackets and len(brackets) > 0:
+            tournament["bracket"] = brackets[0]
+        
+        return {
+            "success": True,
+            "tournament": tournament
+        }
+        
+    except Exception as e:
+        logger.error(f"Get tournament error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get tournament")
+
+@app.post("/api/tournaments/discord")
+async def create_tournament_discord(request: Request):
+    """Create tournament from Discord bot WITH AUTO-INVITE"""
+    try:
+        data = await request.json()
+        
+        # Validate required fields
+        required = ["name", "game", "max_teams", "max_players_per_team", "tournament_pass", "host_id", "created_by"]
+        for field in required:
+            if field not in data:
+                raise HTTPException(status_code=400, detail=f"Missing field: {field}")
+        
+        # Calculate total rounds
+        total_rounds = calculate_total_rounds(data["max_teams"])
+        
+        # Generate tournament ID
+        tournament_id = str(uuid4())
+        
+        # Prepare tournament data according to new schema
+        tournament_data = {
+            "id": tournament_id,
+            "name": data["name"],
+            "game": data["game"],
+            "description": data.get("description", ""),
+            "status": "registration",
+            "max_teams": data["max_teams"],
+            "max_players_per_team": data["max_players_per_team"],
+            "prize_pool": data.get("prize_pool", ""),
+            "tournament_pass": data["tournament_pass"],
+            "host_id": data["host_id"],
+            "created_by": data["created_by"],
+            "discord_server_id": data.get("discord_server_id"),
+            "current_round": 1,
+            "total_rounds": total_rounds,
+            "team_count": 0,
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        logger.info(f"Creating tournament: {data['name']}")
+        result = supabase_request("POST", "tournaments", tournament_data)
+        
+        return {
+            "success": True,
+            "tournament_id": tournament_id,
+            "tournament_pass": data["tournament_pass"],
             "message": "Tournament created successfully"
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create tournament: {str(e)}")
+        logger.error(f"Discord tournament creation error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create tournament")
 
-@app.get("/api/tournaments", response_model=Dict[str, Any])
-async def get_tournaments(status: Optional[str] = None, limit: int = 50, offset: int = 0):
+# ========== DISCORD INVITE ROUTES ==========
+@app.get("/api/tournament/{tournament_id}/discord-invite")
+async def get_tournament_discord_invite(tournament_id: str):
+    """Get Discord invite for tournament"""
     try:
-        query = supabase.table("tournaments").select("*", count="exact")
+        tournaments = supabase_request("GET", f"tournaments?id=eq.{tournament_id}")
         
-        if status:
-            query = query.eq("status", status)
+        if not tournaments or len(tournaments) == 0:
+            raise HTTPException(status_code=404, detail="Tournament not found")
         
-        query = query.order("created_at", desc=True).range(offset, offset + limit - 1)
-        response = query.execute()
+        tournament = tournaments[0]
+        discord_server_id = tournament.get('discord_server_id')
         
-        tournaments = response.data
-        total_count = response.count or 0
+        if not discord_server_id:
+            return {
+                "success": False,
+                "message": "No Discord server linked to this tournament"
+            }
         
-        # Get team counts for each tournament
-        for tournament in tournaments:
-            teams_response = supabase.table("teams").select("id", count="exact").eq("tournament_id", tournament["id"]).execute()
-            tournament["team_count"] = teams_response.count or 0
-            
-            # Get bracket info if exists
-            bracket_response = supabase.table("brackets").select("*").eq("tournament_id", tournament["id"]).execute()
-            if bracket_response.data:
-                tournament["has_bracket"] = True
-                tournament["current_round"] = bracket_response.data[0]["current_round"]
-                tournament["total_rounds"] = bracket_response.data[0]["total_rounds"]
-            else:
-                tournament["has_bracket"] = False
-                tournament["current_round"] = 0
-                tournament["total_rounds"] = 0
+        # Try to create Discord invite
+        discord_invite_url = await create_discord_invite(discord_server_id)
+        
+        if discord_invite_url:
+            return {
+                "success": True,
+                "invite_url": discord_invite_url,
+                "invite_code": discord_invite_url.replace("https://discord.gg/", "")
+            }
         
         return {
-            "success": True,
-            "tournaments": tournaments,
-            "total": total_count,
-            "limit": limit,
-            "offset": offset
+            "success": False,
+            "message": "Could not create Discord invite. Bot may need permissions."
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch tournaments: {str(e)}")
+        logger.error(f"Get Discord invite error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get Discord invite")
 
-@app.get("/api/tournaments/{tournament_id}", response_model=Dict[str, Any])
-async def get_tournament(tournament_id: str):
+# ========== TEAM ROUTES ==========
+@app.post("/api/teams/register")
+async def register_team(team_data: TeamRegister):
+    """Register a team for tournament"""
     try:
-        # Get tournament
-        response = supabase.table("tournaments").select("*").eq("id", tournament_id).execute()
-        
-        if not response.data:
+        # Check if tournament exists
+        tournaments = supabase_request("GET", f"tournaments?id=eq.{team_data.tournament_id}")
+        if not tournaments or len(tournaments) == 0:
             raise HTTPException(status_code=404, detail="Tournament not found")
         
-        tournament = response.data[0]
+        tournament = tournaments[0]
         
-        # Get teams
-        teams_response = supabase.table("teams").select("*").eq("tournament_id", tournament_id).execute()
-        tournament["teams"] = teams_response.data
-        tournament["team_count"] = len(teams_response.data)
-        
-        # Get bracket if exists
-        bracket_response = supabase.table("brackets").select("*").eq("tournament_id", tournament_id).execute()
-        if bracket_response.data:
-            tournament["bracket"] = bracket_response.data[0]
-            tournament["has_bracket"] = True
-        else:
-            tournament["has_bracket"] = False
-        
-        # Get matches if bracket exists
-        if bracket_response.data:
-            matches_response = supabase.table("matches").select("*").eq("tournament_id", tournament_id).order("round_number").order("match_number").execute()
-            tournament["matches"] = matches_response.data
-        
-        return {
-            "success": True,
-            "tournament": tournament
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch tournament: {str(e)}")
-
-@app.put("/api/tournaments/{tournament_id}", response_model=Dict[str, Any])
-async def update_tournament(tournament_id: str, update: TournamentUpdate, current_user: dict = Depends(get_current_user)):
-    try:
-        # Get tournament first
-        tournament_response = supabase.table("tournaments").select("*").eq("id", tournament_id).execute()
-        
-        if not tournament_response.data:
-            raise HTTPException(status_code=404, detail="Tournament not found")
-        
-        tournament = tournament_response.data[0]
-        
-        # Check permission (only host can update)
-        # You might want to add more sophisticated permission checks
-        
-        # Prepare update data
-        update_data = {k: v for k, v in update.dict(exclude_unset=True).items() if v is not None}
-        
-        if not update_data:
-            return {"success": True, "message": "No changes provided"}
-        
-        update_data["updated_at"] = datetime.utcnow().isoformat()
-        
-        # Update tournament
-        response = supabase.table("tournaments").update(update_data).eq("id", tournament_id).execute()
-        
-        return {
-            "success": True,
-            "message": "Tournament updated successfully",
-            "tournament": response.data[0] if response.data else None
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update tournament: {str(e)}")
-
-# ========== TEAM ENDPOINTS ==========
-@app.post("/api/teams/register", response_model=Dict[str, Any])
-async def register_team(team: TeamCreate):
-    try:
-        # Check if tournament exists and is accepting registrations
-        tournament_response = supabase.table("tournaments").select("*").eq("id", team.tournament_id).execute()
-        
-        if not tournament_response.data:
-            raise HTTPException(status_code=404, detail="Tournament not found")
-        
-        tournament = tournament_response.data[0]
-        
+        # Check if tournament is accepting registrations
         if tournament["status"] != "registration":
             raise HTTPException(status_code=400, detail="Tournament is not accepting registrations")
         
         # Check team count
-        teams_response = supabase.table("teams").select("id", count="exact").eq("tournament_id", team.tournament_id).execute()
-        current_teams = teams_response.count or 0
+        teams = supabase_request("GET", f"teams?tournament_id=eq.{team_data.tournament_id}")
+        current_teams = len(teams) if teams else 0
         
         if current_teams >= tournament["max_teams"]:
             raise HTTPException(status_code=400, detail="Tournament is full")
         
-        # Check if team name already exists in this tournament
-        existing_team = supabase.table("teams").select("id").eq("tournament_id", team.tournament_id).eq("name", team.team_name).execute()
-        if existing_team.data:
+        # Check if team name is already taken in this tournament
+        existing_teams = supabase_request("GET", f"teams?tournament_id=eq.{team_data.tournament_id}&name=eq.{team_data.team_name}")
+        if existing_teams and len(existing_teams) > 0:
             raise HTTPException(status_code=400, detail="Team name already taken in this tournament")
         
         # Create team
-        team_data = {
-            "tournament_id": team.tournament_id,
-            "name": team.team_name,
-            "tag": team.tag,
-            "captain_id": team.captain_id,
-            "captain_name": team.captain_name,
-            "members": json.dumps(team.members),
-            "player_ids": json.dumps(team.player_ids),
-            "region": team.region,
-            "wins": 0,
-            "losses": 0
+        team_id = str(uuid4())
+        team_record = {
+            "id": team_id,
+            "tournament_id": team_data.tournament_id,
+            "name": team_data.team_name,
+            "captain_discord_id": team_data.captain_id,
+            "captain_name": team_data.captain_name,
+            "region": team_data.region,
+            "members": json.dumps(team_data.members),
+            "status": "registered",
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
         }
         
-        response = supabase.table("teams").insert(team_data).execute()
+        if team_data.tag:
+            team_record["name"] = f"[{team_data.tag}] {team_data.team_name}"
         
-        if not response.data:
-            raise HTTPException(status_code=500, detail="Failed to register team")
+        result = supabase_request("POST", "teams", team_record)
         
         # Update tournament team count
-        supabase.table("tournaments").update({"team_count": current_teams + 1}).eq("id", team.tournament_id).execute()
+        supabase_request("PATCH", f"tournaments?id=eq.{team_data.tournament_id}", {
+            "team_count": current_teams + 1,
+            "updated_at": datetime.utcnow().isoformat()
+        })
         
         return {
             "success": True,
-            "team": response.data[0],
+            "team": {
+                "id": team_id,
+                "name": team_record["name"],
+                "captain_name": team_data.captain_name,
+                "region": team_data.region,
+                "members": team_data.members
+            },
             "message": "Team registered successfully"
         }
         
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to register team: {str(e)}")
+        logger.error(f"Team registration error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to register team")
 
-# ========== TOURNAMENT PASS ENDPOINTS ==========
-@app.post("/api/tournament-pass/auth", response_model=Dict[str, Any])
-async def auth_tournament_pass(pass_data: TournamentPassAuth, current_user: dict = Depends(get_current_user)):
+# ========== BRACKET MANAGEMENT ROUTES ==========
+@app.post("/api/tournament-pass/{tournament_id}/generate-bracket")
+async def generate_tournament_bracket(tournament_id: str, current_user: Dict = Depends(get_current_user)):
+    """Generate bracket for tournament"""
     try:
-        tournament = await check_tournament_pass(pass_data.pass_code)
-        
-        if not tournament:
-            raise HTTPException(status_code=404, detail="Invalid tournament pass")
-        
-        # Check if user is the host
-        if tournament["host_id"] != current_user.get("id") and tournament["host_id"] != current_user.get("discord_id"):
-            # You might want to add admin checks here
-            pass
-        
-        return {
-            "success": True,
-            "message": "Tournament access granted",
-            "tournament": tournament
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to authenticate pass: {str(e)}")
-
-@app.get("/api/tournament-pass/{tournament_id}/manage", response_model=Dict[str, Any])
-async def manage_tournament(tournament_id: str, current_user: dict = Depends(get_current_user)):
-    try:
-        # Get tournament with all related data
-        tournament_response = await get_tournament(tournament_id)
-        
-        if not tournament_response["success"]:
+        # Get tournament
+        tournaments = supabase_request("GET", f"tournaments?id=eq.{tournament_id}")
+        if not tournaments or len(tournaments) == 0:
             raise HTTPException(status_code=404, detail="Tournament not found")
         
-        tournament = tournament_response["tournament"]
+        tournament = tournaments[0]
         
-        # Permission check - you might want to verify the user has access
-        # For now, we'll trust the frontend to only show this to authorized users
+        # Check permissions (simplified for now)
+        # TODO: Add proper permission checking
         
-        return {
-            "success": True,
-            "tournament": tournament,
-            "teams": tournament.get("teams", []),
-            "bracket": tournament.get("bracket", None),
-            "matches": tournament.get("matches", [])
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get tournament data: {str(e)}")
-
-@app.post("/api/tournament-pass/{tournament_id}/generate-bracket", response_model=Dict[str, Any])
-async def generate_bracket(tournament_id: str, current_user: dict = Depends(get_current_user)):
-    try:
-        # Get tournament and teams
-        tournament_response = supabase.table("tournaments").select("*").eq("id", tournament_id).execute()
-        
-        if not tournament_response.data:
-            raise HTTPException(status_code=404, detail="Tournament not found")
-        
-        tournament = tournament_response.data[0]
-        
-        # Check if tournament has enough teams
-        teams_response = supabase.table("teams").select("*").eq("tournament_id", tournament_id).execute()
-        teams = teams_response.data
-        
-        if len(teams) < 2:
+        # Get teams
+        teams = supabase_request("GET", f"teams?tournament_id=eq.{tournament_id}")
+        if not teams or len(teams) < 2:
             raise HTTPException(status_code=400, detail="Need at least 2 teams to generate bracket")
         
-        # Check if bracket already exists
-        existing_bracket = supabase.table("brackets").select("*").eq("tournament_id", tournament_id).execute()
-        if existing_bracket.data:
-            # Update existing bracket
-            return {
-                "success": True,
-                "message": "Bracket already exists",
-                "bracket_id": existing_bracket.data[0]["id"]
-            }
+        # Prepare teams data for bracket generation
+        teams_data = []
+        for team in teams:
+            teams_data.append({
+                "id": team["id"],
+                "name": team["name"],
+                "captain_name": team.get("captain_name", "Unknown")
+            })
         
-        # Calculate total rounds (power of 2 bracket)
-        team_count = len(teams)
-        total_rounds = 1
-        while (2 ** total_rounds) < team_count:
-            total_rounds += 1
+        # Generate bracket structure
+        bracket = generate_bracket_structure(teams_data, tournament)
         
-        # Create bracket structure
-        bracket_data = {
+        # Save bracket
+        bracket_record = {
+            "id": str(uuid4()),
             "tournament_id": tournament_id,
-            "teams": teams,
-            "total_rounds": total_rounds,
-            "current_round": 1,
-            "rounds": []
+            "bracket_data": json.dumps(bracket),
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
         }
         
-        # Create rounds and matches
-        for round_num in range(1, total_rounds + 1):
-            round_data = {
-                "round_number": round_num,
-                "name": f"Round {round_num}",
-                "matches": []
-            }
-            
-            # Calculate number of matches for this round
-            if round_num == 1:
-                # First round
-                matches_in_round = (team_count + 1) // 2
-                for match_num in range(1, matches_in_round + 1):
-                    team1_idx = (match_num - 1) * 2
-                    team2_idx = team1_idx + 1
-                    
-                    match_data = {
-                        "match_number": match_num,
-                        "team1_id": teams[team1_idx]["id"] if team1_idx < len(teams) else None,
-                        "team2_id": teams[team2_idx]["id"] if team2_idx < len(teams) else None,
-                        "team1_name": teams[team1_idx]["name"] if team1_idx < len(teams) else "BYE",
-                        "team2_name": teams[team2_idx]["name"] if team2_idx < len(teams) else "BYE",
-                        "winner_id": None,
-                        "score1": 0,
-                        "score2": 0,
-                        "status": "scheduled"
-                    }
-                    
-                    # Create match in database
-                    match_response = supabase.table("matches").insert({
-                        "tournament_id": tournament_id,
-                        "round_number": round_num,
-                        "match_number": match_num,
-                        "team1_id": match_data["team1_id"],
-                        "team2_id": match_data["team2_id"],
-                        "team1_name": match_data["team1_name"],
-                        "team2_name": match_data["team2_name"],
-                        "status": "scheduled"
-                    }).execute()
-                    
-                    if match_response.data:
-                        match_data["id"] = match_response.data[0]["id"]
-                    
-                    round_data["matches"].append(match_data)
-            else:
-                # Later rounds (will be filled as winners advance)
-                matches_in_round = matches_in_round // 2
-                for match_num in range(1, matches_in_round + 1):
-                    round_data["matches"].append({
-                        "match_number": match_num,
-                        "team1_id": None,
-                        "team2_id": None,
-                        "team1_name": "TBD",
-                        "team2_name": "TBD",
-                        "winner_id": None,
-                        "score1": 0,
-                        "score2": 0,
-                        "status": "pending"
-                    })
-            
-            bracket_data["rounds"].append(round_data)
+        # Check if bracket exists
+        existing_brackets = supabase_request("GET", f"brackets?tournament_id=eq.{tournament_id}")
+        if existing_brackets and len(existing_brackets) > 0:
+            supabase_request("PATCH", f"brackets?tournament_id=eq.{tournament_id}", {
+                "bracket_data": json.dumps(bracket),
+                "updated_at": datetime.utcnow().isoformat()
+            })
+        else:
+            supabase_request("POST", "brackets", bracket_record)
         
-        # Create bracket record
-        bracket_response = supabase.table("brackets").insert({
-            "tournament_id": tournament_id,
-            "bracket_data": json.dumps(bracket_data),
-            "total_rounds": total_rounds,
-            "current_round": 1
-        }).execute()
+        # Create match records from bracket
+        for round_data in bracket.get("rounds", []):
+            round_number = round_data["round_number"]
+            
+            for match in round_data.get("matches", []):
+                match_record = {
+                    "id": match["match_id"],
+                    "tournament_id": tournament_id,
+                    "round_number": round_number,
+                    "round": round_number,  # For compatibility
+                    "match_number": match["match_number"],
+                    "team1_id": match.get("team1_id"),
+                    "team2_id": match.get("team2_id"),
+                    "team1_name": match["team1_name"],
+                    "team2_name": match["team2_name"],
+                    "status": match["status"],
+                    "created_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+                
+                # Check if match exists
+                existing_matches = supabase_request("GET", f"matches?id=eq.{match['match_id']}")
+                if not existing_matches or len(existing_matches) == 0:
+                    supabase_request("POST", "matches", match_record)
         
         # Update tournament status
-        supabase.table("tournaments").update({
+        supabase_request("PATCH", f"tournaments?id=eq.{tournament_id}", {
             "status": "ongoing",
             "current_round": 1,
-            "total_rounds": total_rounds
-        }).eq("id", tournament_id).execute()
+            "updated_at": datetime.utcnow().isoformat()
+        })
+        
+        # Broadcast to WebSocket clients
+        await manager.broadcast(tournament_id, {
+            "type": "bracket_generated",
+            "tournament_id": tournament_id,
+            "bracket": bracket
+        })
         
         return {
             "success": True,
             "message": "Bracket generated successfully",
-            "bracket_id": bracket_response.data[0]["id"] if bracket_response.data else None,
-            "total_rounds": total_rounds
+            "bracket": bracket
         }
         
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate bracket: {str(e)}")
+        logger.error(f"Generate bracket error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate bracket")
 
-@app.post("/api/tournament-pass/{tournament_id}/update-bracket", response_model=Dict[str, Any])
-async def update_bracket(tournament_id: str, bracket_update: Dict[str, Any], current_user: dict = Depends(get_current_user)):
+@app.post("/api/tournament-pass/{tournament_id}/update-match")
+async def update_match_result(
+    tournament_id: str, 
+    match_result: MatchResult,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Update match result"""
     try:
-        # Get existing bracket
-        bracket_response = supabase.table("brackets").select("*").eq("tournament_id", tournament_id).execute()
+        # Get tournament
+        tournaments = supabase_request("GET", f"tournaments?id=eq.{tournament_id}")
+        if not tournaments or len(tournaments) == 0:
+            raise HTTPException(status_code=404, detail="Tournament not found")
         
-        if not bracket_response.data:
-            raise HTTPException(status_code=404, detail="Bracket not found")
-        
-        bracket = bracket_response.data[0]
-        
-        # Update bracket data
-        update_data = {
-            "bracket_data": json.dumps(bracket_update.get("bracket", {})),
+        # Update match
+        match_update = {
+            "winner_id": match_result.winner_id,
+            "team1_score": match_result.team1_score,
+            "team2_score": match_result.team2_score,
+            "status": "completed",
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        if "current_round" in bracket_update:
-            update_data["current_round"] = bracket_update["current_round"]
-            
-            # Update tournament current round
-            supabase.table("tournaments").update({
-                "current_round": bracket_update["current_round"]
-            }).eq("id", tournament_id).execute()
+        supabase_request("PATCH", f"matches?id=eq.{match_result.match_id}", match_update)
         
-        # Update bracket
-        response = supabase.table("brackets").update(update_data).eq("id", bracket["id"]).execute()
+        # Get bracket
+        brackets = supabase_request("GET", f"brackets?tournament_id=eq.{tournament_id}")
+        if brackets and len(brackets) > 0:
+            bracket = json.loads(brackets[0]["bracket_data"])
+            updated_bracket = update_bracket_with_result(bracket, match_result)
+            
+            # Update bracket
+            supabase_request("PATCH", f"brackets?tournament_id=eq.{tournament_id}", {
+                "bracket_data": json.dumps(updated_bracket),
+                "updated_at": datetime.utcnow().isoformat()
+            })
+            
+            # Broadcast update
+            await manager.broadcast(tournament_id, {
+                "type": "match_updated",
+                "tournament_id": tournament_id,
+                "match_result": match_result.dict(),
+                "bracket": updated_bracket
+            })
         
         return {
             "success": True,
-            "message": "Bracket updated successfully",
-            "bracket": response.data[0] if response.data else None
+            "message": "Match result updated"
         }
         
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update bracket: {str(e)}")
+        logger.error(f"Update match error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update match")
 
-# ========== STATISTICS ENDPOINTS ==========
-@app.get("/api/stats", response_model=Dict[str, Any])
-async def get_stats():
+@app.get("/api/tournament-pass/{tournament_id}/manage")
+async def get_tournament_manage(tournament_id: str, current_user: Dict = Depends(get_current_user)):
+    """Get tournament management data"""
     try:
-        # Get tournament stats
-        tournaments_response = supabase.table("tournaments").select("status", count="exact").execute()
+        tournaments = supabase_request("GET", f"tournaments?id=eq.{tournament_id}")
         
-        # Count by status
-        status_counts = {}
-        if tournaments_response.count:
-            all_tournaments = supabase.table("tournaments").select("*").execute()
-            for tournament in all_tournaments.data:
-                status = tournament["status"]
-                status_counts[status] = status_counts.get(status, 0) + 1
+        if not tournaments or len(tournaments) == 0:
+            raise HTTPException(status_code=404, detail="Tournament not found")
         
-        # Get total teams
-        teams_response = supabase.table("teams").select("id", count="exact").execute()
-        total_teams = teams_response.count or 0
+        tournament = tournaments[0]
         
-        # Get active matches (ongoing status)
-        matches_response = supabase.table("matches").select("id", count="exact").eq("status", "ongoing").execute()
-        live_matches = matches_response.count or 0
+        # Get teams
+        teams = supabase_request("GET", f"teams?tournament_id=eq.{tournament_id}")
         
-        # Get server stats
-        servers_response = supabase.table("server_stats").select("*").execute()
-        connected_servers = len(servers_response.data) if servers_response.data else 0
+        # Get matches
+        matches = supabase_request("GET", f"matches?tournament_id=eq.{tournament_id}&order=round_number.asc,match_number.asc")
         
-        # Calculate total members across all servers
-        total_members = sum(server.get("member_count", 0) for server in (servers_response.data or []))
+        # Get bracket
+        brackets = supabase_request("GET", f"brackets?tournament_id=eq.{tournament_id}")
+        bracket = brackets[0] if brackets and len(brackets) > 0 else None
+        
+        if bracket and bracket.get("bracket_data"):
+            bracket["bracket_data"] = json.loads(bracket["bracket_data"])
+        
+        return {
+            "success": True,
+            "tournament": tournament,
+            "bracket": bracket,
+            "teams": teams if teams else [],
+            "matches": matches if matches else []
+        }
+        
+    except Exception as e:
+        logger.error(f"Get tournament manage error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get tournament data")
+
+# ========== TOURNAMENT PASS AUTH ==========
+@app.post("/api/tournament-pass/auth")
+async def auth_tournament_pass(pass_code: str = Form(...), current_user: Dict = Depends(get_current_user)):
+    """Authenticate with tournament pass"""
+    try:
+        # Find tournament with this pass
+        tournaments = supabase_request("GET", f"tournaments?tournament_pass=eq.{pass_code}")
+        
+        if not tournaments or len(tournaments) == 0:
+            raise HTTPException(status_code=404, detail="Invalid tournament pass")
+        
+        tournament = tournaments[0]
+        
+        return {
+            "success": True,
+            "message": "Tournament pass accepted",
+            "tournament": tournament
+        }
+        
+    except Exception as e:
+        logger.error(f"Tournament pass auth error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to authenticate tournament pass")
+
+# ========== STATS & MISC ROUTES ==========
+@app.get("/api/stats")
+async def get_stats():
+    """Get platform statistics"""
+    try:
+        tournaments = supabase_request("GET", "tournaments?status=in.(registration,ongoing)")
+        teams = supabase_request("GET", "teams")
+        servers = supabase_request("GET", "bot_servers")
+        matches = supabase_request("GET", "matches?status=eq.ongoing")
         
         return {
             "success": True,
             "stats": {
-                "active_tournaments": status_counts.get("ongoing", 0) + status_counts.get("registration", 0),
-                "total_teams": total_teams,
-                "connected_servers": connected_servers,
-                "live_matches": live_matches,
-                "total_members": total_members,
-                "tournament_status": status_counts
+                "active_tournaments": len(tournaments) if tournaments else 0,
+                "total_teams": len(teams) if teams else 0,
+                "connected_servers": len(servers) if servers else 0,
+                "live_matches": len(matches) if matches else 0
             }
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get statistics: {str(e)}")
+        logger.error(f"Stats error: {e}")
+        return {
+            "success": True,
+            "stats": {
+                "active_tournaments": 0,
+                "total_teams": 0,
+                "connected_servers": 0,
+                "live_matches": 0
+            }
+        }
 
-# ========== DISCORD BOT ENDPOINTS ==========
-@app.post("/api/bot/server-stats", response_model=Dict[str, Any])
-async def update_server_stats(stats: ServerStatsUpdate):
+@app.post("/api/bot/server-stats")
+async def update_server_stats(request: Request):
+    """Update server stats from bot"""
     try:
+        data = await request.json()
+        
+        server_id = data.get("server_id")
+        server_name = data.get("server_name")
+        member_count = data.get("member_count", 0)
+        icon_url = data.get("icon_url")
+        
+        if not server_id:
+            raise HTTPException(status_code=400, detail="Server ID required")
+        
         # Check if server exists
-        existing_response = supabase.table("server_stats").select("*").eq("server_id", stats.server_id).execute()
+        servers = supabase_request("GET", f"bot_servers?server_id=eq.{server_id}")
         
-        if existing_response.data:
-            # Update existing
-            response = supabase.table("server_stats").update({
-                "server_name": stats.server_name,
-                "member_count": stats.member_count,
-                "icon_url": stats.icon_url,
-                "last_updated": datetime.utcnow().isoformat()
-            }).eq("server_id", stats.server_id).execute()
+        server_data = {
+            "server_id": server_id,
+            "server_name": server_name,
+            "member_count": member_count,
+            "icon_url": icon_url,
+            "last_updated": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        if servers and len(servers) > 0:
+            supabase_request("PATCH", f"bot_servers?server_id=eq.{server_id}", server_data)
         else:
-            # Insert new
-            response = supabase.table("server_stats").insert({
-                "server_id": stats.server_id,
-                "server_name": stats.server_name,
-                "member_count": stats.member_count,
-                "icon_url": stats.icon_url
-            }).execute()
+            server_data["id"] = str(uuid4())
+            server_data["created_at"] = datetime.utcnow().isoformat()
+            supabase_request("POST", "bot_servers", server_data)
         
-        return {
-            "success": True,
-            "message": "Server stats updated",
-            "server": response.data[0] if response.data else None
-        }
+        return {"success": True, "message": "Server stats updated"}
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update server stats: {str(e)}")
+        logger.error(f"Server stats error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update server stats")
 
-@app.get("/api/bot/servers", response_model=Dict[str, Any])
-async def get_bot_servers():
+# ========== WEBSOCKET ==========
+@app.websocket("/ws/tournament/{tournament_id}")
+async def websocket_endpoint(websocket: WebSocket, tournament_id: str):
+    await manager.connect(websocket, tournament_id)
     try:
-        response = supabase.table("server_stats").select("*").order("last_updated", desc=True).execute()
+        while True:
+            data = await websocket.receive_json()
+            # Handle client messages if needed
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, tournament_id)
+
+# ========== DEBUG ENDPOINTS ==========
+@app.get("/api/debug/tables")
+async def debug_tables():
+    """Debug endpoint to check table structure"""
+    try:
+        tables = ["users", "tournaments", "teams", "matches", "bot_servers", "brackets"]
+        results = {}
+        
+        for table in tables:
+            try:
+                data = supabase_request("GET", f"{table}?limit=1")
+                results[table] = {
+                    "exists": True,
+                    "sample": data[0] if data and len(data) > 0 else "No data",
+                    "columns": list(data[0].keys()) if data and len(data) > 0 else []
+                }
+            except Exception as e:
+                results[table] = {
+                    "exists": False,
+                    "error": str(e)
+                }
         
         return {
             "success": True,
-            "servers": response.data or [],
-            "total": len(response.data) if response.data else 0
+            "tables": results
         }
-        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get servers: {str(e)}")
-
-# ========== ERROR HANDLERS ==========
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
+        return {
             "success": False,
-            "detail": exc.detail,
-            "status_code": exc.status_code
+            "error": str(e)
         }
-    )
 
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(
-        status_code=500,
-        content={
-            "success": False,
-            "detail": "Internal server error",
-            "error": str(exc)
-        }
-    )
-
-# ========== STARTUP ==========
-@app.on_event("startup")
-async def startup_event():
-    print("🚀 XTourney API starting up...")
-    print(f"📊 Database: Supabase PostgreSQL")
-    print(f"🔗 Supabase URL: {SUPABASE_URL[:30]}...")
-    print("✅ API is ready to receive requests")
-
+# ========== RUN APP ==========
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
-
