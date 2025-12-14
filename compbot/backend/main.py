@@ -1,1055 +1,1372 @@
-# backend/main.py - COMPLETE UPDATED VERSION
-from fastapi import FastAPI, HTTPException, Request, Depends, status, Form, WebSocket, WebSocketDisconnect
-import json
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+# bot.py - FIXED FOR NEW SCHEMA
+import string
+import discord
+from discord import app_commands, Interaction, Embed, Color, ButtonStyle, ui
+from discord.ext import commands, tasks
+import aiohttp
 import os
-import requests
-import hashlib
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List, Any
-from pydantic import BaseModel, EmailStr, Field
-import jwt
-from uuid import uuid4
-import logging
-import math
-import random
+import json
+from typing import Optional, Dict, List
 import asyncio
-from collections import defaultdict
-
-# ========== SETUP LOGGING ==========
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+import uuid
+import random
+import re
 
 # ========== CONFIGURATION ==========
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
-JWT_SECRET = os.getenv("JWT_SECRET", "xtourney-secret-key-2024")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://www.xotiicsplaza.us")
-DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
-DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "")
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")  # NO DEFAULT VALUE - USE ENV VARIABLE
+API_URL = os.getenv("API_URL", "https://compbot-lhuy.onrender.com")
+WEBSITE_URL = os.getenv("WEBSITE_URL", "https://www.xotiicsplaza.us")
 
-# Headers for Supabase
-headers = {
-    "apikey": SUPABASE_KEY,
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {SUPABASE_KEY}"
-}
+# ========== BOT SETUP ==========
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+intents.guilds = True
 
-# ========== APP INITIALIZATION ==========
-app = FastAPI(title="XTourney API", version="2.0")
-
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ========== WEBSOCKET MANAGER ==========
-class ConnectionManager:
+class TournamentBot(commands.Bot):
     def __init__(self):
-        self.active_connections: Dict[str, List[WebSocket]] = defaultdict(list)
-    
-    async def connect(self, websocket: WebSocket, tournament_id: str):
-        await websocket.accept()
-        self.active_connections[tournament_id].append(websocket)
-        logger.info(f"WebSocket connected for tournament {tournament_id}")
-    
-    def disconnect(self, websocket: WebSocket, tournament_id: str):
-        if tournament_id in self.active_connections:
-            self.active_connections[tournament_id].remove(websocket)
-    
-    async def broadcast(self, tournament_id: str, message: dict):
-        if tournament_id in self.active_connections:
-            for connection in self.active_connections[tournament_id]:
-                try:
-                    await connection.send_json(message)
-                except:
-                    pass
-
-manager = ConnectionManager()
-
-# ========== MODELS ==========
-class UserRegister(BaseModel):
-    username: str = Field(..., min_length=3, max_length=20)
-    password: str = Field(..., min_length=6)
-    email: Optional[EmailStr] = None
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
-
-class TournamentCreate(BaseModel):
-    name: str
-    game: str
-    max_teams: int = 16
-    max_players: int = 5
-    prize_pool: Optional[str] = None
-    description: Optional[str] = None
-
-class DiscordTournamentCreate(BaseModel):
-    name: str
-    game: str
-    max_teams: int = 16
-    max_players_per_team: int = 5
-    prize_pool: Optional[str] = None
-    description: Optional[str] = None
-    tournament_pass: str
-    host_id: str
-    created_by: str
-    discord_server_id: Optional[str] = None
-    discord_invite_code: Optional[str] = None  # NEW: Auto-created invite
-
-class BracketUpdate(BaseModel):
-    bracket_data: Dict[str, Any]
-    status: Optional[str] = None
-
-class MatchResult(BaseModel):
-    match_id: str
-    winner_id: Optional[str] = None
-    team1_score: Optional[int] = 0
-    team2_score: Optional[int] = 0
-    round_number: int
-    match_number: int
-
-# ========== SUPABASE HELPERS ==========
-def supabase_request(method: str, endpoint: str, data: dict = None):
-    url = f"{SUPABASE_URL}/rest/v1/{endpoint}"
-    
-    try:
-        if method == "GET":
-            response = requests.get(url, headers=headers)
-        elif method == "POST":
-            response = requests.post(url, json=data, headers=headers)
-        elif method == "PATCH":
-            response = requests.patch(url, json=data, headers=headers)
-        elif method == "DELETE":
-            response = requests.delete(url, headers=headers)
-        elif method == "PUT":
-            response = requests.put(url, json=data, headers=headers)
-        else:
-            raise ValueError(f"Invalid method: {method}")
+        super().__init__(
+            command_prefix="!",
+            intents=intents,
+            help_command=None
+        )
+        self.session = None
+        self.server_stats_cache = {}
         
-        if response.status_code in [200, 201, 204]:
+    async def setup_hook(self):
+        self.session = aiohttp.ClientSession()
+        print("✅ Tournament Bot is starting up...")
+        
+        # Start background tasks
+        self.stats_update_task.start()
+        
+    async def close(self):
+        if self.session:
+            await self.session.close()
+        await super().close()
+    
+    @tasks.loop(minutes=5)
+    async def stats_update_task(self):
+        """Update server statistics to backend"""
+        for guild in self.guilds:
             try:
-                return response.json()
-            except:
-                return {"success": True}
-        elif response.status_code == 404:
-            return []
-        else:
-            error_text = response.text[:500]
-            logger.error(f"Supabase error {response.status_code}: {error_text}")
-            raise HTTPException(status_code=500, detail=f"Database error: {response.status_code}")
-            
-    except Exception as e:
-        logger.error(f"Supabase request error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Database connection failed")
-
-# ========== DISCORD INVITE HELPER ==========
-async def create_discord_invite(server_id: str) -> Optional[str]:
-    """Create Discord invite using Discord API"""
-    if not DISCORD_BOT_TOKEN or not server_id:
-        return None
-    
-    try:
-        headers = {
-            "Authorization": f"Bot {DISCORD_BOT_TOKEN}",
-            "Content-Type": "application/json"
-        }
-        
-        # Get guild channels
-        channels_url = f"https://discord.com/api/v10/guilds/{server_id}/channels"
-        channels_response = requests.get(channels_url, headers=headers, timeout=10)
-        
-        if channels_response.status_code != 200:
-            logger.error(f"Failed to get channels: {channels_response.status_code}")
-            return None
-        
-        channels = channels_response.json()
-        
-        # Find first text channel
-        text_channels = [c for c in channels if c.get('type') == 0]  # Type 0 = text channel
-        
-        if not text_channels:
-            logger.error("No text channels found")
-            return None
-        
-        channel_id = text_channels[0]['id']
-        
-        # Create invite
-        invite_data = {
-            "max_age": 604800,  # 7 days
-            "max_uses": 0,      # Unlimited
-            "temporary": False,
-            "unique": True
-        }
-        
-        invite_url = f"https://discord.com/api/v10/channels/{channel_id}/invites"
-        invite_response = requests.post(invite_url, headers=headers, json=invite_data, timeout=10)
-        
-        if invite_response.status_code == 200:
-            invite = invite_response.json()
-            invite_code = invite.get('code')
-            return f"https://discord.gg/{invite_code}"
-        else:
-            logger.error(f"Failed to create invite: {invite_response.status_code}")
-            return None
-            
-    except Exception as e:
-        logger.error(f"Discord invite error: {e}")
-        return None
-
-# ========== AUTH HELPERS ==========
-def create_token(user_data: dict) -> str:
-    payload = {
-        "sub": user_data.get("id"),
-        "username": user_data.get("username"),
-        "is_host": user_data.get("is_host", False),
-        "is_admin": user_data.get("is_admin", False),
-        "iat": datetime.utcnow(),
-        "exp": datetime.utcnow() + timedelta(days=30)
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-
-def verify_token(token: str) -> Optional[Dict]:
-    try:
-        return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-    except:
-        return None
-
-security = HTTPBearer()
-
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    payload = verify_token(token)
-    
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    user_id = payload.get("sub")
-    users = supabase_request("GET", f"users?id=eq.{user_id}")
-    
-    if not users or len(users) == 0:
-        raise HTTPException(status_code=401, detail="User not found")
-    
-    return users[0]
-
-# ========== BRACKET HELPER FUNCTIONS ==========
-def generate_bracket_structure(teams: List[Dict], tournament: Dict) -> Dict:
-    """Generate complete bracket structure"""
-    total_teams = len(teams)
-    if total_teams < 2:
-        raise HTTPException(status_code=400, detail="Need at least 2 teams")
-    
-    # Calculate rounds (power of 2)
-    next_power_of_two = 2 ** math.ceil(math.log2(total_teams))
-    total_rounds = int(math.log2(next_power_of_two))
-    
-    # Shuffle teams for random seeding
-    shuffled_teams = teams.copy()
-    random.shuffle(shuffled_teams)
-    
-    # Add BYEs if needed
-    while len(shuffled_teams) < next_power_of_two:
-        shuffled_teams.append({
-            "id": f"bye_{uuid4().hex[:8]}",
-            "name": "BYE",
-            "is_bye": True
-        })
-    
-    bracket = {
-        "tournament_id": tournament["id"],
-        "tournament_name": tournament["name"],
-        "total_rounds": total_rounds,
-        "current_round": 1,
-        "teams_count": total_teams,
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
-        "rounds": []
-    }
-    
-    # Generate first round matches
-    round1_matches = []
-    match_number = 1
-    
-    for i in range(0, len(shuffled_teams), 2):
-        team1 = shuffled_teams[i]
-        team2 = shuffled_teams[i + 1] if i + 1 < len(shuffled_teams) else {"id": "bye", "name": "BYE", "is_bye": True}
-        
-        match_id = f"match_{tournament['id']}_r1_m{match_number}"
-        
-        match = {
-            "match_id": match_id,
-            "round_number": 1,
-            "match_number": match_number,
-            "team1_id": team1["id"],
-            "team1_name": team1["name"],
-            "team1_seed": i + 1,
-            "team2_id": team2["id"],
-            "team2_name": team2["name"],
-            "team2_seed": i + 2,
-            "winner_id": None,
-            "team1_score": 0,
-            "team2_score": 0,
-            "status": "pending",
-            "is_bye": team1.get("is_bye") or team2.get("is_bye"),
-            "next_match": None,
-            "next_team_slot": None
-        }
-        
-        round1_matches.append(match)
-        match_number += 1
-    
-    bracket["rounds"].append({
-        "round_number": 1,
-        "matches": round1_matches
-    })
-    
-    # Generate empty future rounds with connections
-    for round_num in range(2, total_rounds + 1):
-        matches_in_round = next_power_of_two // (2 ** round_num)
-        round_matches = []
-        
-        for match_num in range(1, matches_in_round + 1):
-            match_id = f"match_{tournament['id']}_r{round_num}_m{match_num}"
-            
-            # Calculate which matches from previous round feed into this one
-            prev_match1_num = (match_num * 2) - 1
-            prev_match2_num = match_num * 2
-            
-            match = {
-                "match_id": match_id,
-                "round_number": round_num,
-                "match_number": match_num,
-                "team1_id": None,
-                "team1_name": "TBD",
-                "team1_seed": None,
-                "team2_id": None,
-                "team2_name": "TBD",
-                "team2_seed": None,
-                "winner_id": None,
-                "team1_score": 0,
-                "team2_score": 0,
-                "status": "pending",
-                "is_bye": False,
-                "next_match": None,
-                "next_team_slot": None,
-                "source_matches": [
-                    f"match_{tournament['id']}_r{round_num-1}_m{prev_match1_num}",
-                    f"match_{tournament['id']}_r{round_num-1}_m{prev_match2_num}"
-                ]
-            }
-            
-            # Update previous matches to point to this one
-            if round_num > 1:
-                prev_round = bracket["rounds"][round_num - 2]
-                if prev_match1_num <= len(prev_round["matches"]):
-                    prev_round["matches"][prev_match1_num - 1]["next_match"] = match_id
-                    prev_round["matches"][prev_match1_num - 1]["next_team_slot"] = "team1"
-                if prev_match2_num <= len(prev_round["matches"]):
-                    prev_round["matches"][prev_match2_num - 1]["next_match"] = match_id
-                    prev_round["matches"][prev_match2_num - 1]["next_team_slot"] = "team2"
-            
-            round_matches.append(match)
-        
-        bracket["rounds"].append({
-            "round_number": round_num,
-            "matches": round_matches
-        })
-    
-    return bracket
-
-def update_bracket_with_result(bracket: Dict, match_result: MatchResult) -> Dict:
-    """Update bracket with match result and propagate winners"""
-    for round_data in bracket["rounds"]:
-        if round_data["round_number"] == match_result.round_number:
-            for match in round_data["matches"]:
-                if match["match_number"] == match_result.match_number:
-                    # Update match result
-                    match["winner_id"] = match_result.winner_id
-                    match["team1_score"] = match_result.team1_score
-                    match["team2_score"] = match_result.team2_score
-                    match["status"] = "completed"
-                    
-                    # Propagate winner to next round if applicable
-                    if match["next_match"] and match["winner_id"]:
-                        winner_team_id = match["winner_id"]
-                        winner_team_name = match["team1_name"] if winner_team_id == match["team1_id"] else match["team2_name"]
+                async with self.session.post(f"{API_URL}/api/bot/server-stats", json={
+                    "server_id": str(guild.id),
+                    "server_name": guild.name,
+                    "member_count": guild.member_count,
+                    "icon_url": str(guild.icon.url) if guild.icon else None
+                }) as response:
+                    if response.status == 200:
+                        print(f"✅ Updated stats for {guild.name}")
+                    else:
+                        print(f"❌ Failed to update stats for {guild.name}: {response.status}")
                         
-                        # Find next match and update team slot
-                        for next_round in bracket["rounds"]:
-                            if next_round["round_number"] == match["round_number"] + 1:
-                                for next_match in next_round["matches"]:
-                                    if next_match["match_id"] == match["next_match"]:
-                                        if match["next_team_slot"] == "team1":
-                                            next_match["team1_id"] = winner_team_id
-                                            next_match["team1_name"] = winner_team_name
-                                        else:
-                                            next_match["team2_id"] = winner_team_id
-                                            next_match["team2_name"] = winner_team_name
-                                        
-                                        # If both teams are set, mark as ready
-                                        if next_match["team1_id"] and next_match["team2_id"]:
-                                            next_match["status"] = "ready"
-                                        break
-                                break
-                    
-                    break
+                self.server_stats_cache[str(guild.id)] = {
+                    "name": guild.name,
+                    "members": guild.member_count,
+                    "icon": str(guild.icon.url) if guild.icon else None
+                }
+            except Exception as e:
+                print(f"Error updating server {guild.name}: {e}")
+
+bot = TournamentBot()
+
+# ========== API HELPER FUNCTIONS ==========
+async def api_request(endpoint, method="GET", data=None, token=None):
+    """Make API request to backend"""
+    url = f"{API_URL}{endpoint}"
+    headers = {
+        'Content-Type': 'application/json',
+    }
     
-    bracket["updated_at"] = datetime.utcnow().isoformat()
-    return bracket
-
-# ========== ROUTES ==========
-@app.get("/")
-async def root():
-    return {"message": "XTourney API v2.0", "status": "running"}
-
-@app.get("/api/health")
-async def health_check():
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
-
-# User routes (same as before)
-@app.post("/api/register")
-async def register(user: UserRegister):
-    """Register new user"""
+    if token:
+        headers['Authorization'] = f'Bearer {token}'
+    
     try:
-        existing = supabase_request("GET", f"users?username=eq.{user.username}")
-        if existing and len(existing) > 0:
-            raise HTTPException(status_code=400, detail="Username already exists")
-        
-        if user.email:
-            existing_email = supabase_request("GET", f"users?email=eq.{user.email}")
-            if existing_email and len(existing_email) > 0:
-                raise HTTPException(status_code=400, detail="Email already registered")
-        
-        password_hash = hashlib.sha256(user.password.encode()).hexdigest()
-        
-        user_id = str(uuid4())
-        user_data = {
-            "id": user_id,
-            "username": user.username,
-            "email": user.email if user.email else None,
-            "password_hash": password_hash,
-            "account_type": "email",
-            "is_verified": False,
-            "is_host": False,
-            "is_admin": False,
-            "created_at": datetime.utcnow().isoformat(),
-            "last_login": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        
-        result = supabase_request("POST", "users", user_data)
-        
-        token_data = {
-            "id": user_id,
-            "username": user.username,
-            "email": user.email if user.email else None,
-            "is_host": False,
-            "is_admin": False
-        }
-        
-        token = create_token(token_data)
-        
-        return {
-            "success": True,
-            "token": token,
-            "user": token_data
-        }
-        
+        async with bot.session.request(method, url, json=data, headers=headers) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                error_text = await response.text()
+                try:
+                    error_json = json.loads(error_text)
+                    error_detail = error_json.get('detail', error_text)
+                    raise Exception(f"API Error {response.status}: {error_detail}")
+                except:
+                    raise Exception(f"API Error {response.status}: {error_text}")
     except Exception as e:
-        logger.error(f"Register error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Registration failed")
+        raise Exception(f"Connection error: {str(e)}")
 
-@app.post("/api/login")
-async def login(user: UserLogin):
-    """Login user"""
-    try:
-        users = supabase_request("GET", f"users?username=eq.{user.username}")
-        if not users or len(users) == 0:
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+# ========== MODALS ==========
+class TournamentCreateModal(ui.Modal, title="Create Tournament"):
+    name = ui.TextInput(
+        label="Tournament Name",
+        placeholder="Summer Championship 2024",
+        required=True,
+        max_length=100
+    )
+    
+    game = ui.TextInput(
+        label="Game",
+        placeholder="Valorant, CS2, League of Legends, etc.",
+        required=True,
+        max_length=50
+    )
+    
+    max_teams = ui.TextInput(
+        label="Max Teams (8, 16, 32, 64)",
+        placeholder="16",
+        required=True,
+        default="16",
+        max_length=2
+    )
+    
+    max_players = ui.TextInput(
+        label="Players Per Team (1-10)",
+        placeholder="5",
+        required=True,
+        default="5",
+        max_length=2
+    )
+    
+    description = ui.TextInput(
+        label="Description (Optional)",
+        placeholder="Tournament rules, schedule, prize pool info, etc.",
+        style=discord.TextStyle.paragraph,
+        required=False,
+        max_length=500
+    )
+    
+    async def on_submit(self, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True)
         
-        db_user = users[0]
-        password_hash = hashlib.sha256(user.password.encode()).hexdigest()
-        
-        if password_hash != db_user.get("password_hash"):
-            raise HTTPException(status_code=401, detail="Invalid credentials")
-        
-        update_data = {
-            "last_login": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        supabase_request("PATCH", f"users?id=eq.{db_user['id']}", update_data)
-        
-        token_data = {
-            "id": db_user["id"],
-            "username": db_user["username"],
-            "email": db_user.get("email"),
-            "is_host": db_user.get("is_host", False),
-            "is_admin": db_user.get("is_admin", False)
-        }
-        
-        token = create_token(token_data)
-        
-        return {
-            "success": True,
-            "token": token,
-            "user": token_data
-        }
-        
-    except Exception as e:
-        logger.error(f"Login error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Login failed")
-
-# Tournament routes with auto-invite creation
-@app.get("/api/tournaments")
-async def get_tournaments():
-    """Get all tournaments"""
-    try:
-        tournaments = supabase_request("GET", "tournaments?order=created_at.desc")
-        
-        if tournaments:
-            for tournament in tournaments:
-                teams = supabase_request("GET", f"teams?tournament_id=eq.{tournament['id']}")
-                tournament["team_count"] = len(teams) if teams else 0
-                tournament["current_teams"] = tournament.get("team_count", 0)
-                tournament["currentTeams"] = tournament.get("team_count", 0)
-        
-        return {
-            "success": True,
-            "tournaments": tournaments if tournaments else [],
-            "count": len(tournaments) if tournaments else 0
-        }
-        
-    except Exception as e:
-        logger.error(f"Get tournaments error: {e}")
-        return {"success": True, "tournaments": [], "count": 0}
-
-@app.post("/api/tournaments/discord")
-async def create_tournament_discord(request: Request):
-    """Create tournament from Discord bot WITH AUTO-INVITE"""
-    try:
-        data = await request.json()
-        
-        required = ["name", "game", "max_teams", "max_players_per_team", "tournament_pass", "host_id", "created_by"]
-        for field in required:
-            if field not in data:
-                raise HTTPException(status_code=400, detail=f"Missing field: {field}")
-        
-        # AUTO-CREATE DISCORD INVITE
-        discord_invite_url = None
-        if data.get("discord_server_id"):
-            discord_invite_url = await create_discord_invite(data["discord_server_id"])
-            logger.info(f"Created Discord invite: {discord_invite_url}")
-        
-        total_rounds = calculate_total_rounds(data["max_teams"])
-        
-        tournament_id = str(uuid4())
-        tournament_data = {
-            "id": tournament_id,
-            "name": data["name"],
-            "game": data["game"],
-            "description": data.get("description", ""),
-            "status": "registration",
-            "max_teams": data["max_teams"],
-            "max_players_per_team": data["max_players_per_team"],
-            "prize_pool": data.get("prize_pool", ""),
-            "tournament_pass": data["tournament_pass"],
-            "host_id": data["host_id"],
-            "created_by": data["created_by"],
-            "discord_server_id": data.get("discord_server_id"),
-            "discord_invite_url": discord_invite_url,  # Store the auto-created invite
-            "current_round": 1,
-            "total_rounds": total_rounds,
-            "team_count": 0,
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        
-        result = supabase_request("POST", "tournaments", tournament_data)
-        
-        return {
-            "success": True,
-            "tournament_id": tournament_id,
-            "tournament_pass": data["tournament_pass"],
-            "discord_invite_url": discord_invite_url,
-            "message": "Tournament created with auto-invite" if discord_invite_url else "Tournament created"
-        }
-        
-    except Exception as e:
-        logger.error(f"Discord tournament creation error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create tournament")
-
-@app.get("/api/tournament/{tournament_id}/discord-invite")
-async def get_tournament_discord_invite(tournament_id: str):
-    """Get Discord invite for tournament"""
-    try:
-        tournaments = supabase_request("GET", f"tournaments?id=eq.{tournament_id}")
-        
-        if not tournaments or len(tournaments) == 0:
-            raise HTTPException(status_code=404, detail="Tournament not found")
-        
-        tournament = tournaments[0]
-        
-        # Return stored invite or try to create new one
-        if tournament.get("discord_invite_url"):
-            return {
-                "success": True,
-                "invite_url": tournament["discord_invite_url"],
-                "invite_code": tournament["discord_invite_url"].replace("https://discord.gg/", "")
+        try:
+            max_teams = int(self.max_teams.value)
+            max_players = int(self.max_players.value)
+            
+            if max_teams not in [8, 16, 32, 64]:
+                await interaction.followup.send("❌ Max teams must be 8, 16, 32, or 64", ephemeral=True)
+                return
+            
+            if max_players < 1 or max_players > 10:
+                await interaction.followup.send("❌ Players per team must be between 1 and 10", ephemeral=True)
+                return
+            
+            tournament_pass = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            
+            tournament_data = {
+                "name": self.name.value,
+                "game": self.game.value,
+                "max_teams": max_teams,
+                "max_players_per_team": max_players,
+                "description": self.description.value if self.description.value else "",
+                "tournament_pass": tournament_pass,
+                "host_id": str(interaction.user.id),
+                "created_by": interaction.user.name,
+                "discord_server_id": str(interaction.guild.id) if interaction.guild else None
             }
+            
+            # Send to backend
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{API_URL}/api/tournaments/discord", 
+                    json=tournament_data,
+                    timeout=aiohttp.ClientTimeout(total=30)
+                ) as response:
+                    
+                    if response.status == 200:
+                        data = await response.json()
+                        
+                        if data.get('success'):
+                            tournament_id = data.get('tournament_id', '')
+                            final_pass = data.get('tournament_pass', tournament_pass)
+                            
+                            # FIXED: Use tournament_id from response
+                            if not tournament_id:
+                                tournament_id = str(uuid.uuid4())
+                            
+                            # 1. Send confirmation to channel
+                            embed = discord.Embed(
+                                title="✅ Tournament Created!",
+                                description=f"**{self.name.value}** has been created!",
+                                color=discord.Color.green(),
+                                timestamp=interaction.created_at
+                            )
+                            
+                            embed.add_field(name="Game", value=self.game.value, inline=True)
+                            embed.add_field(name="Max Teams", value=str(max_teams), inline=True)
+                            embed.add_field(name="Players/Team", value=str(max_players), inline=True)
+                            
+                            if self.description.value:
+                                desc_preview = self.description.value[:150]
+                                if len(self.description.value) > 150:
+                                    desc_preview += "..."
+                                embed.add_field(name="Description", value=desc_preview, inline=False)
+                            
+                            embed.add_field(
+                                name="🌐 Manage on Website", 
+                                value=f"[Click here]({WEBSITE_URL})\nCheck your DMs for the tournament pass!",
+                                inline=False
+                            )
+                            
+                            embed.set_footer(text="Tournament pass has been sent to your DMs")
+                            
+                            # Buttons for server
+                            view = ui.View()
+                            view.add_item(ui.Button(
+                                label="🌐 Open Website",
+                                style=ButtonStyle.link,
+                                url=WEBSITE_URL
+                            ))
+                            
+                            # FIXED: Always show register button with actual tournament_id
+                            view.add_item(ui.Button(
+                                label="👥 Register Team",
+                                style=ButtonStyle.primary,
+                                custom_id=f"register_{tournament_id}"
+                            ))
+                            
+                            await interaction.followup.send(embed=embed, view=view)
+                            
+                            # 2. Send pass in DM ONLY
+                            try:
+                                dm_embed = discord.Embed(
+                                    title="🔐 Your Tournament Pass",
+                                    description=f"**⚠️ KEEP THIS CODE SECRET! ⚠️**\n\nThis pass is required to manage **{self.name.value}** on the website.",
+                                    color=discord.Color.blue(),
+                                    timestamp=interaction.created_at
+                                )
+                                
+                                dm_embed.add_field(name="Tournament", value=self.name.value, inline=False)
+                                dm_embed.add_field(name="Game", value=self.game.value, inline=True)
+                                dm_embed.add_field(name="Format", value=f"{max_players}v{max_players}", inline=True)
+                                dm_embed.add_field(name="Tournament ID", value=f"`{tournament_id}`", inline=False)
+                                
+                                # Pass code in DM only
+                                dm_embed.add_field(
+                                    name="🔑 Tournament Pass Code", 
+                                    value=f"```{final_pass}```\n*Keep this secret - it gives full control*",
+                                    inline=False
+                                )
+                                
+                                # How to use instructions
+                                dm_embed.add_field(
+                                    name="📋 How to Use on Website",
+                                    value=(
+                                        f"1. Go to [XTourney Website]({WEBSITE_URL})\n"
+                                        f"2. Login or create an account\n"
+                                        f"3. Click **'Use Tournament Pass'** in the menu\n"
+                                        f"4. Enter the pass code above\n"
+                                        f"5. You'll get full management access!"
+                                    ),
+                                    inline=False
+                                )
+                                
+                                # Security warning
+                                dm_embed.add_field(
+                                    name="⚠️ Security Notice",
+                                    value="Do NOT share this pass with anyone you don't trust. Anyone with this code can manage your tournament.",
+                                    inline=False
+                                )
+                                
+                                dm_embed.set_footer(text=f"Created at | Keep this message safe!")
+                                
+                                # DM buttons for copying pass
+                                dm_view = ui.View()
+                                dm_view.add_item(ui.Button(
+                                    label="📋 Copy Pass Code",
+                                    style=ButtonStyle.primary,
+                                    custom_id=f"copy_pass_{final_pass}"
+                                ))
+                                dm_view.add_item(ui.Button(
+                                    label="🌐 Open Website",
+                                    style=ButtonStyle.link,
+                                    url=WEBSITE_URL
+                                ))
+                                
+                                await interaction.user.send(embed=dm_embed, view=dm_view)
+                                
+                                # Send a separate follow-up message for backup
+                                backup_msg = await interaction.user.send(
+                                    f"**Tournament Pass Backup:**\n"
+                                    f"```{final_pass}```\n"
+                                    f"Tournament: {self.name.value}\n"
+                                    f"Tournament ID: {tournament_id}\n"
+                                    f"Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+                                )
+                                
+                            except discord.Forbidden:
+                                # User has DMs disabled
+                                dm_error_embed = discord.Embed(
+                                    title="⚠️ DMs Disabled - Pass Not Sent",
+                                    description=f"Your tournament **{self.name.value}** was created, but I couldn't send you the pass via DMs.",
+                                    color=discord.Color.orange()
+                                )
+                                
+                                dm_error_embed.add_field(
+                                    name="How to Get Your Pass",
+                                    value=(
+                                        f"1. Enable DMs from server members\n"
+                                        f"2. Run the command: `/tournament_pass {tournament_id}`\n"
+                                        f"3. Or contact an admin to retrieve your pass"
+                                    ),
+                                    inline=False
+                                )
+                                
+                                dm_error_embed.add_field(
+                                    name="Tournament ID",
+                                    value=f"```{tournament_id}```",
+                                    inline=False
+                                )
+                                
+                                await interaction.followup.send(embed=dm_error_embed, ephemeral=True)
+                            
+                            # 3. Auto-announce in announcements channel
+                            try:
+                                announcement_channel = None
+                                for channel in interaction.guild.text_channels:
+                                    if "announcement" in channel.name.lower() or "tournament" in channel.name.lower():
+                                        announcement_channel = channel
+                                        break
+                                
+                                if not announcement_channel:
+                                    for channel in interaction.guild.text_channels:
+                                        if "general" in channel.name.lower() or "main" in channel.name.lower():
+                                            announcement_channel = channel
+                                            break
+                                
+                                if not announcement_channel:
+                                    announcement_channel = interaction.channel
+                                
+                                # Create announcement WITH ACTUAL TOURNAMENT ID
+                                announce_embed = discord.Embed(
+                                    title="🏆 **NEW TOURNAMENT ANNOUNCEMENT!** 🏆",
+                                    description=f"**{self.name.value}** is now open for registrations!",
+                                    color=discord.Color.gold(),
+                                    timestamp=interaction.created_at
+                                )
+                                
+                                announce_embed.add_field(name="🎮 Game", value=self.game.value, inline=True)
+                                announce_embed.add_field(name="👥 Format", value=f"{max_players}v{max_players}", inline=True)
+                                announce_embed.add_field(name="📊 Max Teams", value=str(max_teams), inline=True)
+                                
+                                # FIXED: Use actual tournament_id
+                                announce_embed.add_field(
+                                    name="📝 HOW TO REGISTER", 
+                                    value=f"**Command:** `/team_register {tournament_id}`\n"
+                                          f"**Or click** the button below!\n"
+                                          f"Make sure to @mention all team members!",
+                                    inline=False
+                                )
+                                
+                                if self.description.value:
+                                    desc_text = self.description.value[:250]
+                                    if len(self.description.value) > 250:
+                                        desc_text += "..."
+                                    announce_embed.add_field(name="📋 Description", value=desc_text, inline=False)
+                                
+                                announce_embed.set_footer(text=f"Hosted by {interaction.user.name}")
+                                
+                                announce_view = ui.View()
+                                # FIXED: Use actual tournament_id for button
+                                announce_view.add_item(ui.Button(
+                                    label="👥 Register Team",
+                                    style=ButtonStyle.primary,
+                                    custom_id=f"register_{tournament_id}"
+                                ))
+                                
+                                announce_view.add_item(ui.Button(
+                                    label="🌐 View on Website",
+                                    style=ButtonStyle.link,
+                                    url=WEBSITE_URL
+                                ))
+                                
+                                await announcement_channel.send(embed=announce_embed, view=announce_view)
+                                
+                            except Exception as e:
+                                print(f"Announcement failed: {e}")
+                                # Don't show error to user
+                                
+                        else:
+                            await interaction.followup.send(
+                                f"❌ Error: {data.get('detail', 'Unknown error')}",
+                                ephemeral=True
+                            )
+                    else:
+                        error_text = await response.text()
+                        await interaction.followup.send(
+                            f"❌ Backend Error ({response.status}): {error_text[:100]}",
+                            ephemeral=True
+                        )
+                        
+        except ValueError:
+            await interaction.followup.send("❌ Please enter valid numbers for teams and players", ephemeral=True)
+        except aiohttp.ClientError as e:
+            await interaction.followup.send(f"❌ Connection error: {str(e)}", ephemeral=True)
+        except Exception as e:
+            print(f"Error creating tournament: {e}")
+            await interaction.followup.send(f"❌ An error occurred: {str(e)}", ephemeral=True)
+
+class TeamRegistrationModal(ui.Modal, title="Register Team"):
+    def __init__(self, tournament_id: str, tournament_name: str):
+        super().__init__()
+        self.tournament_id = tournament_id
+        self.tournament_name = tournament_name
+        self.title = f"Register for: {tournament_name}"
+    
+    team_name = ui.TextInput(
+        label="Team Name",
+        placeholder="Enter your team name",
+        required=True,
+        max_length=50
+    )
+    
+    team_tag = ui.TextInput(
+        label="Team Tag (Optional)",
+        placeholder="e.g., TSM, C9, TL",
+        required=False,
+        max_length=10
+    )
+    
+    region = ui.TextInput(
+        label="Region (NA, EU, ASIA, OCE, SA, GLOBAL)",
+        placeholder="GLOBAL",
+        required=True,
+        max_length=20,
+        default="GLOBAL"
+    )
+    
+    members = ui.TextInput(
+        label="Team Members (@mention them!)",
+        placeholder="@player1 @player2 @player3 ...",
+        style=discord.TextStyle.paragraph,
+        required=True,
+        max_length=1000
+    )
+    
+    async def on_submit(self, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True)
         
-        # Try to create new invite if server ID exists
-        if tournament.get("discord_server_id"):
-            discord_invite_url = await create_discord_invite(tournament["discord_server_id"])
-            if discord_invite_url:
-                # Update tournament with new invite
-                update_data = {
-                    "discord_invite_url": discord_invite_url,
-                    "updated_at": datetime.utcnow().isoformat()
-                }
-                supabase_request("PATCH", f"tournaments?id=eq.{tournament_id}", update_data)
+        # Extract mentions from the input
+        member_mentions = []
+        user_ids = []
+        
+        # Parse mentions from the input
+        for mention in re.findall(r'<@!?(\d+)>', self.members.value):
+            try:
+                user = await interaction.guild.fetch_member(int(mention))
+                member_mentions.append(user.mention)
+                user_ids.append(str(user.id))
+            except:
+                member_mentions.append(f"<@{mention}>")
+                user_ids.append(mention)
+        
+        # Also accept plain text names
+        plain_names = [name.strip() for name in re.sub(r'<@!?\d+>', '', self.members.value).split(',') if name.strip()]
+        member_mentions.extend(plain_names)
+        
+        if not member_mentions:
+            await interaction.followup.send(
+                "❌ Please @mention your players or provide their names.",
+                ephemeral=True
+            )
+            return
+        
+        try:
+            # Prepare team data for backend
+            team_data = {
+                "team_name": self.team_name.value,
+                "tournament_id": self.tournament_id,
+                "captain_id": str(interaction.user.id),
+                "captain_name": interaction.user.name,
+                "members": member_mentions,
+                "region": self.region.value.upper(),
+                "tag": self.team_tag.value if self.team_tag.value else None,
+                "player_ids": user_ids
+            }
+            
+            # Call backend API
+            async with bot.session.post(f"{API_URL}/api/teams/register", json=team_data) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    
+                    if data.get('success'):
+                        team = data.get('team', {})
+                        
+                        embed = discord.Embed(
+                            title="✅ Team Registered Successfully!",
+                            description=f"**{self.team_name.value}** has been registered for **{self.tournament_name}**",
+                            color=discord.Color.green()
+                        )
+                        
+                        embed.add_field(name="Region", value=self.region.value.upper(), inline=True)
+                        embed.add_field(name="Team Size", value=f"{len(member_mentions)} players", inline=True)
+                        embed.add_field(name="Team ID", value=f"`{team.get('id', 'N/A')}`", inline=True)
+                        
+                        # Show tagged players
+                        players_list = "\n".join([f"• {player}" for player in member_mentions[:5]])
+                        if len(member_mentions) > 5:
+                            players_list += f"\n... and {len(member_mentions) - 5} more"
+                        
+                        embed.add_field(name="Players", value=players_list, inline=False)
+                        
+                        # Add website link
+                        embed.add_field(
+                            name="🌐 View on Website", 
+                            value=f"[Click here]({WEBSITE_URL})", 
+                            inline=False
+                        )
+                        
+                        await interaction.followup.send(embed=embed, ephemeral=True)
+                        
+                        # Announce in channel
+                        public_embed = discord.Embed(
+                            title="👥 New Team Registration",
+                            description=f"**{self.team_name.value}** has registered for **{self.tournament_name}**!",
+                            color=discord.Color.blue()
+                        )
+                        public_embed.add_field(name="Captain", value=interaction.user.mention, inline=True)
+                        public_embed.add_field(name="Region", value=self.region.value.upper(), inline=True)
+                        public_embed.add_field(name="Team Size", value=f"{len(member_mentions)} players", inline=True)
+                        
+                        await interaction.channel.send(embed=public_embed)
+                        
+                    else:
+                        await interaction.followup.send(
+                            f"❌ {data.get('detail', 'Registration failed')}",
+                            ephemeral=True
+                        )
+                else:
+                    error_text = await response.text()
+                    await interaction.followup.send(
+                        f"❌ Backend Error ({response.status}): {error_text[:100]}",
+                        ephemeral=True
+                    )
                 
-                return {
-                    "success": True,
-                    "invite_url": discord_invite_url,
-                    "invite_code": discord_invite_url.replace("https://discord.gg/", "")
-                }
+        except Exception as e:
+            print(f"Error registering team: {e}")
+            await interaction.followup.send(
+                f"❌ Error: {str(e)}",
+                ephemeral=True
+            )
+
+# ========== COMMANDS ==========
+@bot.tree.command(name="setup", description="Setup tournament channels (Admin only)")
+@app_commands.default_permissions(administrator=True)
+async def setup(interaction: Interaction):
+    """Setup tournament channels"""
+    embed = Embed(
+        title="✅ Setup Complete!",
+        description="Tournament bot is ready to use!\n\n**Important:** Tournament creation requires the backend API to be running.",
+        color=Color.green()
+    )
+    
+    embed.add_field(
+        name="📋 AVAILABLE COMMANDS",
+        value="• `/tournament_create` - Create new tournament\n"
+              "• `/tournament_list` - List tournaments\n"
+              "• `/tournament_info <id>` - Tournament details\n"
+              "• `/team_register <id>` - Register team\n"
+              "• `/tournament_pass <id>` - Get management pass\n"
+              "• `/host_panel <id>` - Host control panel\n"
+              "• `/bot_stats` - Bot statistics",
+        inline=False
+    )
+    
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="tournament_create", description="Create a new tournament")
+async def tournament_create(interaction: Interaction):
+    """Create a tournament"""
+    modal = TournamentCreateModal()
+    await interaction.response.send_modal(modal)
+
+@bot.tree.command(name="tournament_list", description="List tournaments")
+@app_commands.describe(status="Filter by status")
+async def tournament_list(interaction: Interaction, status: str = None):
+    """List tournaments"""
+    await interaction.response.defer()
+    
+    try:
+        response = await api_request('/api/tournaments')
         
-        return {
-            "success": False,
-            "message": "No Discord invite available"
-        }
+        if not response.get('success') or not response.get('tournaments'):
+            embed = Embed(
+                title="📋 Tournaments",
+                description="No tournaments found.",
+                color=Color.blue()
+            )
+            await interaction.followup.send(embed=embed)
+            return
+        
+        tournaments = response['tournaments']
+        
+        # Filter by status if provided
+        if status:
+            tournaments = [t for t in tournaments if t['status'] == status]
+        
+        if not tournaments:
+            embed = Embed(
+                title="📋 Tournaments",
+                description=f"No tournaments found with status: {status}",
+                color=Color.blue()
+            )
+            await interaction.followup.send(embed=embed)
+            return
+        
+        embed = Embed(
+            title=f"📋 Tournaments ({len(tournaments)})",
+            description=f"Status: {status if status else 'All'}",
+            color=Color.blue()
+        )
+        
+        for tournament in tournaments[:5]:
+            status_emoji = "🟢" if tournament['status'] == 'registration' else "🟡" if tournament['status'] == 'ongoing' else "🔴"
+            embed.add_field(
+                name=f"{status_emoji} {tournament['name']}",
+                value=f"**Game:** {tournament['game']}\n"
+                      f"**Teams:** {tournament.get('team_count', 0)}/{tournament['max_teams']}\n"
+                      f"**Status:** {tournament['status'].upper()}\n"
+                      f"**ID:** `{tournament['id']}`",
+                inline=False
+            )
+        
+        if len(tournaments) > 5:
+            embed.set_footer(text=f"Showing 5 of {len(tournaments)} tournaments")
+        
+        view = ui.View()
+        view.add_item(ui.Button(
+            label="🌐 View All on Website",
+            style=ButtonStyle.link,
+            url=WEBSITE_URL
+        ))
+        
+        await interaction.followup.send(embed=embed, view=view)
         
     except Exception as e:
-        logger.error(f"Get Discord invite error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get Discord invite")
+        print(f"Error listing tournaments: {e}")
+        embed = Embed(
+            title="❌ Error",
+            description="Failed to load tournaments. Please check if the backend API is running.",
+            color=Color.red()
+        )
+        await interaction.followup.send(embed=embed)
 
-# BRACKET MANAGEMENT ENDPOINTS
-@app.post("/api/tournament-pass/{tournament_id}/generate-bracket")
-async def generate_tournament_bracket(tournament_id: str, current_user: Dict = Depends(get_current_user)):
-    """Generate bracket for tournament"""
+@bot.tree.command(name="tournament_info", description="Get tournament details")
+@app_commands.describe(tournament_id="Tournament ID")
+async def tournament_info(interaction: Interaction, tournament_id: str):
+    """Get tournament info"""
+    await interaction.response.defer()
+    
     try:
-        tournaments = supabase_request("GET", f"tournaments?id=eq.{tournament_id}")
+        response = await api_request(f'/api/tournaments/{tournament_id}')
         
-        if not tournaments or len(tournaments) == 0:
-            raise HTTPException(status_code=404, detail="Tournament not found")
+        if not response.get('success'):
+            await interaction.followup.send(
+                f"❌ {response.get('detail', 'Tournament not found')}"
+            )
+            return
         
-        tournament = tournaments[0]
+        tournament = response['tournament']
         
-        # Check permissions
-        can_manage = False
-        if tournament.get('host_id') == current_user['id']:
-            can_manage = True
-        elif current_user.get('discord_id') and tournament.get('host_id') == current_user['discord_id']:
-            can_manage = True
+        embed = Embed(
+            title=f"🏆 {tournament['name']}",
+            description=tournament.get('description', ''),
+            color=Color.blue(),
+            timestamp=datetime.fromisoformat(tournament['created_at'].replace('Z', '+00:00'))
+        )
         
-        if not can_manage:
-            raise HTTPException(status_code=403, detail="Not authorized")
+        embed.add_field(name="Game", value=tournament['game'], inline=True)
+        embed.add_field(name="Status", value=tournament['status'].upper(), inline=True)
+        embed.add_field(name="Teams", value=f"{tournament.get('team_count', 0)}/{tournament['max_teams']}", inline=True)
+        embed.add_field(name="Format", value=f"{tournament.get('max_players_per_team', 5)}v{tournament.get('max_players_per_team', 5)}", inline=True)
         
-        # Get teams
-        teams = supabase_request("GET", f"teams?tournament_id=eq.{tournament_id}")
+        if tournament.get('created_by'):
+            embed.add_field(name="Host", value=tournament['created_by'], inline=True)
         
-        if not teams or len(teams) < 2:
-            raise HTTPException(status_code=400, detail="Need at least 2 teams")
+        embed.add_field(name="Tournament ID", value=f"`{tournament['id']}`", inline=False)
         
-        # Generate bracket structure
-        bracket = generate_bracket_structure(teams, tournament)
-        
-        # Save bracket
-        bracket_data = {
-            "tournament_id": tournament_id,
-            "bracket_data": json.dumps(bracket),
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        
-        brackets = supabase_request("GET", f"brackets?tournament_id=eq.{tournament_id}")
-        
-        if brackets and len(brackets) > 0:
-            supabase_request("PATCH", f"brackets?tournament_id=eq.{tournament_id}", bracket_data)
-        else:
-            supabase_request("POST", "brackets", bracket_data)
-        
-        # Create matches in database
-        for round_data in bracket["rounds"]:
-            for match in round_data["matches"]:
-                match_record = {
-                    "id": match["match_id"],
-                    "tournament_id": tournament_id,
-                    "round_number": match["round_number"],
-                    "match_number": match["match_number"],
-                    "team1_id": match["team1_id"],
-                    "team2_id": match["team2_id"],
-                    "team1_name": match["team1_name"],
-                    "team2_name": match["team2_name"],
-                    "status": match["status"],
-                    "created_at": datetime.utcnow().isoformat(),
-                    "updated_at": datetime.utcnow().isoformat()
-                }
+        # Add teams if available
+        if tournament.get('teams'):
+            teams_text = ""
+            for team in tournament['teams'][:5]:
+                members = team.get('members', [])
+                if isinstance(members, str):
+                    try:
+                        members = json.loads(members)
+                    except:
+                        members = []
                 
-                existing = supabase_request("GET", f"matches?id=eq.{match['match_id']}")
-                if not existing or len(existing) == 0:
-                    supabase_request("POST", "matches", match_record)
+                teams_text += f"• **{team['name']}** ({len(members)} players)\n"
+            
+            if len(tournament['teams']) > 5:
+                teams_text += f"\n... and {len(tournament['teams']) - 5} more teams"
+            
+            embed.add_field(name="Registered Teams", value=teams_text or "No teams", inline=False)
         
-        # Update tournament status
-        update_data = {
-            "status": "ongoing",
-            "current_round": 1,
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        supabase_request("PATCH", f"tournaments?id=eq.{tournament_id}", update_data)
+        # Add website link
+        embed.add_field(
+            name="🌐 Website", 
+            value=f"[View on Website]({WEBSITE_URL})", 
+            inline=False
+        )
         
-        # Broadcast to WebSocket clients
-        await manager.broadcast(tournament_id, {
-            "type": "bracket_generated",
-            "tournament_id": tournament_id,
-            "bracket": bracket
-        })
+        view = ui.View()
+        view.add_item(ui.Button(
+            label="👥 Register Team",
+            style=ButtonStyle.primary,
+            custom_id=f"register_{tournament_id}"
+        ))
+        view.add_item(ui.Button(
+            label="🌐 View on Website",
+            style=ButtonStyle.link,
+            url=WEBSITE_URL
+        ))
         
-        return {
-            "success": True,
-            "message": "Bracket generated successfully",
-            "bracket": bracket
-        }
+        await interaction.followup.send(embed=embed, view=view)
         
     except Exception as e:
-        logger.error(f"Generate bracket error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to generate bracket")
+        print(f"Error getting tournament info: {e}")
+        await interaction.followup.send(
+            f"❌ Error: {str(e)}"
+        )
 
-@app.post("/api/tournament-pass/{tournament_id}/update-match")
-async def update_match_result(
-    tournament_id: str, 
-    match_result: MatchResult,
-    current_user: Dict = Depends(get_current_user)
-):
-    """Update match result and propagate through bracket"""
+@bot.tree.command(name="team_register", description="Register a team for tournament")
+@app_commands.describe(tournament_id="Tournament ID")
+async def team_register(interaction: Interaction, tournament_id: str):
+    """Register a team"""
     try:
-        tournaments = supabase_request("GET", f"tournaments?id=eq.{tournament_id}")
+        # Get tournament info first
+        response = await api_request(f'/api/tournaments/{tournament_id}')
         
-        if not tournaments or len(tournaments) == 0:
-            raise HTTPException(status_code=404, detail="Tournament not found")
+        if not response.get('success'):
+            await interaction.response.send_message(
+                f"❌ {response.get('detail', 'Tournament not found')}",
+                ephemeral=True
+            )
+            return
         
-        tournament = tournaments[0]
+        tournament = response['tournament']
         
-        # Check permissions
-        can_manage = False
-        if tournament.get('host_id') == current_user['id']:
-            can_manage = True
-        elif current_user.get('discord_id') and tournament.get('host_id') == current_user['discord_id']:
-            can_manage = True
+        # Check if tournament is accepting registrations
+        if tournament['status'] != 'registration':
+            await interaction.response.send_message(
+                f"❌ Tournament is not accepting registrations (status: {tournament['status']})",
+                ephemeral=True
+            )
+            return
         
-        if not can_manage:
-            raise HTTPException(status_code=403, detail="Not authorized")
+        modal = TeamRegistrationModal(tournament_id, tournament['name'])
+        await interaction.response.send_modal(modal)
         
-        # Get bracket
-        brackets = supabase_request("GET", f"brackets?tournament_id=eq.{tournament_id}")
-        if not brackets or len(brackets) == 0:
-            raise HTTPException(status_code=404, detail="Bracket not found")
+    except Exception as e:
+        print(f"Error in team register: {e}")
+        await interaction.response.send_message(
+            f"❌ Error: {str(e)}",
+            ephemeral=True
+        )
+
+@bot.tree.command(name="tournament_pass", description="Get tournament pass for website management")
+@app_commands.describe(tournament_id="Tournament ID")
+async def tournament_pass(interaction: Interaction, tournament_id: str):
+    """Get tournament pass for website management"""
+    await interaction.response.defer(ephemeral=True)
+    
+    try:
+        # Get tournament from backend
+        response = await api_request(f'/api/tournaments/{tournament_id}')
         
-        bracket = json.loads(brackets[0]["bracket_data"])
+        if not response.get('success'):
+            await interaction.followup.send(
+                f"❌ {response.get('detail', 'Tournament not found')}",
+                ephemeral=True
+            )
+            return
         
-        # Update bracket with result
-        updated_bracket = update_bracket_with_result(bracket, match_result)
+        tournament = response['tournament']
         
-        # Update bracket in database
-        bracket_update = {
-            "bracket_data": json.dumps(updated_bracket),
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        supabase_request("PATCH", f"brackets?tournament_id=eq.{tournament_id}", bracket_update)
+        # Check if tournament has a pass
+        if not tournament.get('tournament_pass'):
+            await interaction.followup.send(
+                "❌ This tournament doesn't have a pass code.",
+                ephemeral=True
+            )
+            return
         
-        # Update match record
-        match_update = {
-            "winner_id": match_result.winner_id,
-            "team1_score": match_result.team1_score,
-            "team2_score": match_result.team2_score,
-            "status": "completed",
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        supabase_request("PATCH", f"matches?id=eq.{match_result.match_id}", match_update)
+        embed = Embed(
+            title="🔑 Tournament Management Pass",
+            description=f"Use this pass to manage **{tournament['name']}** on the website",
+            color=Color.gold()
+        )
         
-        # Update tournament current round if needed
-        all_matches_completed = True
-        for round_data in updated_bracket["rounds"]:
-            if round_data["round_number"] == updated_bracket["current_round"]:
-                for match in round_data["matches"]:
-                    if match["status"] != "completed" and not match.get("is_bye"):
-                        all_matches_completed = False
-                        break
-                break
+        embed.add_field(name="Tournament", value=tournament['name'], inline=False)
+        embed.add_field(name="Game", value=tournament['game'], inline=True)
+        embed.add_field(name="Status", value=tournament['status'].upper(), inline=True)
         
-        if all_matches_completed and updated_bracket["current_round"] < updated_bracket["total_rounds"]:
-            # Advance to next round
-            tournament_update = {
-                "current_round": updated_bracket["current_round"] + 1,
-                "updated_at": datetime.utcnow().isoformat()
+        embed.add_field(
+            name="🔐 Tournament Pass",
+            value=f"```{tournament['tournament_pass']}```",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="📋 How to Use on Website",
+            value="1. Go to the website and login/create account\n"
+                  "2. Click 'Tournament Pass' in the menu\n"
+                  "3. Enter the pass code above\n"
+                  "4. You'll get full management access to this tournament\n"
+                  "5. You can generate brackets, update matches, and more!",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🌐 Website Link",
+            value=f"[Click here to go to website]({WEBSITE_URL})",
+            inline=False
+        )
+        
+        view = ui.View()
+        view.add_item(ui.Button(
+            label="📋 Copy Pass Code",
+            style=ButtonStyle.primary,
+            custom_id=f"copy_pass_{tournament['tournament_pass']}"
+        ))
+        view.add_item(ui.Button(
+            label="🌐 Open Website",
+            style=ButtonStyle.link,
+            url=WEBSITE_URL
+        ))
+        
+        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        
+    except Exception as e:
+        print(f"Error getting tournament pass: {e}")
+        await interaction.followup.send(
+            f"❌ Error: {str(e)}",
+            ephemeral=True
+        )
+
+@bot.tree.command(name="host_panel", description="Host control panel for tournament management")
+@app_commands.describe(tournament_id="Tournament ID")
+async def host_panel(interaction: Interaction, tournament_id: str):
+    """Host control panel with website integration"""
+    await interaction.response.defer(ephemeral=True)
+    
+    try:
+        # Get tournament from backend
+        response = await api_request(f'/api/tournaments/{tournament_id}')
+        
+        if not response.get('success'):
+            await interaction.followup.send(
+                f"❌ {response.get('detail', 'Tournament not found')}",
+                ephemeral=True
+            )
+            return
+        
+        tournament = response['tournament']
+        
+        embed = Embed(
+            title=f"🎮 Host Control Panel - {tournament['name']}",
+            description=f"Manage your tournament from Discord or Website",
+            color=Color.blue()
+        )
+        
+        embed.add_field(name="Game", value=tournament['game'], inline=True)
+        embed.add_field(name="Status", value=tournament['status'].upper(), inline=True)
+        embed.add_field(name="Teams", value=f"{tournament.get('team_count', 0)}/{tournament['max_teams']}", inline=True)
+        
+        if tournament.get('tournament_pass'):
+            embed.add_field(
+                name="🔐 Website Access",
+                value=f"Pass: `{tournament['tournament_pass']}`\nUse this on the website for full control",
+                inline=False
+            )
+        
+        # Add action buttons
+        view = ui.View(timeout=300)
+        
+        # Get tournament pass button
+        view.add_item(ui.Button(
+            label="🔑 Get Tournament Pass",
+            style=ButtonStyle.primary,
+            custom_id=f"get_pass_{tournament_id}"
+        ))
+        
+        # View teams button
+        view.add_item(ui.Button(
+            label="👥 View Teams",
+            style=ButtonStyle.secondary,
+            custom_id=f"view_teams_{tournament_id}"
+        ))
+        
+        # Generate bracket button
+        if tournament['status'] == 'registration' and tournament.get('team_count', 0) >= 2:
+            view.add_item(ui.Button(
+                label="🚀 Generate Bracket",
+                style=ButtonStyle.success,
+                custom_id=f"generate_bracket_{tournament_id}"
+            ))
+        
+        # Website button
+        view.add_item(ui.Button(
+            label="🌐 Manage on Website",
+            style=ButtonStyle.link,
+            url=f"{WEBSITE_URL}"
+        ))
+        
+        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        
+    except Exception as e:
+        print(f"Error in host panel: {e}")
+        await interaction.followup.send(
+            f"❌ Error: {str(e)}",
+            ephemeral=True
+        )
+
+@bot.tree.command(name="bot_stats", description="Show bot and server statistics")
+async def bot_stats(interaction: Interaction):
+    """Show bot stats"""
+    await interaction.response.defer()
+    
+    try:
+        # Get website stats
+        response = await api_request('/api/stats')
+        
+        if not response.get('success'):
+            stats = {
+                'active_tournaments': 0,
+                'total_teams': 0,
+                'connected_servers': len(bot.guilds),
+                'live_matches': 0
             }
-            supabase_request("PATCH", f"tournaments?id=eq.{tournament_id}", tournament_update)
-            updated_bracket["current_round"] += 1
-        
-        # Broadcast update
-        await manager.broadcast(tournament_id, {
-            "type": "match_updated",
-            "tournament_id": tournament_id,
-            "match_result": match_result.dict(),
-            "bracket": updated_bracket
-        })
-        
-        return {
-            "success": True,
-            "message": "Match result updated",
-            "bracket": updated_bracket
-        }
-        
-    except Exception as e:
-        logger.error(f"Update match error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update match")
-
-@app.get("/api/tournament-pass/{tournament_id}/manage")
-async def get_tournament_manage(tournament_id: str, current_user: Dict = Depends(get_current_user)):
-    """Get tournament management data"""
-    try:
-        tournaments = supabase_request("GET", f"tournaments?id=eq.{tournament_id}")
-        
-        if not tournaments or len(tournaments) == 0:
-            raise HTTPException(status_code=404, detail="Tournament not found")
-        
-        tournament = tournaments[0]
-        
-        # Check if user can manage
-        can_manage = False
-        if tournament.get('host_id') == current_user['id']:
-            can_manage = True
-        elif current_user.get('discord_id') and tournament.get('host_id') == current_user['discord_id']:
-            can_manage = True
-        
-        if not can_manage:
-            raise HTTPException(status_code=403, detail="Not authorized")
-        
-        # Get bracket
-        brackets = supabase_request("GET", f"brackets?tournament_id=eq.{tournament_id}")
-        bracket = brackets[0] if brackets and len(brackets) > 0 else None
-        
-        if bracket and bracket.get("bracket_data"):
-            bracket["bracket_data"] = json.loads(bracket["bracket_data"])
-        
-        # Get teams
-        teams = supabase_request("GET", f"teams?tournament_id=eq.{tournament_id}")
-        
-        # Get matches
-        matches = supabase_request("GET", f"matches?tournament_id=eq.{tournament_id}&order=round_number.asc,match_number.asc")
-        
-        return {
-            "success": True,
-            "tournament": tournament,
-            "bracket": bracket,
-            "teams": teams if teams else [],
-            "matches": matches if matches else [],
-            "can_manage": True
-        }
-        
-    except Exception as e:
-        logger.error(f"Get tournament manage error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get tournament data")
-
-@app.post("/api/tournament-pass/{tournament_id}/advance-round")
-async def advance_tournament_round(tournament_id: str, current_user: Dict = Depends(get_current_user)):
-    """Manually advance tournament to next round"""
-    try:
-        tournaments = supabase_request("GET", f"tournaments?id=eq.{tournament_id}")
-        
-        if not tournaments or len(tournaments) == 0:
-            raise HTTPException(status_code=404, detail="Tournament not found")
-        
-        tournament = tournaments[0]
-        
-        # Check permissions
-        can_manage = False
-        if tournament.get('host_id') == current_user['id']:
-            can_manage = True
-        elif current_user.get('discord_id') and tournament.get('host_id') == current_user['discord_id']:
-            can_manage = True
-        
-        if not can_manage:
-            raise HTTPException(status_code=403, detail="Not authorized")
-        
-        # Get bracket
-        brackets = supabase_request("GET", f"brackets?tournament_id=eq.{tournament_id}")
-        if not brackets or len(brackets) == 0:
-            raise HTTPException(status_code=404, detail="Bracket not found")
-        
-        bracket = json.loads(brackets[0]["bracket_data"])
-        
-        # Check if we can advance
-        if bracket["current_round"] >= bracket["total_rounds"]:
-            raise HTTPException(status_code=400, detail="Tournament is already at final round")
-        
-        # Advance round
-        new_round = bracket["current_round"] + 1
-        bracket["current_round"] = new_round
-        
-        # Update bracket
-        bracket_update = {
-            "bracket_data": json.dumps(bracket),
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        supabase_request("PATCH", f"brackets?tournament_id=eq.{tournament_id}", bracket_update)
-        
-        # Update tournament
-        tournament_update = {
-            "current_round": new_round,
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        supabase_request("PATCH", f"tournaments?id=eq.{tournament_id}", tournament_update)
-        
-        # Broadcast
-        await manager.broadcast(tournament_id, {
-            "type": "round_advanced",
-            "tournament_id": tournament_id,
-            "new_round": new_round,
-            "bracket": bracket
-        })
-        
-        return {
-            "success": True,
-            "message": f"Advanced to round {new_round}",
-            "current_round": new_round
-        }
-        
-    except Exception as e:
-        logger.error(f"Advance round error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to advance round")
-
-# WEBSOCKET FOR REAL-TIME UPDATES
-@app.websocket("/ws/tournament/{tournament_id}")
-async def websocket_endpoint(websocket: WebSocket, tournament_id: str):
-    await manager.connect(websocket, tournament_id)
-    try:
-        while True:
-            data = await websocket.receive_json()
-            # Handle client messages if needed
-    except WebSocketDisconnect:
-        manager.disconnect(websocket, tournament_id)
-
-# Tournament pass auth (same as before)
-@app.post("/api/tournament-pass/auth")
-async def auth_tournament_pass(pass_code: str = Form(...), current_user: Dict = Depends(get_current_user)):
-    try:
-        tournaments = supabase_request("GET", f"tournaments?tournament_pass=eq.{pass_code}")
-        
-        if not tournaments or len(tournaments) == 0:
-            raise HTTPException(status_code=404, detail="Invalid tournament pass")
-        
-        tournament = tournaments[0]
-        
-        is_owner = False
-        if tournament.get('host_id') == current_user['id']:
-            is_owner = True
-        elif current_user.get('discord_id') and tournament.get('host_id') == current_user['discord_id']:
-            is_owner = True
-        
-        return {
-            "success": True,
-            "message": "Tournament pass accepted",
-            "tournament": tournament,
-            "is_owner": is_owner
-        }
-        
-    except Exception as e:
-        logger.error(f"Tournament pass auth error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to authenticate")
-
-# Stats endpoint (same as before)
-@app.get("/api/stats")
-async def get_stats():
-    try:
-        tournaments = supabase_request("GET", "tournaments?status=in.(registration,ongoing)")
-        teams = supabase_request("GET", "teams")
-        servers = supabase_request("GET", "bot_servers")
-        matches = supabase_request("GET", "matches?status=eq.ongoing")
-        
-        return {
-            "success": True,
-            "stats": {
-                "active_tournaments": len(tournaments) if tournaments else 0,
-                "total_teams": len(teams) if teams else 0,
-                "connected_servers": len(servers) if servers else 0,
-                "live_matches": len(matches) if matches else 0
-            }
-        }
-        
-    except Exception as e:
-        logger.error(f"Stats error: {e}")
-        return {
-            "success": True,
-            "stats": {
-                "active_tournaments": 0,
-                "total_teams": 0,
-                "connected_servers": 0,
-                "live_matches": 0
-            }
-        }
-
-# Server stats endpoint (same as before)
-@app.post("/api/bot/server-stats")
-async def update_server_stats(request: Request):
-    try:
-        data = await request.json()
-        
-        server_id = data.get("server_id")
-        server_name = data.get("server_name")
-        member_count = data.get("member_count", 0)
-        icon_url = data.get("icon_url")
-        
-        if not server_id:
-            raise HTTPException(status_code=400, detail="Server ID required")
-        
-        servers = supabase_request("GET", f"bot_servers?server_id=eq.{server_id}")
-        
-        server_data = {
-            "server_id": server_id,
-            "server_name": server_name,
-            "member_count": member_count,
-            "icon_url": icon_url,
-            "last_updated": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        
-        if servers and len(servers) > 0:
-            supabase_request("PATCH", f"bot_servers?server_id=eq.{server_id}", server_data)
         else:
-            server_data["created_at"] = datetime.utcnow().isoformat()
-            supabase_request("POST", "bot_servers", server_data)
+            stats = response['stats']
         
-        return {"success": True, "message": "Server stats updated"}
+        # Get server stats
+        total_members = sum(guild.member_count for guild in bot.guilds)
+        
+        embed = Embed(
+            title="🌐 XTourney Global Statistics",
+            color=Color.purple(),
+            timestamp=datetime.utcnow()
+        )
+        
+        embed.add_field(name="🏢 Servers", value=len(bot.guilds), inline=True)
+        embed.add_field(name="👥 Total Members", value=f"{total_members:,}", inline=True)
+        embed.add_field(name="🏆 Active Tournaments", value=stats['active_tournaments'], inline=True)
+        embed.add_field(name="👥 Total Teams", value=stats['total_teams'], inline=True)
+        embed.add_field(name="🎮 Live Matches", value=stats['live_matches'], inline=True)
+        embed.add_field(name="🔗 Connected Servers", value=stats['connected_servers'], inline=True)
+        
+        # Add top servers
+        top_servers = sorted(bot.guilds, key=lambda g: g.member_count, reverse=True)[:3]
+        servers_text = "\n".join([f"• {g.name} ({g.member_count} members)" for g in top_servers])
+        embed.add_field(name="🏆 Top Servers", value=servers_text, inline=False)
+        
+        view = ui.View()
+        view.add_item(ui.Button(
+            label="🌐 Visit Website",
+            style=ButtonStyle.link,
+            url=WEBSITE_URL
+        ))
+        
+        await interaction.followup.send(embed=embed, view=view)
         
     except Exception as e:
-        logger.error(f"Server stats error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update server stats")
+        print(f"Error getting bot stats: {e}")
+        embed = Embed(
+            title="📊 Bot Statistics",
+            description=f"Connected to {len(bot.guilds)} servers with {sum(g.member_count for g in bot.guilds):,} total members",
+            color=Color.blue()
+        )
+        await interaction.followup.send(embed=embed)
 
-# ========== UTILITY FUNCTIONS ==========
-def calculate_total_rounds(max_teams: int) -> int:
-    if max_teams <= 2:
-        return 1
-    elif max_teams <= 4:
-        return 2
-    elif max_teams <= 8:
-        return 3
-    elif max_teams <= 16:
-        return 4
-    elif max_teams <= 32:
-        return 5
-    else:
-        return 6
+@bot.tree.command(name="help", description="Show all available commands")
+async def help_command(interaction: Interaction):
+    """Show help"""
+    embed = Embed(
+        title="🎮 XTourney Bot Commands",
+        description="Complete tournament management system with website integration",
+        color=Color.blue()
+    )
+    
+    embed.add_field(
+        name="🏆 Tournament Commands",
+        value="• `/tournament_create` - Create new tournament\n"
+              "• `/tournament_list [status]` - List tournaments\n"
+              "• `/tournament_info <id>` - Tournament details\n"
+              "• `/team_register <id>` - Register team\n"
+              "• `/tournament_pass <id>` - Get management pass\n"
+              "• `/host_panel <id>` - Host control panel",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="📊 Statistics & Info",
+        value="• `/bot_stats` - Global bot statistics\n"
+              "• `/help` - This help menu",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="⚙️ Setup (Admin)",
+        value="• `/setup` - Configure bot",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🌐 Website Integration",
+        value=f"• Use tournament pass to manage on website\n• [Visit Website]({WEBSITE_URL})",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="📋 How to Get Started",
+        value="1. Use `/tournament_create` to make a tournament\n"
+              "2. Get the tournament pass with `/tournament_pass`\n"
+              "3. Use the pass on the website for full management\n"
+              "4. Teams register with `/team_register`",
+        inline=False
+    )
+    
+    await interaction.response.send_message(embed=embed)
 
-# ========== RUN APP ==========
+# ========== BUTTON HANDLERS ==========
+@bot.event
+async def on_interaction(interaction: Interaction):
+    if interaction.type != discord.InteractionType.component:
+        return
+    
+    custom_id = interaction.data.get('custom_id', '')
+    
+    if custom_id.startswith('get_pass_'):
+        tournament_id = custom_id.replace('get_pass_', '')
+        await handle_get_pass(interaction, tournament_id)
+    
+    elif custom_id.startswith('copy_pass_'):
+        pass_code = custom_id.replace('copy_pass_', '')
+        await handle_copy_pass(interaction, pass_code)
+    
+    elif custom_id.startswith('register_'):
+        tournament_id = custom_id.replace('register_', '')
+        await handle_button_register(interaction, tournament_id)
+    
+    elif custom_id.startswith('announce_'):
+        tournament_id = custom_id.replace('announce_', '')
+        await handle_announce_tournament(interaction, tournament_id)
+    
+    elif custom_id.startswith('view_teams_'):
+        tournament_id = custom_id.replace('view_teams_', '')
+        await handle_view_teams(interaction, tournament_id)
+    
+    elif custom_id.startswith('generate_bracket_'):
+        tournament_id = custom_id.replace('generate_bracket_', '')
+        await handle_generate_bracket(interaction, tournament_id)
+    
+    elif custom_id.startswith('start_tournament_'):
+        tournament_id = custom_id.replace('start_tournament_', '')
+        await handle_start_tournament(interaction, tournament_id)
+
+async def handle_get_pass(interaction: Interaction, tournament_id: str):
+    """Handle get tournament pass button"""
+    await interaction.response.defer(ephemeral=True)
+    
+    try:
+        # Get tournament from backend
+        response = await api_request(f'/api/tournaments/{tournament_id}')
+        
+        if not response.get('success'):
+            await interaction.followup.send(
+                f"❌ {response.get('detail', 'Tournament not found')}",
+                ephemeral=True
+            )
+            return
+        
+        tournament = response['tournament']
+        
+        if not tournament.get('tournament_pass'):
+            await interaction.followup.send(
+                "❌ This tournament doesn't have a pass code",
+                ephemeral=True
+            )
+            return
+        
+        embed = Embed(
+            title="🔑 Tournament Pass",
+            description=f"**Tournament:** {tournament['name']}",
+            color=Color.gold()
+        )
+        
+        embed.add_field(
+            name="Pass Code",
+            value=f"```{tournament['tournament_pass']}```",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="How to Use on Website",
+            value="1. Login to your account on the website\n"
+                  "2. Click 'Tournament Pass' in the menu\n"
+                  "3. Enter the code above\n"
+                  "4. You'll get full management access to this tournament",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="Website Link",
+            value=f"[Click here to go to website]({WEBSITE_URL})",
+            inline=False
+        )
+        
+        view = ui.View()
+        view.add_item(ui.Button(
+            label="📋 Copy Pass Code",
+            style=ButtonStyle.primary,
+            custom_id=f"copy_pass_{tournament['tournament_pass']}"
+        ))
+        
+        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        
+    except Exception as e:
+        print(f"Error handling get pass: {e}")
+        await interaction.followup.send(
+            f"❌ Error: {str(e)}",
+            ephemeral=True
+        )
+
+async def handle_copy_pass(interaction: Interaction, pass_code: str):
+    """Handle copy pass code button"""
+    await interaction.response.defer(ephemeral=True)
+    
+    try:
+        await interaction.followup.send(
+            f"✅ Pass code `{pass_code}` copied to clipboard!\n\n"
+            f"**Now go to the website and:**\n"
+            f"1. Login/create account\n"
+            f"2. Click 'Tournament Pass'\n"
+            f"3. Paste the code\n"
+            f"4. Get full tournament management!",
+            ephemeral=True
+        )
+    except Exception as e:
+        await interaction.followup.send(
+            "❌ Failed to copy pass code",
+            ephemeral=True
+        )
+
+async def handle_button_register(interaction: Interaction, tournament_id: str):
+    """Handle team registration from button"""
+    try:
+        # Get tournament info first
+        response = await api_request(f'/api/tournaments/{tournament_id}")
+        
+        if not response.get('success'):
+            await interaction.response.send_message(
+                f"❌ {response.get('detail', 'Tournament not found')}",
+                ephemeral=True
+            )
+            return
+        
+        tournament = response['tournament']
+        
+        # Check if tournament is accepting registrations
+        if tournament['status'] != 'registration':
+            await interaction.response.send_message(
+                f"❌ Tournament is not accepting registrations (status: {tournament['status']})",
+                ephemeral=True
+            )
+            return
+        
+        modal = TeamRegistrationModal(tournament_id, tournament['name'])
+        await interaction.response.send_modal(modal)
+        
+    except Exception as e:
+        print(f"Error handling button register: {e}")
+        await interaction.response.send_message(
+            f"❌ Error: {str(e)}",
+            ephemeral=True
+        )
+
+async def handle_view_teams(interaction: Interaction, tournament_id: str):
+    """Handle view teams button"""
+    await interaction.response.defer(ephemeral=True)
+    
+    try:
+        response = await api_request(f'/api/tournaments/{tournament_id}')
+        
+        if not response.get('success'):
+            await interaction.followup.send(
+                f"❌ {response.get('detail', 'Tournament not found')}",
+                ephemeral=True
+            )
+            return
+        
+        tournament = response['tournament']
+        teams = tournament.get('teams', [])
+        
+        if not teams:
+            embed = Embed(
+                title="👥 Teams",
+                description="No teams registered yet",
+                color=Color.blue()
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+        
+        embed = Embed(
+            title=f"👥 Teams in {tournament['name']}",
+            description=f"Total: {len(teams)} teams",
+            color=Color.blue()
+        )
+        
+        for team in teams[:10]:
+            members = team.get('members', [])
+            if isinstance(members, str):
+                try:
+                    members = json.loads(members)
+                except:
+                    members = []
+            
+            members_text = "\n".join([f"• {member}" for member in members[:3]])
+            if len(members) > 3:
+                members_text += f"\n... and {len(members) - 3} more"
+            
+            embed.add_field(
+                name=f"{team['name']}",
+                value=f"**Captain:** {team.get('captain_name', 'Unknown')}\n"
+                      f"**Region:** {team.get('region', 'GLOBAL')}\n"
+                      f"**Players:** {len(members)}\n{members_text}",
+                inline=False
+            )
+        
+        if len(teams) > 10:
+            embed.set_footer(text=f"Showing 10 of {len(teams)} teams")
+        
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        
+    except Exception as e:
+        print(f"Error showing teams: {e}")
+        await interaction.followup.send(
+            f"❌ Error: {str(e)}",
+            ephemeral=True
+        )
+
+async def handle_generate_bracket(interaction: Interaction, tournament_id: str):
+    """Handle generate bracket button"""
+    await interaction.response.defer(ephemeral=True)
+    
+    try:
+        # Call backend to generate bracket
+        response = await api_request(f'/api/tournament-pass/{tournament_id}/generate-bracket', 'POST')
+        
+        if response.get('success'):
+            embed = Embed(
+                title="✅ Bracket Generated!",
+                description=f"The tournament bracket has been generated successfully",
+                color=Color.green()
+            )
+            
+            embed.add_field(
+                name="Next Steps",
+                value="1. Use the tournament pass to manage brackets on the website\n"
+                      "2. Update match results as games are played\n"
+                      "3. Advance rounds when ready",
+                inline=False
+            )
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        else:
+            await interaction.followup.send(
+                f"❌ {response.get('detail', 'Failed to generate bracket')}",
+                ephemeral=True
+            )
+            
+    except Exception as e:
+        print(f"Error generating bracket: {e}")
+        await interaction.followup.send(
+            f"❌ Error: {str(e)}",
+            ephemeral=True
+        )
+
+# ========== BOT EVENTS ==========
+@bot.event
+async def on_ready():
+    print(f'✅ Logged in as {bot.user} (ID: {bot.user.id})')
+    print(f'🌐 Connected to {len(bot.guilds)} servers')
+    
+    # Update all servers in database
+    for guild in bot.guilds:
+        try:
+            async with bot.session.post(f"{API_URL}/api/bot/server-stats", json={
+                "server_id": str(guild.id),
+                "server_name": guild.name,
+                "member_count": guild.member_count,
+                "icon_url": str(guild.icon.url) if guild.icon else None
+            }):
+                pass
+        except:
+            pass
+    
+    # Sync commands
+    try:
+        synced = await bot.tree.sync()
+        print(f'📝 Synced {len(synced)} commands')
+    except Exception as e:
+        print(f'❌ Error syncing commands: {e}')
+    
+    # Print global stats
+    total_members = sum(guild.member_count for guild in bot.guilds)
+    print(f'📊 Global Stats: {len(bot.guilds)} servers, {total_members:,} total members')
+
+@bot.event
+async def on_guild_join(guild: discord.Guild):
+    print(f'📥 Joined server: {guild.name} ({guild.id})')
+    
+    # Send welcome message
+    for channel in guild.text_channels:
+        if channel.permissions_for(guild.me).send_messages:
+            embed = Embed(
+                title="🎮 XTourney Tournament Bot",
+                description="Thank you for adding XTourney to your server!",
+                color=Color.blue()
+            )
+            
+            embed.add_field(
+                name="Get Started",
+                value="1. Use `/tournament_create` to create tournaments\n"
+                      "2. Use `/team_register` for teams to register\n"
+                      "3. Use `/tournament_pass` to get website management access\n"
+                      "4. Use `/help` for all commands",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="Website Integration",
+                value=f"• Manage tournaments on [the website]({WEBSITE_URL})\n"
+                      "• Use tournament pass for full control\n"
+                      "• Real-time bracket updates",
+                inline=False
+            )
+            
+            await channel.send(embed=embed)
+            break
+
+@bot.event
+async def on_guild_remove(guild: discord.Guild):
+    print(f'📤 Left server: {guild.name} ({guild.id})')
+
+# ========== RUN BOT ==========
 if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    print("🚀 Starting XTourney Bot...")
+    print(f"🌐 Website: {WEBSITE_URL}")
+    print(f"🔗 API: {API_URL}")
+    
+    if not DISCORD_TOKEN:
+        print("❌ ERROR: DISCORD_TOKEN environment variable is not set!")
+        exit(1)
+    
+    try:
+        bot.run(DISCORD_TOKEN)
+    except Exception as e:
+        print(f"❌ ERROR: {e}")
