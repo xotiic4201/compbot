@@ -4,6 +4,6 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
 requests==2.31.0
-pydantic==2.4.2  # Version that works without Rust
+pydantic==1.10.14  # Use pydantic v1.x, NOT v2.x
 python-dotenv==1.0.0
 websockets==12.0
