@@ -1,6 +1,4 @@
 fastapi==0.104.1
-pydantic>=2.6.0,<2.7
-pydantic-settings==2.1.0
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 pyjwt==2.8.0
@@ -12,3 +10,4 @@ starlette==0.27.0
 anyio==3.7.1
 typing-extensions>=4.8.0
 annotated-types>=0.7.0
+
