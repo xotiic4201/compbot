@@ -19,7 +19,6 @@ import random
 import asyncio
 from collections import defaultdict
 import aiohttp
-import aiofiles
 import ipaddress
 from functools import lru_cache
 
@@ -141,6 +140,13 @@ class IPBanCreate(BaseModel):
 
 # ========== SUPABASE HELPER ==========
 def supabase_request(method: str, endpoint: str, data: dict = None, params: dict = None):
+    # Guard against missing Supabase configuration
+    if not SUPABASE_URL or not SUPABASE_URL.startswith("http"):
+        logger.error("Supabase URL not configured (SUPABASE_URL). Skipping request.")
+        if method == "GET":
+            return []
+        return {"success": False, "detail": "Supabase URL not configured"}
+
     url = f"{SUPABASE_URL}/rest/v1/{endpoint}"
     
     if params:
@@ -785,7 +791,7 @@ async def admin_stats(user: dict = Depends(get_current_admin)):
                 "total_ip_bans": total_bans
             },
             "recent_users": recent_users if isinstance(recent_users, list) else [],
-            "recent_tournaments": recent_tournaments if isinstance(recent_tournaments, list) : []
+            "recent_tournaments": recent_tournaments if isinstance(recent_tournaments, list) else []
         }
     except Exception as e:
         logger.error(f"Admin stats error: {e}")
