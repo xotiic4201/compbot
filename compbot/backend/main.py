@@ -1,4169 +1,1431 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XTourney - Professional Esports Tournament Platform</title>
-    <link rel="icon" type="image/x-icon" href="x-icon.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #DC2626;
-            --primary-dark: #B91C1C;
-            --primary-light: #EF4444;
-            --secondary: #000000;
-            --secondary-dark: #111111;
-            --accent: #FF0000;
-            --accent-glow: rgba(255, 0, 0, 0.3);
-            --dark: #000000;
-            --darker: #0A0A0A;
-            --darker-alt: #111111;
-            --light: #FFFFFF;
-            --gray: #888888;
-            --gray-dark: #444444;
-            --success: #10B981;
-            --warning: #F59E0B;
-            --danger: #DC2626;
-            --owner-gold: #FFD700;
-            --owner-gold-dark: #B8860B;
-            --gradient-primary: linear-gradient(135deg, var(--primary) 0%, #FF0000 100%);
-            --gradient-dark: linear-gradient(135deg, #000000 0%, #1A1A1A 100%);
-            --gradient-owner: linear-gradient(135deg, var(--owner-gold) 0%, #FFA500 100%);
-            --neon-red: #FF0000;
-            --neon-glow: 0 0 10px var(--neon-red), 0 0 20px var(--neon-red), 0 0 30px var(--neon-red);
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Exo 2', 'Segoe UI', sans-serif;
-            background: var(--dark);
-            color: var(--light);
-            min-height: 100vh;
-            line-height: 1.6;
-            overflow-x: hidden;
-        }
-        
-        .matrix-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            opacity: 0.03;
-            z-index: -1;
-            background: linear-gradient(90deg, transparent 0%, rgba(220, 38, 38, 0.1) 50%, transparent 100%);
-        }
-        
-        /* Auth Page */
-        .auth-page {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--gradient-dark);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-        }
-        
-        .auth-container {
-            background: rgba(0, 0, 0, 0.95);
-            padding: 3rem;
-            border-radius: 20px;
-            width: 90%;
-            max-width: 450px;
-            border: 2px solid rgba(220, 38, 38, 0.3);
-            box-shadow: 0 0 50px rgba(220, 38, 38, 0.3);
-            backdrop-filter: blur(10px);
-            animation: scaleIn 0.5s ease;
-        }
-        
-        @keyframes scaleIn {
-            from { transform: scale(0.9); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        
-        /* Loader */
-        .page-loader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--dark);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-        }
-        
-        .loader-logo {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 2rem;
-        }
-        
-        .loader-icon {
-            width: 60px;
-            height: 60px;
-            background: var(--gradient-primary);
-            border-radius: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 2rem;
-            animation: pulse 2s infinite;
-            box-shadow: 0 0 20px var(--primary);
-        }
-        
-        .loader-text {
-            font-family: 'Orbitron', monospace;
-            font-size: 2.5rem;
-            font-weight: 900;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
-            letter-spacing: 2px;
-        }
-        
-        .loader-progress {
-            width: 300px;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            overflow: hidden;
-            margin-top: 1rem;
-            border: 1px solid rgba(220, 38, 38, 0.2);
-        }
-        
-        .loader-progress-bar {
-            height: 100%;
-            background: var(--gradient-primary);
-            width: 0%;
-            animation: loading 2s ease-in-out forwards;
-            box-shadow: 0 0 10px var(--primary);
-        }
-        
-        @keyframes loading { 0% { width: 0%; } 100% { width: 100%; } }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 20px var(--primary); }
-            50% { transform: scale(1.05); box-shadow: 0 0 30px var(--primary), 0 0 40px var(--primary); }
-        }
-        
-        /* Main App */
-        #mainApp { display: none; }
-        
-        /* Header */
-        header {
-            background: rgba(0, 0, 0, 0.95);
-            backdrop-filter: blur(10px);
-            border-bottom: 2px solid var(--primary);
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            z-index: 1000;
-            padding: 1rem 0;
-            animation: slideDown 0.5s ease-out;
-            box-shadow: 0 5px 30px rgba(220, 38, 38, 0.2);
-        }
-        
-        @keyframes slideDown {
-            from { transform: translateY(-100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-family: 'Orbitron', monospace;
-            font-size: 1.8rem;
-            font-weight: 900;
-            color: var(--light);
-            text-decoration: none;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .logo:hover {
-            transform: translateY(-2px);
-            text-shadow: 0 0 10px var(--primary);
-        }
-        
-        .logo-icon {
-            width: 45px;
-            height: 45px;
-            background: var(--gradient-primary);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            font-size: 1.5rem;
-            box-shadow: 0 0 15px var(--primary);
-        }
-        
-        .logo span {
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
-        }
-        
-        .nav-links {
-            display: flex;
-            gap: 1.5rem;
-            align-items: center;
-        }
-        
-        .nav-link {
-            color: var(--gray);
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s;
-            cursor: pointer;
-            position: relative;
-            padding: 0.5rem 0;
-            font-family: 'Orbitron', monospace;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            white-space: nowrap;
-        }
-        
-        .nav-link:hover, .nav-link.active {
-            color: var(--light);
-            text-shadow: 0 0 10px var(--primary);
-        }
-        
-        .nav-link::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 0;
-            height: 3px;
-            background: var(--gradient-primary);
-            transition: width 0.3s ease;
-            box-shadow: 0 0 10px var(--primary);
-        }
-        
-        .nav-link:hover::after, .nav-link.active::after {
-            width: 100%;
-        }
-        
-        .nav-link i {
-            margin-right: 8px;
-            color: var(--primary);
-        }
-        
-        .nav-link.owner-nav {
-            color: var(--owner-gold);
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            background: rgba(255, 215, 0, 0.1);
-        }
-        
-        .nav-link.owner-nav:hover {
-            background: rgba(255, 215, 0, 0.2);
-            border-color: var(--owner-gold);
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
-            color: var(--owner-gold);
-        }
-        
-        .nav-link.admin-nav {
-            color: #4F46E5;
-            border: 1px solid rgba(79, 70, 229, 0.3);
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            background: rgba(79, 70, 229, 0.1);
-        }
-        
-        .nav-link.admin-nav:hover {
-            background: rgba(79, 70, 229, 0.2);
-            border-color: #4F46E5;
-            box-shadow: 0 0 15px rgba(79, 70, 229, 0.3);
-            color: #4F46E5;
-        }
-        
-        .auth-buttons {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
-        
-        .btn {
-            padding: 0.8rem 1.8rem;
-            border-radius: 8px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: none;
-            font-size: 0.9rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
-            font-family: 'Orbitron', monospace;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            position: relative;
-            overflow: hidden;
-            white-space: nowrap;
-        }
-        
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-        
-        .btn:hover::before { left: 100%; }
-        
-        .btn-primary {
-            background: var(--gradient-primary);
-            color: white;
-            box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4);
-            border: 1px solid var(--primary);
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 25px rgba(220, 38, 38, 0.6);
-            background: var(--primary-dark);
-        }
-        
-        .btn-owner {
-            background: var(--gradient-owner);
-            color: #000;
-            box-shadow: 0 4px 20px rgba(255, 215, 0, 0.4);
-            border: 1px solid var(--owner-gold);
-        }
-        
-        .btn-owner:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 25px rgba(255, 215, 0, 0.6);
-            background: var(--owner-gold-dark);
-        }
-        
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--light);
-            border: 1px solid rgba(220, 38, 38, 0.3);
-        }
-        
-        .btn-secondary:hover {
-            background: rgba(220, 38, 38, 0.1);
-            border-color: var(--primary);
-            transform: translateY(-3px);
-            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
-        }
-        
-        .btn-small {
-            padding: 0.5rem 1rem;
-            font-size: 0.8rem;
-        }
-        
-        /* Hero */
-        .hero {
-            padding: 10rem 0 6rem;
-            text-align: center;
-            background: var(--gradient-dark);
-            position: relative;
-            overflow: hidden;
-            border-bottom: 3px solid var(--primary);
-        }
-        
-        .hero h1 {
-            font-family: 'Orbitron', monospace;
-            font-size: 4rem;
-            margin-bottom: 1.5rem;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: fadeInUp 0.8s ease-out 0.3s both;
-            text-shadow: 0 0 20px rgba(220, 38, 38, 0.5);
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-        
-        .hero-subtitle {
-            font-size: 1.3rem;
-            color: var(--gray);
-            max-width: 700px;
-            margin: 0 auto 3rem;
-            animation: fadeInUp 0.8s ease-out 0.5s both;
-            font-weight: 300;
-        }
-        
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* Tournament Cards */
-        .tournaments-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 2rem;
-            margin-top: 2rem;
-        }
-        
-        .tournament-card {
-            background: rgba(0, 0, 0, 0.8);
-            border-radius: 15px;
-            padding: 2rem;
-            border: 2px solid rgba(220, 38, 38, 0.3);
-            transition: all 0.3s;
-            backdrop-filter: blur(10px);
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-        }
-        
-        .tournament-card:hover {
-            border-color: var(--primary);
-            box-shadow: 0 15px 40px rgba(220, 38, 38, 0.3);
-            transform: translateY(-10px) scale(1.02);
-        }
-        
-        .tournament-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-        
-        .tournament-title {
-            font-family: 'Orbitron', monospace;
-            font-weight: 700;
-            font-size: 1.2rem;
-            color: var(--primary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .tournament-status {
-            padding: 0.4rem 1rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-family: 'Orbitron', monospace;
-            white-space: nowrap;
-        }
-        
-        .status-registration {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--success);
-            border: 1px solid rgba(16, 185, 129, 0.5);
-        }
-        
-        .status-ongoing {
-            background: rgba(220, 38, 38, 0.15);
-            color: var(--primary);
-            border: 1px solid rgba(220, 38, 38, 0.5);
-        }
-        
-        .status-completed {
-            background: rgba(107, 114, 128, 0.15);
-            color: var(--gray);
-            border: 1px solid rgba(107, 114, 128, 0.5);
-        }
-        
-        /* Forms */
-        .form-container {
-            max-width: 500px;
-            margin: 0 auto;
-            background: rgba(0, 0, 0, 0.9);
-            border-radius: 15px;
-            padding: 3rem;
-            border: 2px solid rgba(220, 38, 38, 0.3);
-            backdrop-filter: blur(10px);
-        }
-        
-        .form-group {
-            margin-bottom: 2rem;
-        }
-        
-        .form-label {
-            display: block;
-            margin-bottom: 0.8rem;
-            color: var(--light);
-            font-weight: 600;
-            font-size: 0.9rem;
-            font-family: 'Orbitron', monospace;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .form-input {
-            width: 100%;
-            padding: 1.2rem;
-            background: rgba(0, 0, 0, 0.8);
-            border: 2px solid rgba(220, 38, 38, 0.3);
-            border-radius: 8px;
-            color: var(--light);
-            font-size: 1rem;
-            transition: all 0.3s;
-            font-family: 'Exo 2', sans-serif;
-        }
-        
-        .form-input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1), 0 0 20px var(--primary);
-            background: rgba(0, 0, 0, 0.9);
-        }
-        
-        /* Alerts */
-        .alert {
-            padding: 1.2rem;
-            border-radius: 10px;
-            margin-bottom: 2rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            animation: slideInRight 0.3s ease;
-            border: 2px solid transparent;
-            font-family: 'Orbitron', monospace;
-        }
-        
-        @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        
-        .alert-success {
-            background: rgba(16, 185, 129, 0.1);
-            border-color: rgba(16, 185, 129, 0.3);
-            color: var(--success);
-        }
-        
-        .alert-error {
-            background: rgba(220, 38, 38, 0.1);
-            border-color: rgba(220, 38, 38, 0.3);
-            color: var(--danger);
-        }
-        
-        .alert-warning {
-            background: rgba(245, 158, 11, 0.1);
-            border-color: rgba(245, 158, 11, 0.3);
-            color: var(--warning);
-        }
-        
-        /* Modals */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            backdrop-filter: blur(10px);
-            z-index: 2000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            animation: fadeIn 0.3s ease;
-        }
-        
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        
-        .modal-content {
-            background: rgba(0, 0, 0, 0.95);
-            padding: 3rem;
-            border-radius: 15px;
-            max-width: 500px;
-            width: 90%;
-            border: 2px solid rgba(220, 38, 38, 0.3);
-            text-align: center;
-            animation: scaleIn 0.3s ease;
-            box-shadow: 0 0 50px rgba(220, 38, 38, 0.2);
-            backdrop-filter: blur(20px);
-        }
-        
-        .modal-title {
-            font-family: 'Orbitron', monospace;
-            font-size: 1.8rem;
-            color: var(--primary);
-            margin-bottom: 1rem;
-        }
-        
-        .modal-subtitle {
-            color: var(--gray);
-            margin-bottom: 2rem;
-            font-size: 1rem;
-        }
-        
-        /* User Profile */
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            border: 1px solid rgba(220, 38, 38, 0.3);
-            cursor: pointer;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-        
-        .user-profile:hover {
-            background: rgba(220, 38, 38, 0.1);
-            border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(220, 38, 38, 0.2);
-        }
-        
-        .user-profile.owner-profile {
-            border-color: rgba(255, 215, 0, 0.5);
-            background: rgba(255, 215, 0, 0.1);
-        }
-        
-        .user-profile.owner-profile:hover {
-            background: rgba(255, 215, 0, 0.2);
-            border-color: var(--owner-gold);
-            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
-        }
-        
-        .user-profile.admin-profile {
-            border-color: rgba(79, 70, 229, 0.5);
-            background: rgba(79, 70, 229, 0.1);
-        }
-        
-        .user-profile.admin-profile:hover {
-            background: rgba(79, 70, 229, 0.2);
-            border-color: #4F46E5;
-            box-shadow: 0 5px 15px rgba(79, 70, 229, 0.3);
-        }
-        
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 2px solid var(--primary);
-            object-fit: cover;
-            box-shadow: 0 0 10px var(--primary);
-        }
-        
-        .user-avatar.owner-avatar {
-            border-color: var(--owner-gold);
-            box-shadow: 0 0 10px var(--owner-gold);
-        }
-        
-        .user-avatar.admin-avatar {
-            border-color: #4F46E5;
-            box-shadow: 0 0 10px #4F46E5;
-        }
-        
-        /* BRACKET VIEWER STYLES */
-        .bracket-viewer {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.98);
-            z-index: 3000;
-            padding: 2rem;
-            overflow: auto;
-        }
-        
-        .bracket-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: rgba(0, 0, 0, 0.95);
-            padding: 2rem;
-            border-radius: 15px;
-            border: 2px solid var(--primary);
-        }
-        
-        .close-bracket {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-family: 'Orbitron';
-            font-weight: bold;
-            z-index: 3001;
-        }
-        
-        /* Real Bracket Canvas */
-        .bracket-canvas-container {
-            width: 100%;
-            overflow-x: auto;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            padding: 2rem;
-            margin-top: 2rem;
-        }
-        
-        #bracketCanvas {
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 10px;
-            display: block;
-            margin: 0 auto;
-            border: 2px solid var(--primary);
-        }
-        
-        .bracket-controls {
-            display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        
-        .bracket-match {
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid rgba(220, 38, 38, 0.3);
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            transition: all 0.3s;
-        }
-        
-        .bracket-match:hover {
-            border-color: var(--primary);
-            background: rgba(220, 38, 38, 0.1);
-        }
-        
-        .match-teams {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-        
-        .match-team {
-            flex: 1;
-            padding: 0.5rem 1rem;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 5px;
-            text-align: center;
-            font-weight: bold;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .match-vs {
-            margin: 0 1rem;
-            color: var(--primary);
-            font-weight: bold;
-            white-space: nowrap;
-        }
-        
-        .match-actions {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-        }
-        
-        /* Progress Bar */
-        .progress-bar {
-            height: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            border-radius: 5px;
-            overflow: hidden;
-            margin-bottom: 0.8rem;
-            border: 1px solid rgba(220, 38, 38, 0.3);
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: var(--gradient-primary);
-            border-radius: 5px;
-            transition: width 0.6s ease;
-            box-shadow: 0 0 10px var(--primary);
-        }
-        
-        /* Search Bar */
-        .search-container {
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            border: 2px solid rgba(220, 38, 38, 0.3);
-        }
-        
-        .search-input-container {
-            position: relative;
-            margin-bottom: 1rem;
-        }
-        
-        .search-icon {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--primary);
-        }
-        
-        .search-input {
-            width: 100%;
-            padding: 1rem 1rem 1rem 3rem;
-            background: rgba(0, 0, 0, 0.8);
-            border: 2px solid rgba(220, 38, 38, 0.3);
-            border-radius: 8px;
-            color: var(--light);
-            font-size: 1rem;
-        }
-        
-        .filter-buttons {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-        
-        .filter-btn {
-            padding: 0.5rem 1rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(220, 38, 38, 0.3);
-            border-radius: 5px;
-            color: var(--gray);
-            cursor: pointer;
-            transition: all 0.3s;
-            font-family: 'Orbitron';
-            font-size: 0.8rem;
-            white-space: nowrap;
-        }
-        
-        .filter-btn.active {
-            background: rgba(220, 38, 38, 0.2);
-            border-color: var(--primary);
-            color: var(--light);
-        }
-        
-        .filter-btn:hover {
-            background: rgba(220, 38, 38, 0.1);
-            border-color: var(--primary);
-        }
-        
-        /* Discord Invite */
-        .discord-invite {
-            background: rgba(88, 101, 242, 0.1);
-            border: 2px solid rgba(88, 101, 242, 0.3);
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin-top: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        
-        .discord-icon {
-            color: #5865F2;
-            font-size: 2rem;
-        }
-        
-        .discord-info h4 {
-            color: #5865F2;
-            font-family: 'Orbitron';
-            margin-bottom: 0.5rem;
-        }
-        
-        .discord-info p {
-            color: var(--gray);
-            font-size: 0.9rem;
-            margin-bottom: 1rem;
-        }
-        
-        /* Server Counter */
-        .server-counter {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(220, 38, 38, 0.1);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            border: 1px solid var(--primary);
-            font-family: 'Orbitron';
-            font-size: 0.9rem;
-        }
-        
-        .counter-number {
-            color: var(--primary);
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
-        
-        /* Real Bracket Editor */
-        .real-bracket-editor {
-            background: rgba(0, 0, 0, 0.8);
-            border-radius: 15px;
-            padding: 2rem;
-            margin-top: 2rem;
-            border: 2px solid var(--primary);
-        }
-        
-        .bracket-round {
-            margin-bottom: 3rem;
-            padding: 1rem;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            border: 1px solid rgba(220, 38, 38, 0.2);
-        }
-        
-        .round-header {
-            color: var(--primary);
-            font-family: 'Orbitron';
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid var(--primary);
-        }
-        
-        .matches-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1rem;
-        }
-        
-        .match-card {
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid rgba(220, 38, 38, 0.3);
-            border-radius: 8px;
-            padding: 1rem;
-        }
-        
-        .match-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-        
-        .match-id {
-            color: var(--gray);
-            font-size: 0.8rem;
-            font-family: 'Orbitron';
-        }
-        
-        .match-status {
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-family: 'Orbitron';
-        }
-        
-        .status-scheduled {
-            background: rgba(245, 158, 11, 0.15);
-            color: var(--warning);
-        }
-        
-        .status-ongoing {
-            background: rgba(220, 38, 38, 0.15);
-            color: var(--primary);
-        }
-        
-        .status-completed {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--success);
-        }
-        
-        .team-row {
-            display: flex;
-            align-items: center;
-            padding: 0.8rem;
-            margin-bottom: 0.5rem;
-            background: rgba(0, 0, 0, 0.9);
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .team-row:hover {
-            background: rgba(220, 38, 38, 0.1);
-            border-color: var(--primary);
-        }
-        
-        .team-row.winner {
-            border: 2px solid var(--success);
-            background: rgba(16, 185, 129, 0.1);
-        }
-        
-        .team-name {
-            flex: 1;
-            font-weight: bold;
-        }
-        
-        .team-score {
-            width: 60px;
-            text-align: center;
-            padding: 0.3rem;
-            background: rgba(0, 0, 0, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            color: var(--light);
-        }
-        
-        .set-winner-btn {
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            margin-left: 1rem;
-        }
-        
-        /* Loading Spinner */
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-top: 4px solid var(--primary);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: var(--gray);
-        }
-        
-        /* Toast */
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            max-width: 300px;
-            animation: slideInRight 0.3s ease;
-        }
-        
-        /* Admin Panel Styles */
-        .admin-tabs {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 2rem;
-            border-bottom: 2px solid rgba(220, 38, 38, 0.3);
-            overflow-x: auto;
-            padding-bottom: 0.5rem;
-        }
-        
-        .admin-tab {
-            padding: 1rem;
-            background: none;
-            border: none;
-            color: var(--gray);
-            font-family: 'Orbitron';
-            cursor: pointer;
-            font-weight: 600;
-            white-space: nowrap;
-            min-width: 120px;
-            text-align: center;
-            transition: all 0.3s;
-            border-bottom: 3px solid transparent;
-        }
-        
-        .admin-tab:hover {
-            color: var(--primary);
-        }
-        
-        .admin-tab.active {
-            color: var(--primary);
-            border-bottom: 3px solid var(--primary);
-        }
-        
-        .admin-content {
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 10px;
-            padding: 2rem;
-            border: 2px solid rgba(220, 38, 38, 0.3);
-        }
-        
-        .admin-stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        
-        .admin-stat-card {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 1.5rem;
-            border-radius: 10px;
-            border-left: 4px solid var(--primary);
-        }
-        
-        .admin-stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--primary);
-            font-family: 'Orbitron';
-        }
-        
-        .admin-stat-label {
-            color: var(--gray);
-            font-size: 0.9rem;
-            font-family: 'Orbitron';
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .admin-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-        
-        .admin-table th {
-            background: rgba(220, 38, 38, 0.1);
-            padding: 1rem;
-            text-align: left;
-            font-family: 'Orbitron';
-            font-size: 0.9rem;
-            color: var(--primary);
-            border-bottom: 2px solid var(--primary);
-        }
-        
-        .admin-table td {
-            padding: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .admin-table tr:hover {
-            background: rgba(220, 38, 38, 0.05);
-        }
-        
-        .role-badge {
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            font-family: 'Orbitron';
-            white-space: nowrap;
-        }
-        
-        .role-owner {
-            background: rgba(255, 215, 0, 0.2);
-            color: var(--owner-gold);
-            border: 1px solid rgba(255, 215, 0, 0.5);
-        }
-        
-        .role-admin {
-            background: rgba(79, 70, 229, 0.2);
-            color: #4F46E5;
-            border: 1px solid rgba(79, 70, 229, 0.5);
-        }
-        
-        .role-host {
-            background: rgba(245, 158, 11, 0.2);
-            color: var(--warning);
-            border: 1px solid rgba(245, 158, 11, 0.5);
-        }
-        
-        .role-user {
-            background: rgba(107, 114, 128, 0.2);
-            color: var(--gray);
-            border: 1px solid rgba(107, 114, 128, 0.5);
-        }
-        
-        .action-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-        
-        .ip-ban-row {
-            display: grid;
-            grid-template-columns: 2fr 3fr 2fr 1fr;
-            gap: 1rem;
-            padding: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            align-items: center;
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 2.5rem; }
-            .tournaments-grid { grid-template-columns: 1fr; }
-            .nav-links { 
-                display: none; 
-                position: fixed;
-                top: 80px;
-                left: 0;
-                width: 100%;
-                background: rgba(0,0,0,0.95);
-                flex-direction: column;
-                padding: 1rem;
-                gap: 1rem;
-            }
-            .nav-links.show {
-                display: flex;
-            }
-            .form-container, .auth-container { padding: 2rem; }
-            .btn { padding: 0.7rem 1.2rem; font-size: 0.8rem; }
-            .nav-link { font-size: 0.8rem; }
-            .filter-buttons { overflow-x: auto; padding-bottom: 0.5rem; }
-            .matches-grid { grid-template-columns: 1fr; }
-            .admin-tabs { flex-direction: column; }
-            .admin-tab { min-width: 100%; }
-            .admin-table { display: block; overflow-x: auto; }
-            .ip-ban-row { grid-template-columns: 1fr; }
-        }
-        
-        /* Mobile Menu Button */
-        .mobile-menu-btn {
-            display: none;
-            background: none;
-            border: none;
-            color: var(--light);
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.5rem;
-        }
-        
-        @media (max-width: 768px) {
-            .mobile-menu-btn { display: block; }
-        }
-        
-        /* Utility Classes */
-        .hidden { display: none !important; }
-        .text-center { text-align: center; }
-        .mt-1 { margin-top: 1rem; } .mt-2 { margin-top: 2rem; } .mt-3 { margin-top: 3rem; } .mt-4 { margin-top: 4rem; }
-        .mb-1 { margin-bottom: 1rem; } .mb-2 { margin-bottom: 2rem; } .mb-3 { margin-bottom: 3rem; } .mb-4 { margin-bottom: 4rem; }
-        .ml-1 { margin-left: 1rem; } .ml-2 { margin-left: 2rem; }
-        .mr-1 { margin-right: 1rem; } .mr-2 { margin-right: 2rem; }
-        .flex { display: flex; }
-        .flex-col { flex-direction: column; }
-        .items-center { align-items: center; }
-        .justify-between { justify-content: space-between; }
-        .gap-1 { gap: 1rem; } .gap-2 { gap: 2rem; }
-        .w-full { width: 100%; }
-        .overflow-auto { overflow: auto; }
-        .overflow-hidden { overflow: hidden; }
-    </style>
-</head>
-<body>
-    <div class="matrix-bg"></div>
-    
-    <!-- Loader -->
-    <div class="page-loader" id="pageLoader">
-        <div class="loader-logo">
-            <div class="loader-icon">X</div>
-            <div class="loader-text">XTOURNEY</div>
-        </div>
-        <div class="loader-progress">
-            <div class="loader-progress-bar"></div>
-        </div>
-    </div>
-    
-    <!-- Auth Page -->
-    <div class="auth-page" id="authPage">
-        <div class="auth-container">
-            <div class="auth-logo">
-                <h1>XTOURNEY</h1>
-                <p>Professional Tournament Platform</p>
-            </div>
-            
-            <div class="tabs" style="display: flex; margin-bottom: 2rem; border-bottom: 2px solid rgba(220,38,38,0.3);">
-                <button class="tab" style="flex: 1; padding: 1rem; background: none; border: none; color: var(--gray); font-family: 'Orbitron'; cursor: pointer; font-weight: 600; white-space: nowrap;" onclick="showAuthTab('login')">LOGIN</button>
-                <button class="tab" style="flex: 1; padding: 1rem; background: none; border: none; color: var(--gray); font-family: 'Orbitron'; cursor: pointer; font-weight: 600; white-space: nowrap;" onclick="showAuthTab('register')">REGISTER</button>
-            </div>
-            
-            <div id="authAlert" class="alert" style="display: none;"></div>
-            
-            <!-- Login Form -->
-            <div id="loginForm" class="form-container active">
-                <form onsubmit="login(event)">
-                    <div class="form-group">
-                        <label class="form-label">USERNAME</label>
-                        <input type="text" id="loginUsername" class="form-input" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">PASSWORD</label>
-                        <input type="password" id="loginPassword" class="form-input" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">
-                        <i class="fas fa-sign-in-alt"></i> LOGIN
-                    </button>
-                </form>
-            </div>
-            
-            <!-- Register Form -->
-            <div id="registerForm" class="form-container" style="display: none;">
-                <form onsubmit="register(event)">
-                    <div class="form-group">
-                        <label class="form-label">USERNAME *</label>
-                        <input type="text" id="regUsername" class="form-input" required minlength="3">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">EMAIL (OPTIONAL)</label>
-                        <input type="email" id="regEmail" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">PASSWORD *</label>
-                        <input type="password" id="regPassword" class="form-input" required minlength="6">
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">
-                        <i class="fas fa-user-plus"></i> CREATE ACCOUNT
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Main Application -->
-    <div id="mainApp">
-        <!-- Header -->
-        <header>
-            <div class="header-content">
-                <a href="#" class="logo" onclick="showSection('homeSection')">
-                    <div class="logo-icon">X</div>
-                    <span>TOURNEY</span>
-                </a>
-                
-                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
-                    <i class="fas fa-bars"></i>
-                </button>
-                
-                <div class="nav-links" id="navLinks">
-                    <a class="nav-link active" onclick="showSection('homeSection'); toggleMobileMenu()">
-                        <i class="fas fa-home"></i> HOME
-                    </a>
-                    <a class="nav-link" onclick="showSection('tournamentsSection'); toggleMobileMenu()">
-                        <i class="fas fa-trophy"></i> TOURNAMENTS
-                    </a>
-                    <a class="nav-link" onclick="showSection('myTournamentsSection'); toggleMobileMenu()" id="myTournamentsLink">
-                        <i class="fas fa-gamepad"></i> MY TOURNAMENTS
-                    </a>
-                    <a class="nav-link" onclick="showSection('hostPanelSection'); toggleMobileMenu()" id="hostPanelLink" style="display: none;">
-                        <i class="fas fa-crown"></i> HOST PANEL
-                    </a>
-                    <a class="nav-link" onclick="showSection('publicBracketsSection'); toggleMobileMenu()">
-                        <i class="fas fa-bracket-curly"></i> PUBLIC BRACKETS
-                    </a>
-                    <a class="nav-link admin-nav" onclick="showSection('adminPanelSection'); toggleMobileMenu()" id="adminPanelLink" style="display: none;">
-                        <i class="fas fa-shield-alt"></i> ADMIN
-                    </a>
-                    <a class="nav-link owner-nav" onclick="showSection('ownerPanelSection'); toggleMobileMenu()" id="ownerPanelLink" style="display: none;">
-                        <i class="fas fa-crown"></i> OWNER
-                    </a>
-                </div>
-                
-                <div class="auth-buttons" id="authButtons">
-                    <div class="user-profile" id="userProfile" onclick="showUserMenu()">
-                        <img id="userAvatar" class="user-avatar" src="https://ui-avatars.com/api/?name=Guest&background=DC2626&color=fff&bold=true">
-                        <div>
-                            <div id="userName" style="font-weight: 700; font-family: 'Orbitron'; white-space: nowrap;">Guest</div>
-                            <div id="userStatus" style="font-size: 0.8rem; color: var(--gray); white-space: nowrap;">Not logged in</div>
-                        </div>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-                </div>
-            </div>
-        </header>
-        
-        <!-- User Menu Dropdown -->
-        <div id="userMenu" class="modal-overlay" style="display: none;" onclick="hideUserMenu(event)">
-            <div class="modal-content" style="position: fixed; top: 80px; right: 20px; width: 300px; max-width: 90vw;">
-                <div style="text-align: left;">
-                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem;">
-                        <img id="menuUserAvatar" class="user-avatar">
-                        <div>
-                            <div id="menuUserName" style="font-weight: 800; font-family: 'Orbitron'; white-space: nowrap;"></div>
-                            <div id="menuUserRole" style="font-size: 0.8rem; color: var(--primary); white-space: nowrap;"></div>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <button class="btn btn-secondary" onclick="showSection('myTournamentsSection'); hideUserMenu(event)" style="white-space: nowrap;">
-                            <i class="fas fa-gamepad"></i> My Tournaments
-                        </button>
-                        <button class="btn btn-secondary" onclick="showTournamentPassModal(); hideUserMenu(event)" style="white-space: nowrap;">
-                            <i class="fas fa-key"></i> Use Tournament Pass
-                        </button>
-                        <button class="btn btn-secondary" onclick="showSection('manageTournamentsSection'); hideUserMenu(event)" style="white-space: nowrap;">
-                            <i class="fas fa-edit"></i> Manage Tournaments
-                        </button>
-                        <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 1rem 0;"></div>
-                        <button class="btn btn-secondary" onclick="logout()" style="background: rgba(220,38,38,0.1); white-space: nowrap;">
-                            <i class="fas fa-sign-out-alt"></i> Logout
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Main Content -->
-        <main>
-            <!-- Home Section -->
-            <section id="homeSection" class="section">
-                <div class="hero">
-                    <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
-                        <h1>DOMINATE THE COMPETITION</h1>
-                        <p class="hero-subtitle">
-                            Complete tournament platform with real bracket system, Discord bot integration, and professional management tools.
-                        </p>
-                        
-                        <div style="display: flex; gap: 1.5rem; justify-content: center; margin-top: 3rem; flex-wrap: wrap;">
-                            <button class="btn btn-primary" onclick="showSection('tournamentsSection')" style="padding: 1.2rem 2.5rem; white-space: nowrap;">
-                                <i class="fas fa-trophy"></i> BROWSE TOURNAMENTS
-                            </button>
-                            <button class="btn btn-secondary" onclick="showTournamentPassModal()" style="padding: 1.2rem 2.5rem; white-space: nowrap;">
-                                <i class="fas fa-key"></i> USE TOURNAMENT PASS
-                            </button>
-                        </div>
-                        
-                        <!-- Stats -->
-                        <div class="hero-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; margin-top: 4rem;">
-                            <div class="stat-item" style="text-align: center; padding: 2rem; background: rgba(0,0,0,0.7); border-radius: 15px; border: 2px solid rgba(220,38,38,0.3);">
-                                <div id="liveMatchesCount" style="font-family: 'Orbitron'; font-size: 3rem; color: var(--primary);">0</div>
-                                <div style="color: var(--gray); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; white-space: nowrap;">LIVE MATCHES</div>
-                            </div>
-                            <div class="stat-item" style="text-align: center; padding: 2rem; background: rgba(0,0,0,0.7); border-radius: 15px; border: 2px solid rgba(220,38,38,0.3);">
-                                <div id="activeTournaments" style="font-family: 'Orbitron'; font-size: 3rem; color: var(--primary);">0</div>
-                                <div style="color: var(--gray); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; white-space: nowrap;">TOURNAMENTS</div>
-                            </div>
-                            <div class="stat-item" style="text-align: center; padding: 2rem; background: rgba(0,0,0,0.7); border-radius: 15px; border: 2px solid rgba(220,38,38,0.3);">
-                                <div id="totalTeams" style="font-family: 'Orbitron'; font-size: 3rem; color: var(--primary);">0</div>
-                                <div style="color: var(--gray); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; white-space: nowrap;">ACTIVE TEAMS</div>
-                            </div>
-                            <div class="stat-item" style="text-align: center; padding: 2rem; background: rgba(0,0,0,0.7); border-radius: 15px; border: 2px solid rgba(220,38,38,0.3);">
-                                <div id="totalUsers" style="font-family: 'Orbitron'; font-size: 3rem; color: var(--primary);">0</div>
-                                <div style="color: var(--gray); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; white-space: nowrap;">TOTAL USERS</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
-                    <!-- Featured Tournaments -->
-                    <div style="margin-top: 6rem;">
-                        <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; margin-bottom: 1.5rem; padding-bottom: 1.5rem; position: relative;">
-                            FEATURED TOURNAMENTS
-                            <div style="position: absolute; bottom: 0; left: 0; width: 80px; height: 4px; background: var(--gradient-primary);"></div>
-                        </h2>
-                        <p style="color: var(--gray); margin-bottom: 2rem;">Join tournaments created via Discord bot</p>
-                        
-                        <div class="tournaments-grid" id="featuredTournaments">
-                            <div class="loading">
-                                <div class="spinner"></div>
-                                LOADING TOURNAMENTS...
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Tournaments Section -->
-            <section id="tournamentsSection" class="section" style="display: none; padding: 6rem 0;">
-                <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                        <div>
-                            <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; margin-bottom: 1rem;">ALL TOURNAMENTS</h2>
-                            <p style="color: var(--gray);">Browse and join available tournaments</p>
-                        </div>
-                        <button class="btn btn-secondary" onclick="showTournamentPassModal()" style="white-space: nowrap;">
-                            <i class="fas fa-key"></i> USE TOURNAMENT PASS
-                        </button>
-                    </div>
-                    
-                    <!-- Search and Filter -->
-                    <div class="search-container">
-                        <div class="search-input-container">
-                            <i class="fas fa-search search-icon"></i>
-                            <input type="text" id="tournamentSearch" class="search-input" placeholder="Search tournaments by ID or name..." oninput="filterTournaments()">
-                        </div>
-                        
-                        <div class="filter-buttons">
-                            <button class="filter-btn active" onclick="setTournamentFilter('all')">ALL</button>
-                            <button class="filter-btn" onclick="setTournamentFilter('registration')">REGISTRATION OPEN</button>
-                            <button class="filter-btn" onclick="setTournamentFilter('ongoing')">ONGOING</button>
-                            <button class="filter-btn" onclick="setTournamentFilter('completed')">COMPLETED</button>
-                        </div>
-                    </div>
-                    
-                    <div class="tournaments-grid" id="allTournaments">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            LOADING TOURNAMENTS...
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Manage Tournaments Section -->
-            <section id="manageTournamentsSection" class="section" style="display: none; padding: 6rem 0;">
-                <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
-                    <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; margin-bottom: 2rem;">MANAGE TOURNAMENTS</h2>
-                    
-                    <div id="manageAlert" class="alert" style="display: none;"></div>
-                    
-                    <div id="manageTournamentsList" class="tournaments-grid">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            LOADING YOUR TOURNAMENTS...
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- REAL BRACKET EDITOR SECTION -->
-            <section id="realBracketEditorSection" class="section" style="display: none; padding: 6rem 0;">
-                <div class="container" style="max-width: 1400px; margin: 0 auto; padding: 0 20px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                        <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; white-space: nowrap;" id="realBracketEditorTitle">BRACKET EDITOR</h2>
-                        <div style="display: flex; gap: 1rem;">
-                            <button class="btn btn-secondary" onclick="refreshBracket()" style="white-space: nowrap;">
-                                <i class="fas fa-sync"></i> REFRESH
-                            </button>
-                            <button class="btn btn-primary" onclick="saveRealBracket()" style="white-space: nowrap;">
-                                <i class="fas fa-save"></i> SAVE BRACKET
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div id="realBracketEditorAlert" class="alert" style="display: none;"></div>
-                    
-                    <!-- Real Bracket Editor Content -->
-                    <div id="realBracketEditorContent"></div>
-                </div>
-            </section>
-            
-            <!-- My Tournaments Section -->
-            <section id="myTournamentsSection" class="section" style="display: none; padding: 6rem 0;">
-                <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
-                    <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; margin-bottom: 2rem;">MY TOURNAMENTS</h2>
-                    
-                    <div class="tabs" style="display: flex; margin-bottom: 2rem; border-bottom: 2px solid rgba(220,38,38,0.3);">
-                        <button class="tab" style="flex: 1; padding: 1rem; background: none; border: none; color: var(--gray); font-family: 'Orbitron'; cursor: pointer; font-weight: 600; white-space: nowrap;" onclick="showMyTournamentsTab('joined')">JOINED</button>
-                        <button class="tab" style="flex: 1; padding: 1rem; background: none; border: none; color: var(--gray); font-family: 'Orbitron'; cursor: pointer; font-weight: 600; white-space: nowrap;" onclick="showMyTournamentsTab('hosting')">HOSTING</button>
-                        <button class="tab" style="flex: 1; padding: 1rem; background: none; border: none; color: var(--gray); font-family: 'Orbitron'; cursor: pointer; font-weight: 600; white-space: nowrap;" onclick="showMyTournamentsTab('registered')">REGISTERED</button>
-                    </div>
-                    
-                    <div id="myTournamentsContent">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            LOADING YOUR TOURNAMENTS...
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Host Panel Section -->
-            <section id="hostPanelSection" class="section" style="display: none; padding: 6rem 0;">
-                <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
-                    <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; margin-bottom: 2rem;">HOST PANEL</h2>
-                    
-                    <div id="hostTournamentsList" class="tournaments-grid">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            LOADING YOUR TOURNAMENTS...
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Public Brackets Section -->
-            <section id="publicBracketsSection" class="section" style="display: none; padding: 6rem 0;">
-                <div class="container" style="max-width: 1400px; margin: 0 auto; padding: 0 20px;">
-                    <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; margin-bottom: 2rem;">PUBLIC BRACKETS</h2>
-                    <p style="color: var(--gray); margin-bottom: 2rem;">View brackets from tournaments across all Discord servers</p>
-                    
-                    <div id="publicBracketsContent" class="tournaments-grid">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            LOADING PUBLIC BRACKETS...
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- ADMIN PANEL SECTION -->
-            <section id="adminPanelSection" class="section" style="display: none; padding: 6rem 0;">
-                <div class="container" style="max-width: 1400px; margin: 0 auto; padding: 0 20px;">
-                    <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; margin-bottom: 2rem;">ADMIN PANEL</h2>
-                    
-                    <div class="admin-tabs">
-                        <button class="admin-tab active" onclick="showAdminTab('dashboard')">DASHBOARD</button>
-                        <button class="admin-tab" onclick="showAdminTab('users')">USER MANAGEMENT</button>
-                        <button class="admin-tab" onclick="showAdminTab('tournaments')">TOURNAMENTS</button>
-                        <button class="admin-tab" onclick="showAdminTab('ip-bans')">IP BANNING</button>
-                        <button class="admin-tab" onclick="showAdminTab('bot-servers')">BOT SERVERS</button>
-                        <button class="admin-tab" onclick="showAdminTab('logs')">AUDIT LOGS</button>
-                    </div>
-                    
-                    <div id="adminContent" class="admin-content">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            LOADING ADMIN PANEL...
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- OWNER PANEL SECTION (Same as Admin but with more options) -->
-            <section id="ownerPanelSection" class="section" style="display: none; padding: 6rem 0;">
-                <div class="container" style="max-width: 1400px; margin: 0 auto; padding: 0 20px;">
-                    <h2 class="section-title" style="font-family: 'Orbitron'; font-size: 2.8rem; margin-bottom: 2rem;">
-                        <i class="fas fa-crown" style="color: var(--owner-gold);"></i> OWNER PANEL
-                    </h2>
-                    
-                    <div class="admin-tabs">
-                        <button class="admin-tab active" onclick="showOwnerTab('dashboard')">DASHBOARD</button>
-                        <button class="admin-tab" onclick="showOwnerTab('users')">USER MANAGEMENT</button>
-                        <button class="admin-tab" onclick="showOwnerTab('tournaments')">TOURNAMENTS</button>
-                        <button class="admin-tab" onclick="showOwnerTab('ip-bans')">IP BANNING</button>
-                        <button class="admin-tab" onclick="showOwnerTab('bot-servers')">BOT SERVERS</button>
-                        <button class="admin-tab" onclick="showOwnerTab('logs')">AUDIT LOGS</button>
-                        <button class="admin-tab" onclick="showOwnerTab('settings')">SYSTEM SETTINGS</button>
-                    </div>
-                    
-                    <div id="ownerContent" class="admin-content">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            LOADING OWNER PANEL...
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Tournament Details Modal -->
-            <div id="tournamentDetailsModal" class="modal-overlay" style="display: none;">
-                <div class="modal-content" style="max-width: 800px; text-align: left;">
-                    <div style="text-align: right; margin-bottom: 1rem;">
-                        <button onclick="closeModal('tournamentDetailsModal')" style="background: none; border: none; color: var(--gray); cursor: pointer; font-size: 1.5rem;">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    
-                    <div id="tournamentDetailsContent"></div>
-                </div>
-            </div>
-            
-            <!-- Tournament Pass Modal -->
-            <div id="tournamentPassModal" class="modal-overlay" style="display: none;">
-                <div class="modal-content">
-                    <div class="modal-title">
-                        <i class="fas fa-key"></i> TOURNAMENT PASS
-                    </div>
-                    <div class="modal-subtitle">
-                        Enter the tournament pass code from Discord bot to manage tournaments
-                    </div>
-                    
-                    <div id="tournamentPassAlert" class="alert" style="display: none;"></div>
-                    
-                    <div class="form-group">
-                        <input type="text" id="tournamentPassInput" class="form-input" placeholder="ENTER PASS CODE" style="text-align: center; letter-spacing: 2px;">
-                    </div>
-                    
-                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                        <button class="btn btn-primary" onclick="useTournamentPass()" style="flex: 1; white-space: nowrap;">
-                            <i class="fas fa-unlock"></i> ACCESS TOURNAMENT
-                        </button>
-                        <button class="btn btn-secondary" onclick="closeModal('tournamentPassModal')" style="flex: 1; white-space: nowrap;">
-                            CANCEL
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Discord Registration Modal -->
-            <div id="discordRegistrationModal" class="modal-overlay" style="display: none;">
-                <div class="modal-content" style="max-width: 600px;">
-                    <div class="modal-title">
-                        <i class="fab fa-discord"></i> DISCORD REGISTRATION
-                    </div>
-                    <div class="modal-subtitle">
-                        Join the Discord server to register for this tournament
-                    </div>
-                    
-                    <div id="discordRegistrationContent" class="discord-invite" style="margin: 2rem 0;">
-                        <i class="fab fa-discord discord-icon"></i>
-                        <div class="discord-info">
-                            <h4 id="discordServerName">Tournament Server</h4>
-                            <p id="discordServerDescription">Join this Discord server to register your team</p>
-                            <div id="discordInviteCode" class="tournament-pass-code">LOADING...</div>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                        <button class="btn btn-primary" onclick="copyDiscordInvite()" style="flex: 1; white-space: nowrap;">
-                            <i class="fas fa-copy"></i> COPY INVITE
-                        </button>
-                        <a id="discordInviteLink" href="#" target="_blank" class="btn btn-secondary" style="flex: 1; white-space: nowrap;">
-                            <i class="fab fa-discord"></i> JOIN SERVER
-                        </a>
-                        <button class="btn btn-secondary" onclick="closeModal('discordRegistrationModal')" style="flex: 1; white-space: nowrap;">
-                            CLOSE
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Ban IP Modal -->
-            <div id="banIPModal" class="modal-overlay" style="display: none;">
-                <div class="modal-content">
-                    <div class="modal-title">
-                        <i class="fas fa-ban"></i> BAN IP ADDRESS
-                    </div>
-                    
-                    <div id="banIPAlert" class="alert" style="display: none;"></div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">IP ADDRESS</label>
-                        <input type="text" id="banIPAddress" class="form-input" placeholder="e.g., 192.168.1.1 or 192.168.1.0/24">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">REASON</label>
-                        <input type="text" id="banIPReason" class="form-input" placeholder="Reason for ban">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">DURATION (DAYS)</label>
-                        <input type="number" id="banIPDuration" class="form-input" placeholder="Leave empty for permanent ban" min="1">
-                    </div>
-                    
-                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                        <button class="btn btn-primary" onclick="submitBanIP()" style="flex: 1; white-space: nowrap;">
-                            <i class="fas fa-ban"></i> BAN IP
-                        </button>
-                        <button class="btn btn-secondary" onclick="closeModal('banIPModal')" style="flex: 1; white-space: nowrap;">
-                            CANCEL
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Edit Tournament Modal -->
-            <div id="editTournamentModal" class="modal-overlay" style="display: none;">
-                <div class="modal-content" style="max-width: 600px;">
-                    <div class="modal-title">
-                        <i class="fas fa-edit"></i> EDIT TOURNAMENT
-                    </div>
-                    
-                    <div id="editTournamentAlert" class="alert" style="display: none;"></div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">TOURNAMENT NAME</label>
-                        <input type="text" id="editTournamentName" class="form-input">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">STATUS</label>
-                        <select id="editTournamentStatus" class="form-input">
-                            <option value="registration">Registration Open</option>
-                            <option value="ongoing">Ongoing</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">MAX TEAMS</label>
-                        <input type="number" id="editTournamentMaxTeams" class="form-input" min="2" max="128">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">DESCRIPTION</label>
-                        <textarea id="editTournamentDescription" class="form-input" rows="3"></textarea>
-                    </div>
-                    
-                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                        <button class="btn btn-primary" onclick="submitEditTournament()" style="flex: 1; white-space: nowrap;">
-                            <i class="fas fa-save"></i> SAVE CHANGES
-                        </button>
-                        <button class="btn btn-secondary" onclick="closeModal('editTournamentModal')" style="flex: 1; white-space: nowrap;">
-                            CANCEL
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- REAL BRACKET VIEWER -->
-            <div class="bracket-viewer" id="bracketViewer">
-                <button class="close-bracket" onclick="closeBracketViewer()" style="white-space: nowrap;">
-                    <i class="fas fa-times"></i> CLOSE BRACKET
-                </button>
-                <div class="bracket-container" id="bracketContainer">
-                    <div class="bracket-canvas-container">
-                        <canvas id="bracketCanvas"></canvas>
-                    </div>
-                    <div class="bracket-controls" id="bracketControls"></div>
-                </div>
-            </div>
-        </main>
-        
-        <!-- Footer -->
-        <footer style="background: rgba(0,0,0,0.95); padding: 5rem 0 3rem; margin-top: 4rem; border-top: 3px solid var(--primary);">
-            <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 3rem; margin-bottom: 2rem;">
-                    <div>
-                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1.5rem;">XTOURNEY</h3>
-                        <p style="color: var(--gray);">Professional tournament platform with Discord bot integration and real bracket system.</p>
-                        <div class="server-counter mt-2">
-                            <i class="fas fa-server"></i>
-                            <span>Active in <span id="footerServerCount" class="counter-number">0</span> servers</span>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1.5rem;">QUICK LINKS</h3>
-                        <ul style="list-style: none;">
-                            <li><a href="#" onclick="showSection('homeSection'); return false;" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Home</a></li>
-                            <li><a href="#" onclick="showSection('tournamentsSection'); return false;" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Tournaments</a></li>
-                            <li><a href="#" onclick="showSection('publicBracketsSection'); return false;" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Public Brackets</a></li>
-                            <li><a href="#" onclick="showTournamentPassModal(); return false;" style="color: var(--gray); text-decoration: none; display: block; margin-bottom: 0.8rem;">Use Tournament Pass</a></li>
-                        </ul>
-                    </div>
-                </div>
-                <div style="text-align: center; color: var(--gray); font-size: 0.8rem; padding-top: 3rem; border-top: 1px solid rgba(220, 38, 38, 0.2); font-family: 'Orbitron'; letter-spacing: 1px;">
-                    &copy; 2025 XTOURNEY. INTEGRATED WITH DISCORD BOT.
-                </div>
-            </div>
-        </footer>
-    </div>
+# main.py - PRODUCTION READY COMPLETE BACKEND WITH OWNER ADMIN
+from fastapi import FastAPI, HTTPException, Request, Depends, status, Form, WebSocket, WebSocketDisconnect
+import json
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.staticfiles import StaticFiles
+import os
+import requests
+import hashlib
+from datetime import datetime, timedelta
+from typing import Optional, Dict, List, Any
+from pydantic import BaseModel, EmailStr, Field
+import jwt
+from uuid import uuid4
+import logging
+import math
+import random
+import asyncio
+from collections import defaultdict
+import aiohttp
+import ipaddress
+from functools import lru_cache
 
-    <script>
-        // ========== CONFIGURATION ==========
-        const API_BASE_URL = window.location.hostname.includes('localhost') 
-            ? 'http://localhost:8000' 
-            : 'https://compbot-lhuy.onrender.com';
+# ========== SETUP LOGGING ==========
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# ========== CONFIGURATION ==========
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+JWT_SECRET = os.getenv("JWT_SECRET", "xtourney-secret-key-2024")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://www.xotiicsplaza.us")
+BACKEND_URL = os.getenv("BACKEND_URL", "https://compbot-lhuy.onrender.com")
+
+# Owner credentials
+OWNER_USERNAME = "xotiic"
+OWNER_PASSWORD = "Mwf4618##"
+
+# Headers for Supabase
+headers = {
+    "apikey": SUPABASE_KEY,
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {SUPABASE_KEY}"
+}
+
+# ========== APP INITIALIZATION ==========
+app = FastAPI(title="XTourney API", version="5.0", docs_url="/api/docs", redoc_url="/api/redoc")
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ========== MODELS ==========
+class UserRegister(BaseModel):
+    username: str = Field(..., min_length=3, max_length=20)
+    password: str = Field(..., min_length=6)
+    email: Optional[str] = None
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class TournamentCreate(BaseModel):
+    name: str
+    game: str
+    max_teams: int = 16
+    max_players: int = 5
+    prize_pool: Optional[str] = None
+    description: Optional[str] = None
+
+class TeamRegister(BaseModel):
+    team_name: str
+    tournament_id: str
+    captain_id: str
+    captain_name: str
+    members: List[str]
+    region: str = "GLOBAL"
+    tag: Optional[str] = None
+    player_ids: Optional[List[str]] = None
+
+class UpdateMatchScore(BaseModel):
+    team1_score: int
+    team2_score: int
+    duration: Optional[int] = None
+
+class TournamentStatusUpdate(BaseModel):
+    status: str
+
+class TournamentRanking(BaseModel):
+    tournament_id: str
+    team_id: str
+    team_name: str
+    wins: int = 0
+    losses: int = 0
+    points: int = 0
+    rank: int = 0
+    matches_played: int = 0
+
+class MatchHistory(BaseModel):
+    match_id: str
+    tournament_id: str
+    tournament_name: str
+    round_number: int
+    match_number: int
+    team1_id: str
+    team1_name: str
+    team1_score: int
+    team2_id: str
+    team2_name: str
+    team2_score: int
+    winner_id: str
+    winner_name: str
+    status: str
+    played_at: str
+    duration: Optional[int] = None
+
+class ServerInviteCreate(BaseModel):
+    tournament_id: str
+    server_id: str
+    server_name: str
+    invite_link: str
+    expires_at: Optional[str] = None
+
+class AdminAction(BaseModel):
+    action: str
+    target_id: str
+    data: Optional[Dict] = None
+    reason: Optional[str] = None
+
+class IPBanCreate(BaseModel):
+    ip_address: str
+    reason: str
+    duration_days: Optional[int] = None
+
+# ========== SUPABASE HELPER ==========
+def supabase_request(method: str, endpoint: str, data: dict = None, params: dict = None):
+    # Guard against missing Supabase configuration
+    if not SUPABASE_URL or not SUPABASE_URL.startswith("http"):
+        logger.error("Supabase URL not configured (SUPABASE_URL). Skipping request.")
+        if method == "GET":
+            return []
+        return {"success": False, "detail": "Supabase URL not configured"}
+
+    url = f"{SUPABASE_URL}/rest/v1/{endpoint}"
+    
+    if params:
+        query_params = "&".join([f"{k}={v}" for k, v in params.items()])
+        url = f"{url}?{query_params}"
+    
+    try:
+        if method == "GET":
+            response = requests.get(url, headers=headers)
+        elif method == "POST":
+            response = requests.post(url, json=data, headers=headers)
+        elif method == "PATCH":
+            response = requests.patch(url, json=data, headers=headers)
+        elif method == "DELETE":
+            response = requests.delete(url, headers=headers)
+        elif method == "PUT":
+            response = requests.put(url, json=data, headers=headers)
+        else:
+            return {"success": False, "detail": f"Invalid method: {method}"}
         
-        // ========== GLOBAL STATE ==========
-        let currentUser = null;
-        let currentToken = null;
-        let currentTournamentPass = null;
-        let managedTournament = null;
-        let allTournaments = [];
-        let currentFilter = 'all';
-        let currentBracketData = null;
-        let currentTournamentForBracket = null;
-        let bracketCanvas = null;
-        let bracketCtx = null;
-        let currentAdminTab = 'dashboard';
-        let currentOwnerTab = 'dashboard';
-        
-        // ========== INITIALIZATION ==========
-        document.addEventListener('DOMContentLoaded', async function() {
-            console.log('XTourney Platform Initializing...');
+        if response.status_code in [200, 201, 204]:
+            try:
+                return response.json()
+            except:
+                return {"success": True}
+        elif response.status_code == 404:
+            return []
+        else:
+            error_text = response.text[:500]
+            logger.error(f"Supabase error {response.status_code}: {error_text}")
+            return {"success": False, "detail": f"Database error: {response.status_code}"}
             
-            setTimeout(async () => {
-                const pageLoader = document.getElementById('pageLoader');
-                if (pageLoader) {
-                    pageLoader.classList.add('hidden');
+    except Exception as e:
+        logger.error(f"Supabase request error: {str(e)}")
+        return {"success": False, "detail": f"Database connection failed: {str(e)}"}
+
+# ========== AUTH HELPERS ==========
+def create_token(user_data: dict) -> str:
+    payload = {
+        "sub": user_data.get("id"),
+        "username": user_data.get("username"),
+        "is_host": user_data.get("is_host", False),
+        "is_admin": user_data.get("is_admin", False),
+        "is_owner": user_data.get("is_owner", False),
+        "iat": datetime.utcnow(),
+        "exp": datetime.utcnow() + timedelta(days=30)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+def verify_token(token: str) -> Optional[Dict]:
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except:
+        return None
+
+security = HTTPBearer()
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    payload = verify_token(token)
+    
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    user_id = payload.get("sub")
+    users = supabase_request("GET", f"users?id=eq.{user_id}")
+    
+    if not users or len(users) == 0:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return users[0]
+
+async def get_current_admin(user: dict = Depends(get_current_user)):
+    if not user.get('is_admin') and not user.get('is_owner'):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+async def get_current_owner(user: dict = Depends(get_current_user)):
+    if not user.get('is_owner'):
+        raise HTTPException(status_code=403, detail="Owner access required")
+    return user
+
+# ========== IP BANNING SYSTEM ==========
+class IPBanManager:
+    def __init__(self):
+        self.banned_ips = set()
+        self.load_banned_ips()
+    
+    def load_banned_ips(self):
+        try:
+            bans = supabase_request("GET", "ip_bans")
+            if isinstance(bans, list):
+                for ban in bans:
+                    if ban.get('expires_at'):
+                        expires = datetime.fromisoformat(ban['expires_at'].replace('Z', '+00:00'))
+                        if expires > datetime.utcnow():
+                            self.banned_ips.add(ban['ip_address'])
+                        else:
+                            # Auto-remove expired bans
+                            supabase_request("DELETE", f"ip_bans?id=eq.{ban['id']}")
+                    else:
+                        self.banned_ips.add(ban['ip_address'])
+            logger.info(f"Loaded {len(self.banned_ips)} banned IPs")
+        except Exception as e:
+            logger.error(f"Error loading banned IPs: {e}")
+    
+    def is_banned(self, ip_address: str) -> bool:
+        return ip_address in self.banned_ips
+    
+    def add_ban(self, ip_address: str, reason: str, duration_days: Optional[int] = None):
+        try:
+            expires_at = None
+            if duration_days:
+                expires_at = (datetime.utcnow() + timedelta(days=duration_days)).isoformat()
+            
+            ban_data = {
+                "id": str(uuid4()),
+                "ip_address": ip_address,
+                "reason": reason,
+                "expires_at": expires_at,
+                "created_at": datetime.utcnow().isoformat()
+            }
+            
+            result = supabase_request("POST", "ip_bans", ban_data)
+            if isinstance(result, dict) and result.get('success') != False:
+                self.banned_ips.add(ip_address)
+                logger.info(f"IP {ip_address} banned: {reason}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error adding IP ban: {e}")
+            return False
+    
+    def remove_ban(self, ip_address: str):
+        try:
+            result = supabase_request("DELETE", f"ip_bans?ip_address=eq.{ip_address}")
+            if isinstance(result, dict) and result.get('success') != False:
+                self.banned_ips.discard(ip_address)
+                logger.info(f"IP {ip_address} unbanned")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error removing IP ban: {e}")
+            return False
+
+ip_ban_manager = IPBanManager()
+
+# ========== REQUEST MIDDLEWARE FOR IP BAN CHECK ==========
+@app.middleware("http")
+async def check_ip_ban(request: Request, call_next):
+    client_ip = request.client.host
+    
+    # Check if IP is banned
+    if ip_ban_manager.is_banned(client_ip):
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "Your IP address has been banned from this service"}
+        )
+    
+    response = await call_next(request)
+    return response
+
+# ========== HELPER FUNCTIONS ==========
+def create_bracket_structure(teams, tournament_id, tournament_name):
+    """Create a proper bracket structure with teams"""
+    bracket = {
+        "tournament_id": tournament_id,
+        "tournament_name": tournament_name,
+        "rounds": [],
+        "status": "generated",
+        "generated_at": datetime.utcnow().isoformat()
+    }
+    
+    # Sort teams and create seeds
+    seeded_teams = list(enumerate(teams, 1))
+    
+    # Calculate number of rounds
+    num_teams = len(teams)
+    if num_teams < 2:
+        return bracket
+    
+    # Calculate rounds needed
+    num_rounds = math.ceil(math.log2(num_teams))
+    bracket_size = 2 ** num_rounds
+    
+    # Fill bracket with byes if needed
+    bracket_teams = []
+    for seed, team in seeded_teams:
+        bracket_teams.append({
+            "seed": seed,
+            "team_id": team.get("id"),
+            "team_name": team.get("name", f"Team {seed}"),
+            "captain": team.get("captain_name", "Unknown"),
+            "status": "active"
+        })
+    
+    # Add byes if needed
+    while len(bracket_teams) < bracket_size:
+        bracket_teams.append({
+            "seed": len(bracket_teams) + 1,
+            "team_id": None,
+            "team_name": "BYE",
+            "captain": None,
+            "status": "bye"
+        })
+    
+    # Create first round matches
+    first_round_matches = []
+    for i in range(0, len(bracket_teams), 2):
+        match_num = i // 2 + 1
+        team1 = bracket_teams[i]
+        team2 = bracket_teams[i + 1] if i + 1 < len(bracket_teams) else None
+        
+        match_data = {
+            "match_id": f"{tournament_id}-r1-m{match_num}",
+            "match_number": match_num,
+            "round_number": 1,
+            "team1_id": team1.get("team_id"),
+            "team1_name": team1["team_name"],
+            "team1_seed": team1["seed"],
+            "team2_id": team2.get("team_id") if team2 else None,
+            "team2_name": team2["team_name"] if team2 else "BYE",
+            "team2_seed": team2["seed"] if team2 else None,
+            "winner_id": None,
+            "status": "scheduled" if team2 else "bye",
+            "score1": 0,
+            "score2": 0
+        }
+        first_round_matches.append(match_data)
+    
+    bracket["rounds"].append({
+        "round_number": 1,
+        "round_name": "Round of 16" if bracket_size == 16 else f"Round 1 ({len(first_round_matches)} matches)",
+        "matches": first_round_matches
+    })
+    
+    # Create subsequent rounds
+    for round_num in range(2, num_rounds + 1):
+        prev_round_matches = bracket["rounds"][-1]["matches"]
+        current_round_matches = []
+        match_count = len(prev_round_matches) // 2
+        
+        for i in range(match_count):
+            match_num = i + 1
+            match_data = {
+                "match_id": f"{tournament_id}-r{round_num}-m{match_num}",
+                "match_number": match_num,
+                "round_number": round_num,
+                "team1_id": None,
+                "team1_name": "TBD",
+                "team2_id": None,
+                "team2_name": "TBD",
+                "winner_id": None,
+                "status": "pending",
+                "score1": 0,
+                "score2": 0
+            }
+            current_round_matches.append(match_data)
+        
+        round_name = "Quarterfinals" if round_num == num_rounds - 2 else \
+                    "Semifinals" if round_num == num_rounds - 1 else \
+                    "Finals" if round_num == num_rounds else f"Round {round_num}"
+        
+        bracket["rounds"].append({
+            "round_number": round_num,
+            "round_name": round_name,
+            "matches": current_round_matches
+        })
+    
+    return bracket
+
+def calculate_team_rankings(tournament_id: str):
+    """Calculate rankings for all teams in a tournament"""
+    try:
+        teams = supabase_request("GET", f"teams?tournament_id=eq.{tournament_id}")
+        if not teams:
+            return []
+        
+        matches = supabase_request("GET", f"matches?tournament_id=eq.{tournament_id}&status=eq.completed")
+        
+        team_stats = {}
+        for team in teams:
+            team_stats[team['id']] = {
+                'team_id': team['id'],
+                'team_name': team['name'],
+                'wins': 0,
+                'losses': 0,
+                'points': 0,
+                'matches_played': 0
+            }
+        
+        for match in matches:
+            team1_id = match.get('team1_id')
+            team2_id = match.get('team2_id')
+            winner_id = match.get('winner_id')
+            
+            if team1_id and team2_id and winner_id:
+                if team1_id in team_stats:
+                    team_stats[team1_id]['matches_played'] += 1
+                if team2_id in team_stats:
+                    team_stats[team2_id]['matches_played'] += 1
+                
+                if winner_id == team1_id:
+                    team_stats[team1_id]['wins'] += 1
+                    team_stats[team1_id]['points'] += 3
+                    if team2_id in team_stats:
+                        team_stats[team2_id]['losses'] += 1
+                elif winner_id == team2_id:
+                    team_stats[team2_id]['wins'] += 1
+                    team_stats[team2_id]['points'] += 3
+                    if team1_id in team_stats:
+                        team_stats[team1_id]['losses'] += 1
+        
+        rankings = list(team_stats.values())
+        rankings.sort(key=lambda x: (-x['points'], -x['wins'], x['losses']))
+        
+        for i, rank in enumerate(rankings):
+            rank['rank'] = i + 1
+        
+        return rankings
+        
+    except Exception as e:
+        logger.error(f"Error calculating rankings: {e}")
+        return []
+
+def save_match_history(match_data: dict):
+    """Save match to history"""
+    try:
+        history_data = {
+            "id": str(uuid4()),
+            "match_id": match_data.get('id'),
+            "tournament_id": match_data.get('tournament_id'),
+            "tournament_name": match_data.get('tournament_name', ''),
+            "round_number": match_data.get('round_number', 1),
+            "match_number": match_data.get('match_number', 1),
+            "team1_id": match_data.get('team1_id'),
+            "team1_name": match_data.get('team1_name', ''),
+            "team1_score": match_data.get('team1_score', 0),
+            "team2_id": match_data.get('team2_id'),
+            "team2_name": match_data.get('team2_name', ''),
+            "team2_score": match_data.get('team2_score', 0),
+            "winner_id": match_data.get('winner_id'),
+            "winner_name": match_data.get('winner_name', ''),
+            "status": match_data.get('status', 'completed'),
+            "played_at": match_data.get('played_at', datetime.utcnow().isoformat()),
+            "duration": match_data.get('duration'),
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        supabase_request("POST", "match_history", history_data)
+        return True
+    except Exception as e:
+        logger.error(f"Error saving match history: {e}")
+        return False
+
+def get_global_rankings(limit: int = 100):
+    """Get global rankings across all tournaments"""
+    try:
+        matches = supabase_request("GET", "match_history?status=eq.completed")
+        if not matches:
+            return []
+        
+        team_stats = {}
+        
+        for match in matches:
+            team1_id = match.get('team1_id')
+            team2_id = match.get('team2_id')
+            winner_id = match.get('winner_id')
+            
+            if not all([team1_id, team2_id, winner_id]):
+                continue
+            
+            if team1_id not in team_stats:
+                team_stats[team1_id] = {
+                    'team_id': team1_id,
+                    'team_name': match.get('team1_name', 'Unknown'),
+                    'wins': 0,
+                    'losses': 0,
+                    'points': 0,
+                    'matches_played': 0,
+                    'tournaments_played': set()
+                }
+            
+            if team2_id not in team_stats:
+                team_stats[team2_id] = {
+                    'team_id': team2_id,
+                    'team_name': match.get('team2_name', 'Unknown'),
+                    'wins': 0,
+                    'losses': 0,
+                    'points': 0,
+                    'matches_played': 0,
+                    'tournaments_played': set()
+                }
+            
+            tournament_id = match.get('tournament_id')
+            if tournament_id:
+                team_stats[team1_id]['tournaments_played'].add(tournament_id)
+                team_stats[team2_id]['tournaments_played'].add(tournament_id)
+            
+            team_stats[team1_id]['matches_played'] += 1
+            team_stats[team2_id]['matches_played'] += 1
+            
+            if winner_id == team1_id:
+                team_stats[team1_id]['wins'] += 1
+                team_stats[team1_id]['points'] += 3
+                team_stats[team2_id]['losses'] += 1
+            else:
+                team_stats[team2_id]['wins'] += 1
+                team_stats[team2_id]['points'] += 3
+                team_stats[team1_id]['losses'] += 1
+        
+        rankings = []
+        for team_id, stats in team_stats.items():
+            stats['tournaments_played'] = len(stats['tournaments_played'])
+            rankings.append(stats)
+        
+        rankings.sort(key=lambda x: (-x['points'], -x['wins'], -x['tournaments_played'], x['losses']))
+        
+        for i, rank in enumerate(rankings):
+            rank['rank'] = i + 1
+        
+        return rankings[:limit]
+        
+    except Exception as e:
+        logger.error(f"Error getting global rankings: {e}")
+        return []
+
+async def get_total_users():
+    """Get total number of users in the system"""
+    try:
+        users = supabase_request("GET", "users")
+        if isinstance(users, list):
+            return len(users)
+        return 0
+    except Exception as e:
+        logger.error(f"Error getting total users: {e}")
+        return 0
+
+# ========== ROUTES ==========
+@app.get("/")
+async def root():
+    return {"message": "XTourney API v5.0", "status": "running", "timestamp": datetime.utcnow().isoformat()}
+
+@app.get("/api/health")
+async def health_check():
+    try:
+        users = supabase_request("GET", "users?limit=1")
+        tournaments = supabase_request("GET", "tournaments?limit=1")
+        
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "timestamp": datetime.utcnow().isoformat(),
+            "users": len(users) if users else 0,
+            "tournaments": len(tournaments) if tournaments else 0
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        raise HTTPException(status_code=503, detail="Service unavailable")
+
+# ========== AUTH ROUTES ==========
+@app.post("/api/register")
+async def register(user_data: UserRegister):
+    try:
+        # Check if user exists
+        existing = supabase_request("GET", f"users?username=eq.{user_data.username}")
+        if existing and len(existing) > 0:
+            raise HTTPException(status_code=400, detail="Username already exists")
+        
+        if user_data.email:
+            existing_email = supabase_request("GET", f"users?email=eq.{user_data.email}")
+            if existing_email and len(existing_email) > 0:
+                raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Hash password
+        hashed_password = hashlib.sha256(user_data.password.encode()).hexdigest()
+        
+        user_id = str(uuid4())
+        
+        # Check if this is the owner account
+        is_owner = (user_data.username == OWNER_USERNAME and user_data.password == OWNER_PASSWORD)
+        
+        user_record = {
+            "id": user_id,
+            "username": user_data.username,
+            "password": hashed_password,
+            "email": user_data.email,
+            "is_host": is_owner,
+            "is_admin": is_owner,
+            "is_owner": is_owner,
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        result = supabase_request("POST", "users", user_record)
+        
+        token = create_token(user_record)
+        
+        return {
+            "success": True,
+            "token": token,
+            "user": {
+                "id": user_id,
+                "username": user_data.username,
+                "email": user_data.email,
+                "is_host": is_owner,
+                "is_admin": is_owner,
+                "is_owner": is_owner
+            },
+            "message": "Registration successful"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Registration error: {e}")
+        raise HTTPException(status_code=500, detail="Registration failed")
+
+@app.post("/api/login")
+async def login(login_data: UserLogin):
+    try:
+        # Special owner login
+        if login_data.username == OWNER_USERNAME and login_data.password == OWNER_PASSWORD:
+            # Check if owner exists in database
+            existing_owner = supabase_request("GET", f"users?username=eq.{OWNER_USERNAME}")
+            
+            if not existing_owner or len(existing_owner) == 0:
+                # Create owner account if it doesn't exist
+                owner_id = str(uuid4())
+                hashed_password = hashlib.sha256(OWNER_PASSWORD.encode()).hexdigest()
+                
+                owner_record = {
+                    "id": owner_id,
+                    "username": OWNER_USERNAME,
+                    "password": hashed_password,
+                    "email": "owner@xtourney.com",
+                    "is_host": True,
+                    "is_admin": True,
+                    "is_owner": True,
+                    "created_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.utcnow().isoformat()
                 }
                 
-                await checkExistingSession();
+                supabase_request("POST", "users", owner_record)
                 
-            }, 1000);
-        });
-        
-        async function checkExistingSession() {
-            const storedToken = localStorage.getItem('xtourney_token');
-            const storedUser = localStorage.getItem('xtourney_user');
-            
-            if (storedToken && storedUser) {
-                try {
-                    currentToken = storedToken;
-                    currentUser = JSON.parse(storedUser);
-                    
-                    console.log('✅ Found existing session for user:', currentUser.username);
-                    
-                    document.getElementById('authPage').classList.add('hidden');
-                    document.getElementById('mainApp').style.display = 'block';
-                    
-                    updateUIAfterLogin();
-                    await loadDashboardData();
-                    
-                } catch (e) {
-                    console.error('Error parsing stored session:', e);
-                    logout();
-                }
-            } else {
-                document.getElementById('authPage').classList.remove('hidden');
-            }
-        }
-        
-        // ========== AUTH FUNCTIONS ==========
-        function showAuthTab(tabName) {
-            document.querySelectorAll('#authPage .tab').forEach(tab => {
-                tab.style.color = 'var(--gray)';
-                tab.style.borderBottom = 'none';
-            });
-            document.querySelectorAll('#authPage .form-container').forEach(form => form.style.display = 'none');
-            
-            const activeTab = document.querySelector(`#authPage .tab[onclick="showAuthTab('${tabName}')"]`);
-            if (activeTab) {
-                activeTab.style.color = 'var(--primary)';
-                activeTab.style.borderBottom = '3px solid var(--primary)';
-            }
-            
-            document.getElementById(`${tabName}Form`).style.display = 'block';
-            hideAuthAlert();
-        }
-        
-        function showAuthAlert(message, type = 'error') {
-            const alertEl = document.getElementById('authAlert');
-            alertEl.textContent = message;
-            alertEl.className = `alert alert-${type}`;
-            alertEl.style.display = 'flex';
-        }
-        
-        function hideAuthAlert() {
-            document.getElementById('authAlert').style.display = 'none';
-        }
-        
-        async function register(event) {
-            event.preventDefault();
-            
-            const username = document.getElementById('regUsername').value.trim();
-            const email = document.getElementById('regEmail').value.trim();
-            const password = document.getElementById('regPassword').value;
-            
-            if (!username || !password) {
-                showAuthAlert('Username and password are required');
-                return;
-            }
-            
-            if (username.length < 3) {
-                showAuthAlert('Username must be at least 3 characters');
-                return;
-            }
-            
-            if (password.length < 6) {
-                showAuthAlert('Password must be at least 6 characters');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/register`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
+                token = create_token(owner_record)
+                
+                return {
+                    "success": True,
+                    "token": token,
+                    "user": {
+                        "id": owner_id,
+                        "username": OWNER_USERNAME,
+                        "email": "owner@xtourney.com",
+                        "is_host": True,
+                        "is_admin": True,
+                        "is_owner": True
                     },
-                    body: JSON.stringify({
-                        username: username,
-                        email: email || null,
-                        password: password
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    showAuthAlert(data.detail || 'Registration failed');
-                    return;
+                    "message": "Owner login successful"
                 }
+            else:
+                # Owner exists, generate token
+                owner = existing_owner[0]
+                token = create_token(owner)
                 
-                if (data.success) {
-                    localStorage.setItem('xtourney_token', data.token);
-                    localStorage.setItem('xtourney_user', JSON.stringify(data.user));
-                    
-                    currentToken = data.token;
-                    currentUser = data.user;
-                    
-                    document.getElementById('authPage').classList.add('hidden');
-                    document.getElementById('mainApp').style.display = 'block';
-                    
-                    updateUIAfterLogin();
-                    await loadDashboardData();
-                    
-                    showToast(`✅ Welcome to XTourney, ${username}!`, 'success');
-                    
-                    document.getElementById('regUsername').value = '';
-                    document.getElementById('regEmail').value = '';
-                    document.getElementById('regPassword').value = '';
-                }
-                
-            } catch (error) {
-                console.error('Registration error:', error);
-                showAuthAlert('Registration failed. Please try again.');
-            }
-        }
-        
-        async function login(event) {
-            event.preventDefault();
-            
-            const username = document.getElementById('loginUsername').value.trim();
-            const password = document.getElementById('loginPassword').value;
-            
-            if (!username || !password) {
-                showAuthAlert('Username and password are required');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/login`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
+                return {
+                    "success": True,
+                    "token": token,
+                    "user": {
+                        "id": owner['id'],
+                        "username": owner['username'],
+                        "email": owner.get('email'),
+                        "is_host": True,
+                        "is_admin": True,
+                        "is_owner": True
                     },
-                    body: JSON.stringify({
-                        username: username,
-                        password: password
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    showAuthAlert(data.detail || 'Login failed');
-                    return;
+                    "message": "Owner login successful"
                 }
-                
-                if (data.success) {
-                    localStorage.setItem('xtourney_token', data.token);
-                    localStorage.setItem('xtourney_user', JSON.stringify(data.user));
-                    
-                    currentToken = data.token;
-                    currentUser = data.user;
-                    
-                    document.getElementById('authPage').classList.add('hidden');
-                    document.getElementById('mainApp').style.display = 'block';
-                    
-                    updateUIAfterLogin();
-                    await loadDashboardData();
-                    
-                    showToast(`✅ Welcome back, ${username}!`, 'success');
-                    
-                    document.getElementById('loginUsername').value = '';
-                    document.getElementById('loginPassword').value = '';
+        
+        # Normal user login
+        users = supabase_request("GET", f"users?username=eq.{login_data.username}")
+        if not users or len(users) == 0:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        user = users[0]
+        hashed_password = hashlib.sha256(login_data.password.encode()).hexdigest()
+        
+        if user['password'] != hashed_password:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        token = create_token(user)
+        
+        return {
+            "success": True,
+            "token": token,
+            "user": {
+                "id": user['id'],
+                "username": user['username'],
+                "email": user.get('email'),
+                "is_host": user.get('is_host', False),
+                "is_admin": user.get('is_admin', False),
+                "is_owner": user.get('is_owner', False)
+            },
+            "message": "Login successful"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        raise HTTPException(status_code=500, detail="Login failed")
+
+# ========== OWNER/ADMIN ROUTES ==========
+@app.get("/api/admin/stats")
+async def admin_stats(user: dict = Depends(get_current_admin)):
+    try:
+        total_users = await get_total_users()
+        tournaments = supabase_request("GET", "tournaments")
+        total_tournaments = len(tournaments) if isinstance(tournaments, list) else 0
+        
+        teams = supabase_request("GET", "teams")
+        total_teams = len(teams) if isinstance(teams, list) else 0
+        
+        matches = supabase_request("GET", "matches")
+        total_matches = len(matches) if isinstance(matches, list) else 0
+        
+        servers = supabase_request("GET", "bot_servers")
+        total_servers = len(servers) if isinstance(servers, list) else 0
+        
+        ip_bans = supabase_request("GET", "ip_bans")
+        total_bans = len(ip_bans) if isinstance(ip_bans, list) else 0
+        
+        recent_users = supabase_request("GET", "users?order=created_at.desc&limit=10")
+        recent_tournaments = supabase_request("GET", "tournaments?order=created_at.desc&limit=10")
+        
+        return {
+            "success": True,
+            "stats": {
+                "total_users": total_users,
+                "total_tournaments": total_tournaments,
+                "total_teams": total_teams,
+                "total_matches": total_matches,
+                "total_servers": total_servers,
+                "total_ip_bans": total_bans
+            },
+            "recent_users": recent_users if isinstance(recent_users, list) else [],
+            "recent_tournaments": recent_tournaments if isinstance(recent_tournaments, list) else []
+        }
+    except Exception as e:
+        logger.error(f"Admin stats error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get admin stats")
+
+@app.get("/api/admin/users")
+async def admin_get_users(user: dict = Depends(get_current_admin)):
+    try:
+        users = supabase_request("GET", "users?order=created_at.desc")
+        if isinstance(users, list):
+            # Remove passwords for security
+            for u in users:
+                u.pop('password', None)
+            return {"success": True, "users": users}
+        return {"success": True, "users": []}
+    except Exception as e:
+        logger.error(f"Admin get users error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get users")
+
+@app.post("/api/admin/users/{user_id}/promote")
+async def admin_promote_user(user_id: str, promote_data: dict, user: dict = Depends(get_current_admin)):
+    try:
+        update_data = {}
+        if promote_data.get('make_admin'):
+            update_data['is_admin'] = True
+        if promote_data.get('make_host'):
+            update_data['is_host'] = True
+        if promote_data.get('remove_admin'):
+            update_data['is_admin'] = False
+        if promote_data.get('remove_host'):
+            update_data['is_host'] = False
+        
+        update_data['updated_at'] = datetime.utcnow().isoformat()
+        
+        result = supabase_request("PATCH", f"users?id=eq.{user_id}", update_data)
+        
+        if isinstance(result, dict) and result.get('success') != False:
+            return {"success": True, "message": "User updated successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to update user")
+            
+    except Exception as e:
+        logger.error(f"Admin promote user error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to promote user")
+
+@app.delete("/api/admin/users/{user_id}")
+async def admin_delete_user(user_id: str, user: dict = Depends(get_current_admin)):
+    try:
+        if user_id == user['id']:
+            raise HTTPException(status_code=400, detail="Cannot delete yourself")
+        
+        result = supabase_request("DELETE", f"users?id=eq.{user_id}")
+        
+        if isinstance(result, dict) and result.get('success') != False:
+            return {"success": True, "message": "User deleted successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to delete user")
+            
+    except Exception as e:
+        logger.error(f"Admin delete user error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete user")
+
+@app.get("/api/admin/tournaments")
+async def admin_get_tournaments(user: dict = Depends(get_current_admin)):
+    try:
+        tournaments = supabase_request("GET", "tournaments?order=created_at.desc")
+        if isinstance(tournaments, list):
+            return {"success": True, "tournaments": tournaments}
+        return {"success": True, "tournaments": []}
+    except Exception as e:
+        logger.error(f"Admin get tournaments error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get tournaments")
+
+@app.put("/api/admin/tournaments/{tournament_id}")
+async def admin_update_tournament(tournament_id: str, update_data: dict, user: dict = Depends(get_current_admin)):
+    try:
+        update_data['updated_at'] = datetime.utcnow().isoformat()
+        
+        result = supabase_request("PATCH", f"tournaments?id=eq.{tournament_id}", update_data)
+        
+        if isinstance(result, dict) and result.get('success') != False:
+            return {"success": True, "message": "Tournament updated successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to update tournament")
+            
+    except Exception as e:
+        logger.error(f"Admin update tournament error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update tournament")
+
+@app.delete("/api/admin/tournaments/{tournament_id}")
+async def admin_delete_tournament(tournament_id: str, user: dict = Depends(get_current_admin)):
+    try:
+        # Also delete associated teams and matches
+        supabase_request("DELETE", f"teams?tournament_id=eq.{tournament_id}")
+        supabase_request("DELETE", f"matches?tournament_id=eq.{tournament_id}")
+        supabase_request("DELETE", f"tournament_brackets?tournament_id=eq.{tournament_id}")
+        supabase_request("DELETE", f"server_invites?tournament_id=eq.{tournament_id}")
+        
+        result = supabase_request("DELETE", f"tournaments?id=eq.{tournament_id}")
+        
+        if isinstance(result, dict) and result.get('success') != False:
+            return {"success": True, "message": "Tournament deleted successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to delete tournament")
+            
+    except Exception as e:
+        logger.error(f"Admin delete tournament error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete tournament")
+
+@app.get("/api/admin/ip-bans")
+async def admin_get_ip_bans(user: dict = Depends(get_current_admin)):
+    try:
+        bans = supabase_request("GET", "ip_bans?order=created_at.desc")
+        if isinstance(bans, list):
+            return {"success": True, "bans": bans}
+        return {"success": True, "bans": []}
+    except Exception as e:
+        logger.error(f"Admin get IP bans error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get IP bans")
+
+@app.post("/api/admin/ip-bans")
+async def admin_add_ip_ban(ban_data: IPBanCreate, request: Request, user: dict = Depends(get_current_admin)):
+    try:
+        success = ip_ban_manager.add_ban(ban_data.ip_address, ban_data.reason, ban_data.duration_days)
+        
+        if success:
+            return {"success": True, "message": "IP banned successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to ban IP")
+            
+    except Exception as e:
+        logger.error(f"Admin add IP ban error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add IP ban")
+
+@app.delete("/api/admin/ip-bans/{ip_address}")
+async def admin_remove_ip_ban(ip_address: str, user: dict = Depends(get_current_admin)):
+    try:
+        success = ip_ban_manager.remove_ban(ip_address)
+        
+        if success:
+            return {"success": True, "message": "IP unbanned successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to unban IP")
+            
+    except Exception as e:
+        logger.error(f"Admin remove IP ban error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to remove IP ban")
+
+@app.get("/api/admin/logs")
+async def admin_get_logs(user: dict = Depends(get_current_owner)):
+    try:
+        # Get recent actions from audit log
+        logs = supabase_request("GET", "audit_logs?order=created_at.desc&limit=100")
+        
+        if isinstance(logs, list):
+            return {"success": True, "logs": logs}
+        
+        return {"success": True, "logs": []}
+        
+    except Exception as e:
+        logger.error(f"Admin get logs error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get logs")
+
+@app.get("/api/admin/bot-servers")
+async def admin_get_bot_servers(user: dict = Depends(get_current_admin)):
+    try:
+        servers = supabase_request("GET", "bot_servers?order=last_updated.desc")
+        if isinstance(servers, list):
+            return {"success": True, "servers": servers}
+        return {"success": True, "servers": []}
+    except Exception as e:
+        logger.error(f"Admin get bot servers error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get bot servers")
+
+# ========== TOURNAMENT ROUTES ==========
+@app.get("/api/tournaments")
+async def get_tournaments():
+    try:
+        tournaments = supabase_request("GET", "tournaments?order=created_at.desc")
+        
+        if isinstance(tournaments, dict) and "success" in tournaments and not tournaments["success"]:
+            return {"success": True, "tournaments": [], "count": 0}
+        
+        if tournaments:
+            for tournament in tournaments:
+                teams = supabase_request("GET", f"teams?tournament_id=eq.{tournament['id']}")
+                tournament["team_count"] = len(teams) if teams else 0
+                tournament["current_teams"] = tournament.get("team_count", 0)
+                tournament["max_players"] = tournament.get("max_players_per_team", 5)
+        
+        return {
+            "success": True,
+            "tournaments": tournaments if tournaments else [],
+            "count": len(tournaments) if tournaments else 0
+        }
+    except Exception as e:
+        logger.error(f"Get tournaments error: {e}")
+        return {"success": True, "tournaments": [], "count": 0}
+
+@app.get("/api/tournaments/{tournament_id}")
+async def get_tournament(tournament_id: str):
+    try:
+        tournaments = supabase_request("GET", f"tournaments?id=eq.{tournament_id}")
+        
+        if not tournaments or len(tournaments) == 0:
+            raise HTTPException(status_code=404, detail="Tournament not found")
+        
+        tournament = tournaments[0]
+        
+        teams = supabase_request("GET", f"teams?tournament_id=eq.{tournament_id}")
+        tournament["teams"] = teams if teams else []
+        tournament["team_count"] = len(teams) if teams else 0
+        
+        return {
+            "success": True,
+            "tournament": tournament
+        }
+    except Exception as e:
+        logger.error(f"Get tournament error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get tournament")
+
+@app.post("/api/tournaments/discord")
+async def create_tournament_discord(request: Request):
+    try:
+        data = await request.json()
+        
+        required = ["name", "game", "max_teams", "max_players_per_team", "tournament_pass", "host_id", "created_by"]
+        for field in required:
+            if field not in data:
+                raise HTTPException(status_code=400, detail=f"Missing field: {field}")
+        
+        tournament_id = str(uuid4())
+        
+        # Create server invite record if provided
+        server_invite = data.get('server_invite')
+        if server_invite:
+            invite_data = {
+                "id": str(uuid4()),
+                "tournament_id": tournament_id,
+                "server_id": data.get('discord_server_id'),
+                "server_name": data.get('server_name', f"{data['game']} Tournament"),
+                "invite_link": server_invite,
+                "created_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
+            }
+            supabase_request("POST", "server_invites", invite_data)
+        
+        tournament_data = {
+            "id": tournament_id,
+            "name": data["name"],
+            "game": data["game"],
+            "description": data.get("description", ""),
+            "status": "registration",
+            "max_teams": data["max_teams"],
+            "max_players_per_team": data["max_players_per_team"],
+            "prize_pool": data.get("prize_pool", ""),
+            "tournament_pass": data["tournament_pass"],
+            "host_id": data["host_id"],
+            "created_by": data["created_by"],
+            "discord_server_id": data.get("discord_server_id"),
+            "server_invite": server_invite,
+            "current_round": 1,
+            "total_rounds": 1,
+            "team_count": 0,
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        result = supabase_request("POST", "tournaments", tournament_data)
+        
+        return {
+            "success": True,
+            "tournament_id": tournament_id,
+            "tournament": tournament_data,
+            "tournament_pass": data["tournament_pass"],
+            "server_invite": server_invite,
+            "message": "Tournament created successfully"
+        }
+    except Exception as e:
+        logger.error(f"Discord tournament creation error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create tournament")
+
+@app.post("/api/tournaments/{tournament_id}/start")
+async def start_tournament(tournament_id: str):
+    try:
+        tournaments = supabase_request("GET", f"tournaments?id=eq.{tournament_id}")
+        
+        if not tournaments or len(tournaments) == 0:
+            raise HTTPException(status_code=404, detail="Tournament not found")
+        
+        update_data = {
+            "status": "ongoing",
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        supabase_request("PATCH", f"tournaments?id=eq.{tournament_id}", update_data)
+        
+        return {
+            "success": True,
+            "message": "Tournament started successfully",
+            "tournament_id": tournament_id
+        }
+    except Exception as e:
+        logger.error(f"Start tournament error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to start tournament")
+
+@app.post("/api/tournaments/{tournament_id}/generate-bracket")
+async def generate_bracket_simple(tournament_id: str):
+    try:
+        tournaments = supabase_request("GET", f"tournaments?id=eq.{tournament_id}")
+        
+        if not tournaments or len(tournaments) == 0:
+            raise HTTPException(status_code=404, detail="Tournament not found")
+        
+        tournament = tournaments[0]
+        
+        teams = supabase_request("GET", f"teams?tournament_id=eq.{tournament_id}")
+        if not teams or len(teams) < 2:
+            raise HTTPException(status_code=400, detail="Need at least 2 teams to generate bracket")
+        
+        # Create bracket structure
+        bracket_data = create_bracket_structure(teams, tournament_id, tournament['name'])
+        
+        # Save bracket
+        bracket_record = {
+            "id": str(uuid4()),
+            "tournament_id": tournament_id,
+            "bracket_data": json.dumps(bracket_data),
+            "status": "generated",
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        # Check if bracket exists
+        existing = supabase_request("GET", f"tournament_brackets?tournament_id=eq.{tournament_id}")
+        if existing and len(existing) > 0:
+            supabase_request("PATCH", f"tournament_brackets?id=eq.{existing[0]['id']}", {
+                "bracket_data": json.dumps(bracket_data),
+                "updated_at": datetime.utcnow().isoformat()
+            })
+        else:
+            supabase_request("POST", "tournament_brackets", bracket_record)
+        
+        # Create matches
+        for round_data in bracket_data.get('rounds', []):
+            for match_data in round_data.get('matches', []):
+                match_record = {
+                    "id": str(uuid4()),
+                    "tournament_id": tournament_id,
+                    "match_number": match_data.get('match_number', 1),
+                    "round_number": match_data.get('round_number', 1),
+                    "team1_id": match_data.get('team1_id'),
+                    "team1_name": match_data.get('team1_name', 'TBD'),
+                    "team2_id": match_data.get('team2_id'),
+                    "team2_name": match_data.get('team2_name', 'TBD'),
+                    "team1_score": match_data.get('score1', 0),
+                    "team2_score": match_data.get('score2', 0),
+                    "winner_id": match_data.get('winner_id'),
+                    "status": match_data.get('status', 'scheduled'),
+                    "created_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.utcnow().isoformat()
                 }
-                
-            } catch (error) {
-                console.error('Login error:', error);
-                showAuthAlert('Login failed. Please check credentials.');
+                supabase_request("POST", "matches", match_record)
+        
+        # Update tournament
+        supabase_request("PATCH", f"tournaments?id=eq.{tournament_id}", {
+            "status": "ongoing",
+            "current_round": 1,
+            "total_rounds": len(bracket_data.get('rounds', [])),
+            "updated_at": datetime.utcnow().isoformat()
+        })
+        
+        return {
+            "success": True,
+            "message": "Bracket generated successfully",
+            "tournament_id": tournament_id,
+            "team_count": len(teams),
+            "rounds": len(bracket_data.get('rounds', []))
+        }
+    except Exception as e:
+        logger.error(f"Generate bracket error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate bracket")
+
+@app.get("/api/tournaments/{tournament_id}/bracket")
+async def get_tournament_bracket(tournament_id: str):
+    try:
+        tournaments = supabase_request("GET", f"tournaments?id=eq.{tournament_id}")
+        if not tournaments:
+            raise HTTPException(status_code=404, detail="Tournament not found")
+        
+        tournament = tournaments[0]
+        
+        teams = supabase_request("GET", f"teams?tournament_id=eq.{tournament_id}&order=created_at.asc")
+        
+        brackets = supabase_request("GET", f"tournament_brackets?tournament_id=eq.{tournament_id}")
+        
+        bracket = None
+        if brackets and len(brackets) > 0:
+            bracket = brackets[0]
+            if isinstance(bracket.get('bracket_data'), str):
+                try:
+                    bracket['bracket_data'] = json.loads(bracket['bracket_data'])
+                except:
+                    bracket['bracket_data'] = {}
+        
+        # Get matches
+        matches = supabase_request("GET", f"matches?tournament_id=eq.{tournament_id}&order=round_number.asc,match_number.asc")
+        
+        return {
+            "success": True,
+            "tournament": tournament,
+            "bracket": bracket,
+            "teams": teams if teams else [],
+            "matches": matches if isinstance(matches, list) else []
+        }
+            
+    except Exception as e:
+        logger.error(f"Error getting bracket: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get bracket")
+
+# ========== STATS & RANKINGS ROUTES ==========
+@app.get("/api/stats")
+async def get_stats():
+    try:
+        tournaments = supabase_request("GET", "tournaments?status=in.(registration,ongoing)")
+        active_tournaments = len(tournaments) if tournaments else 0
+        
+        teams = supabase_request("GET", "teams")
+        total_teams = len(teams) if teams else 0
+        
+        servers = supabase_request("GET", "bot_servers")
+        connected_servers = len(servers) if servers else 0
+        
+        matches = supabase_request("GET", "matches?status=eq.ongoing")
+        live_matches = len(matches) if matches else 0
+        
+        total_users = await get_total_users()
+        
+        return {
+            "success": True,
+            "stats": {
+                "active_tournaments": active_tournaments,
+                "total_teams": total_teams,
+                "connected_servers": connected_servers,
+                "live_matches": live_matches,
+                "total_users": total_users
             }
         }
-        
-        function logout() {
-            localStorage.removeItem('xtourney_token');
-            localStorage.removeItem('xtourney_user');
-            currentUser = null;
-            currentToken = null;
-            currentTournamentPass = null;
-            managedTournament = null;
-            
-            document.getElementById('authPage').classList.remove('hidden');
-            document.getElementById('mainApp').style.display = 'none';
-            
-            document.getElementById('loginUsername').value = '';
-            document.getElementById('loginPassword').value = '';
-            document.getElementById('regUsername').value = '';
-            document.getElementById('regEmail').value = '';
-            document.getElementById('regPassword').value = '';
-            
-            showAuthTab('login');
-            showToast('✅ Successfully logged out', 'success');
-        }
-        
-        // ========== UI UPDATE FUNCTIONS ==========
-        function updateUIAfterLogin() {
-            if (!currentUser) return;
-            
-            const userName = document.getElementById('userName');
-            const userStatus = document.getElementById('userStatus');
-            const userProfile = document.getElementById('userProfile');
-            const userAvatar = document.getElementById('userAvatar');
-            
-            userName.textContent = currentUser.username;
-            
-            let role = 'Player';
-            let color = 'var(--gray)';
-            let avatarBg = 'DC2626';
-            
-            if (currentUser.is_owner) {
-                role = 'Owner';
-                color = 'var(--owner-gold)';
-                avatarBg = 'FFD700';
-                userProfile.classList.add('owner-profile');
-                userAvatar.classList.add('owner-avatar');
-                userAvatar.style.borderColor = 'var(--owner-gold)';
-                userAvatar.style.boxShadow = '0 0 10px var(--owner-gold)';
-                
-                document.getElementById('ownerPanelLink').style.display = 'block';
-                document.getElementById('adminPanelLink').style.display = 'block';
-            } else if (currentUser.is_admin) {
-                role = 'Admin';
-                color = '#4F46E5';
-                avatarBg = '4F46E5';
-                userProfile.classList.add('admin-profile');
-                userAvatar.classList.add('admin-avatar');
-                userAvatar.style.borderColor = '#4F46E5';
-                userAvatar.style.boxShadow = '0 0 10px #4F46E5';
-                
-                document.getElementById('adminPanelLink').style.display = 'block';
-            } else if (currentUser.is_host) {
-                role = 'Tournament Host';
-                color = 'var(--primary)';
-                document.getElementById('hostPanelLink').style.display = 'block';
-            }
-            
-            userStatus.textContent = role;
-            userStatus.style.color = color;
-            
-            const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.username)}&background=${avatarBg}&color=${currentUser.is_owner ? '000' : 'fff'}&bold=true`;
-            userAvatar.src = avatarUrl;
-            
-            // Update menu avatar
-            document.getElementById('menuUserAvatar').src = avatarUrl;
-            document.getElementById('menuUserName').textContent = currentUser.username;
-            
-            let roleBadge = '👤 PLAYER';
-            if (currentUser.is_owner) roleBadge = '👑 OWNER';
-            else if (currentUser.is_admin) roleBadge = '🛡️ ADMIN';
-            else if (currentUser.is_host) roleBadge = '🎮 TOURNAMENT HOST';
-            
-            document.getElementById('menuUserRole').textContent = roleBadge;
-            
-            // Update menu avatar classes
-            const menuAvatar = document.getElementById('menuUserAvatar');
-            menuAvatar.className = 'user-avatar';
-            if (currentUser.is_owner) {
-                menuAvatar.classList.add('owner-avatar');
-            } else if (currentUser.is_admin) {
-                menuAvatar.classList.add('admin-avatar');
+    except Exception as e:
+        logger.error(f"Stats error: {e}")
+        return {
+            "success": True,
+            "stats": {
+                "active_tournaments": 0,
+                "total_teams": 0,
+                "connected_servers": 0,
+                "live_matches": 0,
+                "total_users": 0
             }
         }
+
+# ========== TEAM ROUTES ==========
+@app.post("/api/teams/register")
+async def register_team(team_data: TeamRegister):
+    try:
+        tournaments = supabase_request("GET", f"tournaments?id=eq.{team_data.tournament_id}")
+        if not tournaments or len(tournaments) == 0:
+            raise HTTPException(status_code=404, detail="Tournament not found")
         
-        function showUserMenu() {
-            document.getElementById('userMenu').style.display = 'flex';
+        tournament = tournaments[0]
+        
+        if tournament["status"] != "registration":
+            raise HTTPException(status_code=400, detail="Tournament is not accepting registrations")
+        
+        teams = supabase_request("GET", f"teams?tournament_id=eq.{team_data.tournament_id}")
+        current_teams = len(teams) if teams else 0
+        
+        if current_teams >= tournament["max_teams"]:
+            raise HTTPException(status_code=400, detail="Tournament is full")
+        
+        existing_teams = supabase_request("GET", f"teams?tournament_id=eq.{team_data.tournament_id}&name=eq.{team_data.team_name}")
+        if existing_teams and len(existing_teams) > 0:
+            raise HTTPException(status_code=400, detail="Team name already taken in this tournament")
+        
+        team_id = str(uuid4())
+        team_name = team_data.team_name
+        if team_data.tag:
+            team_name = f"[{team_data.tag}] {team_data.team_name}"
+        
+        team_record = {
+            "id": team_id,
+            "tournament_id": team_data.tournament_id,
+            "name": team_name,
+            "captain_discord_id": team_data.captain_id,
+            "captain_name": team_data.captain_name,
+            "region": team_data.region,
+            "members": json.dumps(team_data.members),
+            "status": "registered",
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
         }
         
-        function hideUserMenu(event) {
-            if (event.target.id === 'userMenu') {
-                document.getElementById('userMenu').style.display = 'none';
-            }
+        result = supabase_request("POST", "teams", team_record)
+        
+        supabase_request("PATCH", f"tournaments?id=eq.{team_data.tournament_id}", {
+            "team_count": current_teams + 1,
+            "updated_at": datetime.utcnow().isoformat()
+        })
+        
+        return {
+            "success": True,
+            "team": {
+                "id": team_id,
+                "name": team_name,
+                "captain_name": team_data.captain_name,
+                "region": team_data.region,
+                "members": team_data.members
+            },
+            "message": "Team registered successfully"
+        }
+    except Exception as e:
+        logger.error(f"Team registration error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to register team")
+
+# ========== MATCH ROUTES ==========
+@app.get("/api/matches/{match_id}")
+async def get_match(match_id: str):
+    try:
+        matches = supabase_request("GET", f"matches?id=eq.{match_id}")
+        
+        if not matches or len(matches) == 0:
+            raise HTTPException(status_code=404, detail="Match not found")
+        
+        match_data = matches[0]
+        
+        return {
+            "success": True,
+            "match": match_data
+        }
+    except Exception as e:
+        logger.error(f"Get match error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get match")
+
+@app.post("/api/matches/{match_id}/update-score")
+async def update_match_score(match_id: str, score_data: UpdateMatchScore):
+    try:
+        matches = supabase_request("GET", f"matches?id=eq.{match_id}")
+        
+        if not matches or len(matches) == 0:
+            raise HTTPException(status_code=404, detail="Match not found")
+        
+        match_data = matches[0]
+        
+        if score_data.team1_score > score_data.team2_score:
+            winner_id = match_data.get("team1_id")
+            winner_name = match_data.get("team1_name")
+        elif score_data.team2_score > score_data.team1_score:
+            winner_id = match_data.get("team2_id")
+            winner_name = match_data.get("team2_name")
+        else:
+            winner_id = None
+            winner_name = None
+        
+        update_data = {
+            "team1_score": score_data.team1_score,
+            "team2_score": score_data.team2_score,
+            "winner_id": winner_id,
+            "status": "completed",
+            "updated_at": datetime.utcnow().isoformat()
         }
         
-        function toggleMobileMenu() {
-            const navLinks = document.getElementById('navLinks');
-            navLinks.classList.toggle('show');
+        supabase_request("PATCH", f"matches?id=eq.{match_id}", update_data)
+        
+        # Save to history
+        tournament = supabase_request("GET", f"tournaments?id=eq.{match_data['tournament_id']}")
+        tournament_name = tournament[0]['name'] if tournament else "Unknown Tournament"
+        
+        history_data = {
+            "id": match_id,
+            "tournament_id": match_data.get('tournament_id'),
+            "tournament_name": tournament_name,
+            "round_number": match_data.get('round_number', 1),
+            "match_number": match_data.get('match_number', 1),
+            "team1_id": match_data.get('team1_id'),
+            "team1_name": match_data.get('team1_name', ''),
+            "team1_score": score_data.team1_score,
+            "team2_id": match_data.get('team2_id'),
+            "team2_name": match_data.get('team2_name', ''),
+            "team2_score": score_data.team2_score,
+            "winner_id": winner_id,
+            "winner_name": winner_name,
+            "status": "completed",
+            "played_at": datetime.utcnow().isoformat(),
+            "duration": score_data.duration
         }
         
-        // ========== SECTION NAVIGATION ==========
-        function showSection(sectionName) {
-            const sections = [
-                'homeSection', 'tournamentsSection', 'manageTournamentsSection', 
-                'realBracketEditorSection', 'myTournamentsSection', 'hostPanelSection',
-                'publicBracketsSection', 'adminPanelSection', 'ownerPanelSection'
-            ];
-            sections.forEach(section => {
-                const el = document.getElementById(section);
-                if (el) el.style.display = 'none';
-            });
-            
-            const sectionEl = document.getElementById(sectionName);
-            if (sectionEl) {
-                sectionEl.style.display = 'block';
-            }
-            
-            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-            const activeLink = Array.from(document.querySelectorAll('.nav-link')).find(link => 
-                link.getAttribute('onclick')?.includes(sectionName.replace('Section', '').toLowerCase())
-            );
-            if (activeLink) activeLink.classList.add('active');
-            
-            switch(sectionName) {
-                case 'homeSection':
-                    loadDashboardData();
-                    break;
-                case 'tournamentsSection':
-                    loadAllTournaments();
-                    break;
-                case 'manageTournamentsSection':
-                    loadManageTournaments();
-                    break;
-                case 'myTournamentsSection':
-                    loadMyTournaments();
-                    break;
-                case 'hostPanelSection':
-                    loadHostTournaments();
-                    break;
-                case 'publicBracketsSection':
-                    loadPublicBrackets();
-                    break;
-                case 'adminPanelSection':
-                    showAdminTab('dashboard');
-                    break;
-                case 'ownerPanelSection':
-                    showOwnerTab('dashboard');
-                    break;
-            }
-            
-            document.getElementById('userMenu').style.display = 'none';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            
-            // Close mobile menu
-            document.getElementById('navLinks').classList.remove('show');
+        save_match_history(history_data)
+        
+        updated_matches = supabase_request("GET", f"matches?id=eq.{match_id}")
+        
+        return {
+            "success": True,
+            "match": updated_matches[0] if updated_matches and len(updated_matches) > 0 else match_data,
+            "message": "Match score updated successfully"
         }
+    except Exception as e:
+        logger.error(f"Update match score error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update match score")
+
+# ========== TOURNAMENT PASS ROUTES ==========
+@app.post("/api/tournament-pass/auth")
+async def auth_tournament_pass(pass_code: str = Form(...)):
+    try:
+        tournaments = supabase_request("GET", f"tournaments?tournament_pass=eq.{pass_code}")
         
-        function showManageTournaments() {
-            if (!currentUser) {
-                showToast('Please login first', 'error');
-                showSection('homeSection');
-                return;
-            }
-            
-            showSection('manageTournamentsSection');
+        if not tournaments or len(tournaments) == 0:
+            raise HTTPException(status_code=404, detail="Invalid tournament pass")
+        
+        tournament = tournaments[0]
+        
+        return {
+            "success": True,
+            "tournament": tournament,
+            "message": "Tournament access granted"
         }
-        
-        function showMyTournamentsTab(tabName) {
-            document.querySelectorAll('#myTournamentsSection .tab').forEach(tab => {
-                tab.style.color = 'var(--gray)';
-                tab.style.borderBottom = 'none';
-            });
-            
-            const activeTab = document.querySelector(`#myTournamentsSection .tab[onclick="showMyTournamentsTab('${tabName}')"]`);
-            if (activeTab) {
-                activeTab.style.color = 'var(--primary)';
-                activeTab.style.borderBottom = '3px solid var(--primary)';
-            }
-            
-            loadMyTournamentsTab(tabName);
-        }
-        
-        function showTournamentPassModal() {
-            document.getElementById('tournamentPassModal').style.display = 'flex';
-            document.getElementById('tournamentPassInput').value = '';
-            document.getElementById('tournamentPassAlert').style.display = 'none';
-        }
-        
-        // ========== TOURNAMENT FUNCTIONS ==========
-        async function loadDashboardData() {
-            await updateStatsDisplay();
-            await loadFeaturedTournaments();
-        }
-        
-        async function updateStatsDisplay() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/stats`);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.stats) {
-                        document.getElementById('liveMatchesCount').textContent = data.stats.live_matches;
-                        document.getElementById('activeTournaments').textContent = data.stats.active_tournaments;
-                        document.getElementById('totalTeams').textContent = data.stats.total_teams;
-                        document.getElementById('totalUsers').textContent = data.stats.total_users;
-                        document.getElementById('footerServerCount').textContent = data.stats.connected_servers;
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading stats:', error);
-            }
-        }
-        
-        async function loadFeaturedTournaments() {
-            const container = document.getElementById('featuredTournaments');
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/tournaments`);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    if (container) {
-                        if (!data.success || !data.tournaments || data.tournaments.length === 0) {
-                            container.innerHTML = `
-                                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                                    <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO TOURNAMENTS YET</h3>
-                                    <p style="color: var(--gray);">Tournaments will appear when created via Discord bot</p>
-                                </div>
-                            `;
-                            return;
-                        }
-                        
-                        const activeTournaments = data.tournaments
-                            .filter(t => t.status !== 'completed')
-                            .slice(0, 3);
-                        
-                        if (activeTournaments.length === 0) {
-                            container.innerHTML = `
-                                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                                    <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO ACTIVE TOURNAMENTS</h3>
-                                    <p style="color: var(--gray);">Check back later for new tournaments</p>
-                                </div>
-                            `;
-                            return;
-                        }
-                        
-                        container.innerHTML = '';
-                        activeTournaments.forEach(tournament => {
-                            container.appendChild(createTournamentCard(tournament));
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading featured tournaments:', error);
-                container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
-            }
-        }
-        
-        async function loadAllTournaments() {
-            const container = document.getElementById('allTournaments');
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/tournaments`);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    if (container) {
-                        if (!data.success || !data.tournaments || data.tournaments.length === 0) {
-                            container.innerHTML = `
-                                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                                    <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO TOURNAMENTS AVAILABLE</h3>
-                                    <p style="color: var(--gray);">Tournaments will appear when created via Discord bot</p>
-                                </div>
-                            `;
-                            return;
-                        }
-                        
-                        allTournaments = data.tournaments;
-                        
-                        const activeTournaments = data.tournaments.filter(t => t.status !== 'completed');
-                        
-                        if (activeTournaments.length === 0) {
-                            container.innerHTML = `
-                                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                                    <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO ACTIVE TOURNAMENTS</h3>
-                                    <p style="color: var(--gray);">Check back later for new tournaments</p>
-                                </div>
-                            `;
-                            return;
-                        }
-                        
-                        container.innerHTML = '';
-                        activeTournaments.forEach(tournament => {
-                            container.appendChild(createTournamentCard(tournament));
-                        });
-                        
-                        setTournamentFilter('all');
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading all tournaments:', error);
-                container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
-            }
-        }
-        
-        function filterTournaments() {
-            const searchTerm = document.getElementById('tournamentSearch').value.toLowerCase();
-            const container = document.getElementById('allTournaments');
-            
-            if (!container || !allTournaments.length) return;
-            
-            let filtered = allTournaments.filter(tournament => {
-                const matchesSearch = searchTerm === '' || 
-                    tournament.name.toLowerCase().includes(searchTerm) ||
-                    tournament.id.toLowerCase().includes(searchTerm) ||
-                    tournament.game.toLowerCase().includes(searchTerm);
-                
-                let matchesFilter = true;
-                if (currentFilter !== 'all') {
-                    matchesFilter = tournament.status === currentFilter;
-                }
-                
-                return matchesSearch && matchesFilter;
-            });
-            
-            container.innerHTML = '';
-            if (filtered.length === 0) {
-                container.innerHTML = `
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                        <i class="fas fa-search" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                        <h3 style="color: var(--primary); font-family: 'Orbitron';">NO TOURNAMENTS FOUND</h3>
-                        <p style="color: var(--gray);">Try a different search term or filter</p>
-                    </div>
-                `;
-            } else {
-                filtered.forEach(tournament => {
-                    container.appendChild(createTournamentCard(tournament));
-                });
-            }
-        }
-        
-        function setTournamentFilter(filterType) {
-            currentFilter = filterType;
-            
-            document.querySelectorAll('#tournamentsSection .filter-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            const activeBtn = document.querySelector(`#tournamentsSection .filter-btn[onclick="setTournamentFilter('${filterType}')"]`);
-            if (activeBtn) {
-                activeBtn.classList.add('active');
-            }
-            
-            filterTournaments();
-        }
-        
-        async function loadManageTournaments() {
-            const container = document.getElementById('manageTournamentsList');
-            const alertEl = document.getElementById('manageAlert');
-            
-            if (!currentUser) {
-                container.innerHTML = '<div class="alert alert-error">Please login first</div>';
-                return;
-            }
-            
-            try {
-                if (!managedTournament) {
-                    alertEl.innerHTML = '<i class="fas fa-key"></i> Use a tournament pass from Discord to manage tournaments';
-                    alertEl.className = 'alert alert-error';
-                    alertEl.style.display = 'flex';
-                    
-                    container.innerHTML = `
-                        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                            <i class="fas fa-key" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                            <h3 style="color: var(--primary); font-family: 'Orbitron';">NO TOURNAMENT ACCESS</h3>
-                            <p style="color: var(--gray); margin-bottom: 2rem;">Use a tournament pass from Discord bot to manage tournaments</p>
-                            <button class="btn btn-primary" onclick="showTournamentPassModal()">
-                                <i class="fas fa-key"></i> USE TOURNAMENT PASS
-                            </button>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                container.innerHTML = '';
-                container.appendChild(createTournamentCard(managedTournament, true, true));
-                
-                alertEl.innerHTML = `<i class="fas fa-check-circle"></i> Managing: ${managedTournament.name}`;
-                alertEl.className = 'alert alert-success';
-                alertEl.style.display = 'flex';
-                
-            } catch (error) {
-                console.error('Error loading manage tournaments:', error);
-                container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
-            }
-        }
-        
-        async function loadMyTournaments() {
-            showMyTournamentsTab('joined');
-        }
-        
-        async function loadMyTournamentsTab(tabName) {
-            const container = document.getElementById('myTournamentsContent');
-            
-            if (!currentUser) {
-                container.innerHTML = '<div class="alert alert-error">Please login first</div>';
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/tournaments`);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    if (container) {
-                        if (!data.success || !data.tournaments) {
-                            container.innerHTML = `
-                                <div style="text-align: center; padding: 3rem;">
-                                    <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO TOURNAMENTS FOUND</h3>
-                                    <p style="color: var(--gray);">${getNoTournamentsMessage(tabName)}</p>
-                                </div>
-                            `;
-                            return;
-                        }
-                        
-                        let filteredTournaments = [];
-                        
-                        switch(tabName) {
-                            case 'joined':
-                                filteredTournaments = data.tournaments.filter(t => 
-                                    t.status === 'ongoing'
-                                ).slice(0, 5);
-                                break;
-                            case 'hosting':
-                                filteredTournaments = managedTournament ? [managedTournament] : [];
-                                break;
-                            case 'registered':
-                                filteredTournaments = data.tournaments.filter(t => 
-                                    t.status === 'registration'
-                                );
-                                break;
-                        }
-                        
-                        if (filteredTournaments.length === 0) {
-                            container.innerHTML = `
-                                <div style="text-align: center; padding: 3rem;">
-                                    <i class="fas fa-trophy" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO TOURNAMENTS FOUND</h3>
-                                    <p style="color: var(--gray);">${getNoTournamentsMessage(tabName)}</p>
-                                </div>
-                            `;
-                            return;
-                        }
-                        
-                        container.innerHTML = '<div class="tournaments-grid"></div>';
-                        const grid = container.querySelector('.tournaments-grid');
-                        filteredTournaments.forEach(tournament => {
-                            grid.appendChild(createTournamentCard(tournament, true));
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading my tournaments:', error);
-                container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
-            }
-        }
-        
-        function getNoTournamentsMessage(tabName) {
-            switch(tabName) {
-                case 'joined': return "You haven't joined any tournaments yet";
-                case 'hosting': return "Use a tournament pass from Discord to manage tournaments";
-                case 'registered': return "No tournaments are currently open for registration";
-                default: return "No tournaments found";
-            }
-        }
-        
-        async function loadHostTournaments() {
-            const container = document.getElementById('hostTournamentsList');
-            
-            if (!currentUser) {
-                container.innerHTML = '<div class="alert alert-error">Please login first</div>';
-                return;
-            }
-            
-            try {
-                if (!managedTournament) {
-                    container.innerHTML = `
-                        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                            <i class="fas fa-key" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                            <h3 style="color: var(--primary); font-family: 'Orbitron';">NO HOSTED TOURNAMENTS</h3>
-                            <p style="color: var(--gray);">Use a tournament pass from Discord bot to manage tournaments!</p>
-                            <button class="btn btn-primary mt-2" onclick="showTournamentPassModal()">
-                                <i class="fas fa-key"></i> USE TOURNAMENT PASS
-                            </button>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                container.innerHTML = '';
-                container.appendChild(createTournamentCard(managedTournament, true, true));
-                
-            } catch (error) {
-                console.error('Error loading host tournaments:', error);
-                container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
-            }
-        }
-        
-        async function loadPublicBrackets() {
-            const container = document.getElementById('publicBracketsContent');
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/tournaments`);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    if (container) {
-                        if (!data.success || !data.tournaments) {
-                            container.innerHTML = `
-                                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                                    <i class="fas fa-bracket-curly" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO PUBLIC BRACKETS</h3>
-                                    <p style="color: var(--gray);">Tournament brackets will appear here</p>
-                                </div>
-                            `;
-                            return;
-                        }
-                        
-                        const brackets = data.tournaments.filter(t => 
-                            t.status === 'ongoing' || t.status === 'completed'
-                        );
-                        
-                        if (brackets.length === 0) {
-                            container.innerHTML = `
-                                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                                    <i class="fas fa-bracket-curly" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                                    <h3 style="color: var(--primary); font-family: 'Orbitron';">NO PUBLIC BRACKETS</h3>
-                                    <p style="color: var(--gray);">Tournament brackets will appear here</p>
-                                </div>
-                            `;
-                            return;
-                        }
-                        
-                        container.innerHTML = '';
-                        brackets.forEach(bracket => {
-                            container.appendChild(createPublicBracketCard(bracket));
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading public brackets:', error);
-                container.innerHTML = '<div class="alert alert-error">Error loading brackets</div>';
-            }
-        }
-        
-        function createTournamentCard(tournament, showActions = false, showHostActions = false) {
-            const card = document.createElement('div');
-            card.className = 'tournament-card';
-            card.dataset.id = tournament.id;
-            
-            const progressPercent = tournament.max_teams > 0 ? 
-                Math.min((tournament.team_count || 0) / tournament.max_teams * 100, 100) : 0;
-            
-            card.innerHTML = `
-                <div class="tournament-header">
-                    <div class="tournament-title">${tournament.name}</div>
-                    <div class="tournament-status status-${tournament.status}" style="white-space: nowrap;">
-                        ${tournament.status.toUpperCase()}
-                    </div>
-                </div>
-                
-                <div style="margin-bottom: 1.5rem;">
-                    <div style="color: var(--primary); font-weight: 700; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 10px; white-space: nowrap;">
-                        <i class="fas fa-gamepad"></i> ${tournament.game}
-                    </div>
-                    
-                    ${tournament.description ? `
-                    <div style="color: var(--gray); margin-bottom: 1rem; font-size: 0.9rem;">
-                        ${tournament.description.substring(0, 100)}${tournament.description.length > 100 ? '...' : ''}
-                    </div>
-                    ` : ''}
-                    
-                    <div class="tournament-progress">
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${progressPercent}%"></div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--gray); font-family: 'Orbitron'; white-space: nowrap;">
-                            <span>${tournament.team_count || 0}/${tournament.max_teams} TEAMS</span>
-                            <span>${Math.round(progressPercent)}% FULL</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="color: var(--gray); font-size: 0.9rem; margin-top: 1.5rem;">
-                    <div style="white-space: nowrap;"><i class="fas fa-user"></i> ID: ${tournament.id.substring(0, 8)}...</div>
-                    <div style="white-space: nowrap;"><i class="fas fa-calendar"></i> ${new Date(tournament.created_at).toLocaleDateString()}</div>
-                </div>
-            `;
-            
-            if (showActions || showHostActions) {
-                const actionsDiv = document.createElement('div');
-                actionsDiv.style.marginTop = '1.5rem';
-                actionsDiv.style.display = 'flex';
-                actionsDiv.style.gap = '0.5rem';
-                actionsDiv.style.flexWrap = 'wrap';
-                
-                if (showActions) {
-                    if (tournament.status === 'registration') {
-                        const joinBtn = document.createElement('button');
-                        joinBtn.className = 'btn btn-primary btn-small';
-                        joinBtn.style.flex = '1';
-                        joinBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> REGISTER';
-                        joinBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            showDiscordRegistration(tournament.id);
-                        };
-                        actionsDiv.appendChild(joinBtn);
-                    } else {
-                        const viewBtn = document.createElement('button');
-                        viewBtn.className = 'btn btn-secondary btn-small';
-                        viewBtn.style.flex = '1';
-                        viewBtn.innerHTML = '<i class="fas fa-eye"></i> VIEW';
-                        viewBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            showTournamentDetails(tournament.id);
-                        };
-                        actionsDiv.appendChild(viewBtn);
-                    }
-                }
-                
-                if (showHostActions && managedTournament && managedTournament.id === tournament.id) {
-                    const manageBtn = document.createElement('button');
-                    manageBtn.className = 'btn btn-primary btn-small';
-                    manageBtn.style.flex = '1';
-                    manageBtn.innerHTML = '<i class="fas fa-cog"></i> MANAGE';
-                    manageBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        manageTournament(tournament.id);
-                    };
-                    actionsDiv.appendChild(manageBtn);
-                    
-                    const bracketBtn = document.createElement('button');
-                    bracketBtn.className = 'btn btn-secondary btn-small';
-                    bracketBtn.style.flex = '1';
-                    bracketBtn.innerHTML = '<i class="fas fa-bracket-curly"></i> BRACKET';
-                    bracketBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        openRealBracketEditor(tournament.id);
-                    };
-                    actionsDiv.appendChild(bracketBtn);
-                }
-                
-                card.appendChild(actionsDiv);
-            }
-            
-            card.onclick = () => showTournamentDetails(tournament.id);
-            
-            return card;
-        }
-        
-        function createPublicBracketCard(tournament) {
-            const card = document.createElement('div');
-            card.className = 'tournament-card';
-            card.dataset.id = tournament.id;
-            
-            const matchCount = tournament.total_rounds || 1;
-            
-            card.innerHTML = `
-                <div class="tournament-header">
-                    <div class="tournament-title">${tournament.name} BRACKET</div>
-                    <div class="tournament-status status-${tournament.status}" style="white-space: nowrap;">
-                        ${tournament.status.toUpperCase()}
-                    </div>
-                </div>
-                
-                <div style="margin-bottom: 1.5rem;">
-                    <div style="color: var(--primary); font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; white-space: nowrap;">
-                        <i class="fas fa-gamepad"></i> ${tournament.game}
-                    </div>
-                    
-                    <div style="background: rgba(220, 38, 38, 0.1); padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(220, 38, 38, 0.3);">
-                        <div style="color: var(--light); font-weight: 700; margin-bottom: 0.3rem; white-space: nowrap;">
-                            <i class="fas fa-flag"></i> CURRENT ROUND: ${tournament.current_round || 1}
-                        </div>
-                        <div style="color: var(--gray); font-size: 0.9rem; white-space: nowrap;">
-                            <i class="fas fa-users"></i> ${tournament.team_count || 0} TEAMS
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="color: var(--gray); font-size: 0.9rem; margin-top: 1.5rem;">
-                    <div style="white-space: nowrap;"><i class="fas fa-bracket-curly"></i> PUBLIC BRACKET</div>
-                    <div style="white-space: nowrap;"><i class="fas fa-calendar"></i> ${new Date(tournament.created_at).toLocaleDateString()}</div>
-                </div>
-                
-                <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
-                    <button class="btn btn-primary btn-small" onclick="viewPublicBracket('${tournament.id}')" style="flex: 1; white-space: nowrap;">
-                        <i class="fas fa-eye"></i> VIEW BRACKET
-                    </button>
-                    <button class="btn btn-secondary btn-small" onclick="showTournamentFromBracket('${tournament.id}')" style="flex: 1; white-space: nowrap;">
-                        <i class="fas fa-trophy"></i> VIEW TOURNAMENT
-                    </button>
-                </div>
-            `;
-            
-            return card;
-        }
-        
-        async function showTournamentDetails(tournamentId) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/tournaments`);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    const tournament = data.tournaments?.find(t => t.id === tournamentId);
-                    
-                    if (!tournament) {
-                        showToast('Tournament not found', 'error');
-                        return;
-                    }
-                    
-                    const modalContent = document.getElementById('tournamentDetailsContent');
-                    modalContent.innerHTML = `
-                        <h2 class="modal-title" style="text-align: left; margin-bottom: 1rem;">${tournament.name}</h2>
-                        <p style="color: var(--gray); margin-bottom: 2rem; white-space: nowrap;">${tournament.game} • ${tournament.status.toUpperCase()}</p>
-                        
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-                            <div style="padding: 1rem; background: rgba(0,0,0,0.5); border-radius: 10px; border-left: 3px solid var(--primary);">
-                                <div style="color: var(--gray); font-size: 0.9rem; font-family: 'Orbitron'; margin-bottom: 0.5rem; white-space: nowrap;">TEAMS</div>
-                                <div style="font-size: 1.5rem; font-weight: 700;">${tournament.team_count || 0}/${tournament.max_teams}</div>
-                            </div>
-                            <div style="padding: 1rem; background: rgba(0,0,0,0.5); border-radius: 10px; border-left: 3px solid var(--primary);">
-                                <div style="color: var(--gray); font-size: 0.9rem; font-family: 'Orbitron'; margin-bottom: 0.5rem; white-space: nowrap;">PLAYERS PER TEAM</div>
-                                <div style="font-size: 1.5rem; font-weight: 700;">${tournament.max_players_per_team || 5}</div>
-                            </div>
-                            <div style="padding: 1rem; background: rgba(0,0,0,0.5); border-radius: 10px; border-left: 3px solid var(--primary);">
-                                <div style="color: var(--gray); font-size: 0.9rem; font-family: 'Orbitron'; margin-bottom: 0.5rem; white-space: nowrap;">ROUNDS</div>
-                                <div style="font-size: 1.5rem; font-weight: 700;">${tournament.total_rounds || 1}</div>
-                            </div>
-                        </div>
-                        
-                        ${tournament.description ? `
-                        <div style="margin-bottom: 2rem;">
-                            <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">DESCRIPTION</h3>
-                            <p style="color: var(--light);">${tournament.description}</p>
-                        </div>
-                        ` : ''}
-                        
-                        <div class="discord-invite">
-                            <i class="fab fa-discord discord-icon"></i>
-                            <div class="discord-info">
-                                <h4>REGISTRATION REQUIRES DISCORD</h4>
-                                <p>This tournament was created in a Discord server. Join the server to register your team.</p>
-                                <button class="btn btn-primary" onclick="showDiscordRegistration('${tournamentId}')" style="margin-top: 0.5rem; white-space: nowrap;">
-                                    <i class="fab fa-discord"></i> GET DISCORD INVITE
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap;">
-                            <button class="btn btn-secondary" onclick="viewRealBracket('${tournamentId}')" style="flex: 1; white-space: nowrap;">
-                                <i class="fas fa-bracket-curly"></i> VIEW BRACKET
-                            </button>
-                            
-                            ${managedTournament && managedTournament.id === tournamentId ? `
-                            <button class="btn btn-secondary" onclick="openRealBracketEditor('${tournamentId}')" style="flex: 1; white-space: nowrap;">
-                                <i class="fas fa-edit"></i> EDIT BRACKET
-                            </button>
-                            ` : ''}
-                        </div>
-                    `;
-                    
-                    document.getElementById('tournamentDetailsModal').style.display = 'flex';
-                }
-                
-            } catch (error) {
-                console.error('Error loading tournament details:', error);
-                showToast('Error loading tournament details', 'error');
-            }
-        }
-        
-        function showDiscordRegistration(tournamentId) {
-            const tournament = allTournaments.find(t => t.id === tournamentId);
-            
-            if (!tournament) {
-                showToast('Tournament not found', 'error');
-                return;
-            }
-            
-            const inviteCode = tournament.tournament_pass || 'XTourney-Discord';
-            
-            document.getElementById('discordServerName').textContent = `${tournament.game.toUpperCase()} TOURNAMENT SERVER`;
-            document.getElementById('discordServerDescription').textContent = `Join the ${tournament.game} Discord server to register for "${tournament.name}"`;
-            document.getElementById('discordInviteCode').textContent = inviteCode;
-            document.getElementById('discordInviteLink').href = `https://discord.gg/${inviteCode}`;
-            
-            document.getElementById('discordRegistrationModal').style.display = 'flex';
-        }
-        
-        function copyDiscordInvite() {
-            const inviteCode = document.getElementById('discordInviteLink').href;
-            navigator.clipboard.writeText(inviteCode).then(() => {
-                showToast('Discord invite copied to clipboard!', 'success');
-            }).catch(err => {
-                console.error('Failed to copy: ', err);
-                showToast('Failed to copy invite', 'error');
-            });
-        }
-        
-        async function useTournamentPass() {
-            const passCode = document.getElementById('tournamentPassInput').value.trim().toUpperCase();
-            
-            if (!passCode) {
-                showAlert('tournamentPassAlert', 'Please enter a pass code', 'error');
-                return;
-            }
-            
-            try {
-                const formData = new URLSearchParams();
-                formData.append('pass_code', passCode);
-                
-                const response = await fetch(`${API_BASE_URL}/api/tournament-pass/auth`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'Authorization': `Bearer ${currentToken}`
-                    },
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    showAlert('tournamentPassAlert', error.detail || 'Invalid tournament pass', 'error');
-                    return;
-                }
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    currentTournamentPass = passCode;
-                    managedTournament = data.tournament;
-                    
-                    showAlert('tournamentPassAlert', `✅ ${data.message}`, 'success');
-                    
-                    setTimeout(() => {
-                        closeModal('tournamentPassModal');
-                        showSection('manageTournamentsSection');
-                        showToast(`Now managing: ${managedTournament.name}`, 'success');
-                    }, 1500);
-                }
-                
-            } catch (error) {
-                console.error('Error using tournament pass:', error);
-                showAlert('tournamentPassAlert', 'Error validating pass. Please try again.', 'error');
-            }
-        }
-        
-        function showAlert(alertId, message, type = 'error') {
-            const alertEl = document.getElementById(alertId);
-            alertEl.textContent = message;
-            alertEl.className = `alert alert-${type}`;
-            alertEl.style.display = 'flex';
-            
-            setTimeout(() => {
-                alertEl.style.display = 'none';
-            }, 5000);
-        }
-        
-        // ========== ADMIN PANEL FUNCTIONS ==========
-        function showAdminTab(tabName) {
-            currentAdminTab = tabName;
-            
-            document.querySelectorAll('#adminPanelSection .admin-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            const activeTab = document.querySelector(`#adminPanelSection .admin-tab[onclick="showAdminTab('${tabName}')"]`);
-            if (activeTab) {
-                activeTab.classList.add('active');
-            }
-            
-            loadAdminTab(tabName);
-        }
-        
-        function showOwnerTab(tabName) {
-            currentOwnerTab = tabName;
-            
-            document.querySelectorAll('#ownerPanelSection .admin-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            const activeTab = document.querySelector(`#ownerPanelSection .admin-tab[onclick="showOwnerTab('${tabName}')"]`);
-            if (activeTab) {
-                activeTab.classList.add('active');
-            }
-            
-            loadOwnerTab(tabName);
-        }
-        
-        async function loadAdminTab(tabName) {
-            const container = document.getElementById('adminContent');
-            
-            if (!currentUser || (!currentUser.is_admin && !currentUser.is_owner)) {
-                container.innerHTML = '<div class="alert alert-error">Admin access required</div>';
-                return;
-            }
-            
-            try {
-                switch(tabName) {
-                    case 'dashboard':
-                        await loadAdminDashboard();
-                        break;
-                    case 'users':
-                        await loadAdminUsers();
-                        break;
-                    case 'tournaments':
-                        await loadAdminTournaments();
-                        break;
-                    case 'ip-bans':
-                        await loadAdminIPBans();
-                        break;
-                    case 'bot-servers':
-                        await loadAdminBotServers();
-                        break;
-                    case 'logs':
-                        await loadAdminLogs();
-                        break;
-                    default:
-                        await loadAdminDashboard();
-                }
-            } catch (error) {
-                console.error(`Error loading admin tab ${tabName}:`, error);
-                container.innerHTML = '<div class="alert alert-error">Error loading admin panel</div>';
-            }
-        }
-        
-        async function loadOwnerTab(tabName) {
-            const container = document.getElementById('ownerContent');
-            
-            if (!currentUser || !currentUser.is_owner) {
-                container.innerHTML = '<div class="alert alert-error">Owner access required</div>';
-                return;
-            }
-            
-            // Owner panel uses the same functions as admin but with extra options
-            await loadAdminTab(tabName);
-        }
-        
-        async function loadAdminDashboard() {
-            const container = currentUser?.is_owner ? document.getElementById('ownerContent') : document.getElementById('adminContent');
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/admin/stats`, {
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to load admin stats');
-                }
-                
-                const data = await response.json();
-                
-                container.innerHTML = `
-                    <div class="admin-dashboard">
-                        <div class="admin-stats-grid">
-                            <div class="admin-stat-card">
-                                <div class="admin-stat-value">${data.stats?.total_users || 0}</div>
-                                <div class="admin-stat-label">TOTAL USERS</div>
-                            </div>
-                            <div class="admin-stat-card">
-                                <div class="admin-stat-value">${data.stats?.total_tournaments || 0}</div>
-                                <div class="admin-stat-label">TOURNAMENTS</div>
-                            </div>
-                            <div class="admin-stat-card">
-                                <div class="admin-stat-value">${data.stats?.total_teams || 0}</div>
-                                <div class="admin-stat-label">TEAMS</div>
-                            </div>
-                            <div class="admin-stat-card">
-                                <div class="admin-stat-value">${data.stats?.total_ip_bans || 0}</div>
-                                <div class="admin-stat-label">BANNED IPs</div>
-                            </div>
-                        </div>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
-                            <div>
-                                <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">RECENT USERS</h3>
-                                <div style="background: rgba(0,0,0,0.7); border-radius: 10px; padding: 1rem; max-height: 300px; overflow-y: auto;">
-                                    ${data.recent_users && data.recent_users.length > 0 ? 
-                                        data.recent_users.map(user => `
-                                            <div style="padding: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
-                                                <div>
-                                                    <div style="font-weight: 700;">${user.username}</div>
-                                                    <div style="font-size: 0.8rem; color: var(--gray);">${new Date(user.created_at).toLocaleDateString()}</div>
-                                                </div>
-                                                <div>
-                                                    ${user.is_owner ? '<span class="role-badge role-owner">OWNER</span>' : ''}
-                                                    ${user.is_admin ? '<span class="role-badge role-admin">ADMIN</span>' : ''}
-                                                    ${user.is_host ? '<span class="role-badge role-host">HOST</span>' : ''}
-                                                    ${!user.is_owner && !user.is_admin && !user.is_host ? '<span class="role-badge role-user">USER</span>' : ''}
-                                                </div>
-                                            </div>
-                                        `).join('') :
-                                        '<div style="text-align: center; padding: 2rem; color: var(--gray);">No users found</div>'
-                                    }
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">RECENT TOURNAMENTS</h3>
-                                <div style="background: rgba(0,0,0,0.7); border-radius: 10px; padding: 1rem; max-height: 300px; overflow-y: auto;">
-                                    ${data.recent_tournaments && data.recent_tournaments.length > 0 ? 
-                                        data.recent_tournaments.map(tournament => `
-                                            <div style="padding: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                                <div style="font-weight: 700;">${tournament.name}</div>
-                                                <div style="font-size: 0.8rem; color: var(--gray); display: flex; justify-content: space-between;">
-                                                    <span>${tournament.game}</span>
-                                                    <span class="tournament-status status-${tournament.status}">${tournament.status.toUpperCase()}</span>
-                                                </div>
-                                            </div>
-                                        `).join('') :
-                                        '<div style="text-align: center; padding: 2rem; color: var(--gray);">No tournaments found</div>'
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div style="margin-top: 2rem;">
-                            <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">QUICK ACTIONS</h3>
-                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                <button class="btn btn-primary" onclick="${currentUser?.is_owner ? 'showOwnerTab' : 'showAdminTab'}('users')" style="white-space: nowrap;">
-                                    <i class="fas fa-users"></i> MANAGE USERS
-                                </button>
-                                <button class="btn btn-primary" onclick="${currentUser?.is_owner ? 'showOwnerTab' : 'showAdminTab'}('tournaments')" style="white-space: nowrap;">
-                                    <i class="fas fa-trophy"></i> MANAGE TOURNAMENTS
-                                </button>
-                                <button class="btn btn-primary" onclick="${currentUser?.is_owner ? 'showOwnerTab' : 'showAdminTab'}('ip-bans')" style="white-space: nowrap;">
-                                    <i class="fas fa-ban"></i> IP BANNING
-                                </button>
-                                <button class="btn btn-primary" onclick="${currentUser?.is_owner ? 'showOwnerTab' : 'showAdminTab'}('logs')" style="white-space: nowrap;">
-                                    <i class="fas fa-clipboard-list"></i> VIEW LOGS
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-            } catch (error) {
-                console.error('Error loading admin dashboard:', error);
-                container.innerHTML = '<div class="alert alert-error">Error loading admin dashboard</div>';
-            }
-        }
-        
-        async function loadAdminUsers() {
-            const container = currentUser?.is_owner ? document.getElementById('ownerContent') : document.getElementById('adminContent');
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/admin/users`, {
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to load users');
-                }
-                
-                const data = await response.json();
-                
-                container.innerHTML = `
-                    <div class="admin-users">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                            <h3 style="color: var(--primary); font-family: 'Orbitron';">USER MANAGEMENT</h3>
-                            <button class="btn btn-secondary" onclick="${currentUser?.is_owner ? 'showOwnerTab' : 'showAdminTab'}('users')" style="white-space: nowrap;">
-                                <i class="fas fa-sync"></i> REFRESH
-                            </button>
-                        </div>
-                        
-                        <div style="overflow: auto;">
-                            <table class="admin-table">
-                                <thead>
-                                    <tr>
-                                        <th>USERNAME</th>
-                                        <th>ROLE</th>
-                                        <th>JOINED</th>
-                                        <th style="text-align: right;">ACTIONS</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${data.users && data.users.length > 0 ? 
-                                        data.users.map(user => `
-                                            <tr>
-                                                <td>
-                                                    <div style="font-weight: 700;">${user.username}</div>
-                                                    <div style="font-size: 0.8rem; color: var(--gray);">${user.email || 'No email'}</div>
-                                                </td>
-                                                <td>
-                                                    ${user.is_owner ? '<span class="role-badge role-owner">OWNER</span>' : ''}
-                                                    ${user.is_admin ? '<span class="role-badge role-admin">ADMIN</span>' : ''}
-                                                    ${user.is_host ? '<span class="role-badge role-host">HOST</span>' : ''}
-                                                    ${!user.is_owner && !user.is_admin && !user.is_host ? '<span class="role-badge role-user">USER</span>' : ''}
-                                                </td>
-                                                <td style="font-size: 0.8rem; color: var(--gray);">
-                                                    ${new Date(user.created_at).toLocaleDateString()}
-                                                </td>
-                                                <td style="text-align: right;">
-                                                    <div class="action-buttons">
-                                                        ${!user.is_owner ? `
-                                                            <button class="btn btn-small btn-secondary" onclick="promoteUser('${user.id}', 'admin')" style="padding: 0.3rem 0.8rem; font-size: 0.7rem; white-space: nowrap;">
-                                                                ${user.is_admin ? 'DEMOTE' : 'MAKE ADMIN'}
-                                                            </button>
-                                                            <button class="btn btn-small btn-secondary" onclick="promoteUser('${user.id}', 'host')" style="padding: 0.3rem 0.8rem; font-size: 0.7rem; white-space: nowrap;">
-                                                                ${user.is_host ? 'REMOVE HOST' : 'MAKE HOST'}
-                                                            </button>
-                                                            ${user.id !== currentUser.id ? `
-                                                                <button class="btn btn-small btn-secondary" onclick="deleteUser('${user.id}')" style="padding: 0.3rem 0.8rem; font-size: 0.7rem; background: rgba(220,38,38,0.2); white-space: nowrap;">
-                                                                    DELETE
-                                                                </button>
-                                                            ` : ''}
-                                                        ` : '<span style="color: var(--gray); font-size: 0.8rem;">Owner Account</span>'}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        `).join('') :
-                                        '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--gray);">No users found</td></tr>'
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                `;
-                
-            } catch (error) {
-                console.error('Error loading admin users:', error);
-                container.innerHTML = '<div class="alert alert-error">Error loading users</div>';
-            }
-        }
-        
-        async function promoteUser(userId, roleType) {
-            if (!confirm(`Are you sure you want to change this user's role?`)) return;
-            
-            try {
-                const updateData = {};
-                if (roleType === 'admin') {
-                    updateData.make_admin = true;
-                    updateData.remove_admin = false;
-                } else if (roleType === 'host') {
-                    updateData.make_host = true;
-                    updateData.remove_host = false;
-                }
-                
-                const promoteResponse = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/promote`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentToken}`
-                    },
-                    body: JSON.stringify(updateData)
-                });
-                
-                if (promoteResponse.ok) {
-                    showToast('User role updated successfully', 'success');
-                    if (currentUser?.is_owner) {
-                        showOwnerTab('users');
-                    } else {
-                        showAdminTab('users');
-                    }
-                } else {
-                    throw new Error('Failed to update user role');
-                }
-                
-            } catch (error) {
-                console.error('Error promoting user:', error);
-                showToast('Error updating user role', 'error');
-            }
-        }
-        
-        async function deleteUser(userId) {
-            if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    }
-                });
-                
-                if (response.ok) {
-                    showToast('User deleted successfully', 'success');
-                    if (currentUser?.is_owner) {
-                        showOwnerTab('users');
-                    } else {
-                        showAdminTab('users');
-                    }
-                } else {
-                    throw new Error('Failed to delete user');
-                }
-                
-            } catch (error) {
-                console.error('Error deleting user:', error);
-                showToast('Error deleting user', 'error');
-            }
-        }
-        
-        async function loadAdminTournaments() {
-            const container = currentUser?.is_owner ? document.getElementById('ownerContent') : document.getElementById('adminContent');
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/admin/tournaments`, {
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to load tournaments');
-                }
-                
-                const data = await response.json();
-                
-                container.innerHTML = `
-                    <div class="admin-tournaments">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                            <h3 style="color: var(--primary); font-family: 'Orbitron';">TOURNAMENT MANAGEMENT</h3>
-                            <button class="btn btn-secondary" onclick="${currentUser?.is_owner ? 'showOwnerTab' : 'showAdminTab'}('tournaments')" style="white-space: nowrap;">
-                                <i class="fas fa-sync"></i> REFRESH
-                            </button>
-                        </div>
-                        
-                        <div class="tournaments-grid">
-                            ${data.tournaments && data.tournaments.length > 0 ? 
-                                data.tournaments.map(tournament => `
-                                    <div class="tournament-card">
-                                        <div class="tournament-header">
-                                            <div class="tournament-title">${tournament.name}</div>
-                                            <div class="tournament-status status-${tournament.status}">${tournament.status.toUpperCase()}</div>
-                                        </div>
-                                        
-                                        <div style="margin-bottom: 1.5rem;">
-                                            <div style="color: var(--primary); font-weight: 700; margin-bottom: 0.8rem;">
-                                                <i class="fas fa-gamepad"></i> ${tournament.game}
-                                            </div>
-                                            
-                                            <div style="font-size: 0.9rem; color: var(--gray); margin-bottom: 1rem;">
-                                                ID: ${tournament.id.substring(0, 8)}...
-                                            </div>
-                                            
-                                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--gray);">
-                                                <span><i class="fas fa-users"></i> ${tournament.team_count || 0}/${tournament.max_teams}</span>
-                                                <span><i class="fas fa-calendar"></i> ${new Date(tournament.created_at).toLocaleDateString()}</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
-                                            <button class="btn btn-small btn-secondary" onclick="editTournament('${tournament.id}')" style="flex: 1; white-space: nowrap;">
-                                                <i class="fas fa-edit"></i> EDIT
-                                            </button>
-                                            <button class="btn btn-small btn-secondary" onclick="deleteTournament('${tournament.id}')" style="flex: 1; white-space: nowrap;">
-                                                <i class="fas fa-trash"></i> DELETE
-                                            </button>
-                                        </div>
-                                    </div>
-                                `).join('') :
-                                '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray);">No tournaments found</div>'
-                            }
-                        </div>
-                    </div>
-                `;
-                
-            } catch (error) {
-                console.error('Error loading admin tournaments:', error);
-                container.innerHTML = '<div class="alert alert-error">Error loading tournaments</div>';
-            }
-        }
-        
-        function editTournament(tournamentId) {
-            const tournament = allTournaments.find(t => t.id === tournamentId);
-            if (!tournament) {
-                showToast('Tournament not found', 'error');
-                return;
-            }
-            
-            document.getElementById('editTournamentName').value = tournament.name;
-            document.getElementById('editTournamentStatus').value = tournament.status;
-            document.getElementById('editTournamentMaxTeams').value = tournament.max_teams;
-            document.getElementById('editTournamentDescription').value = tournament.description || '';
-            
-            document.getElementById('editTournamentModal').style.display = 'flex';
-            document.getElementById('editTournamentAlert').style.display = 'none';
-            
-            // Store tournament ID for submission
-            document.getElementById('editTournamentModal').dataset.tournamentId = tournamentId;
-        }
-        
-        async function submitEditTournament() {
-            const tournamentId = document.getElementById('editTournamentModal').dataset.tournamentId;
-            const name = document.getElementById('editTournamentName').value;
-            const status = document.getElementById('editTournamentStatus').value;
-            const maxTeams = document.getElementById('editTournamentMaxTeams').value;
-            const description = document.getElementById('editTournamentDescription').value;
-            
-            try {
-                const updateData = {
-                    name: name,
-                    status: status,
-                    max_teams: parseInt(maxTeams),
-                    description: description,
-                    updated_at: new Date().toISOString()
-                };
-                
-                const response = await fetch(`${API_BASE_URL}/api/admin/tournaments/${tournamentId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentToken}`
-                    },
-                    body: JSON.stringify(updateData)
-                });
-                
-                if (response.ok) {
-                    showToast('Tournament updated successfully', 'success');
-                    closeModal('editTournamentModal');
-                    if (currentUser?.is_owner) {
-                        showOwnerTab('tournaments');
-                    } else {
-                        showAdminTab('tournaments');
-                    }
-                } else {
-                    const error = await response.json();
-                    showAlert('editTournamentAlert', error.detail || 'Failed to update tournament', 'error');
-                }
-                
-            } catch (error) {
-                console.error('Error updating tournament:', error);
-                showAlert('editTournamentAlert', 'Error updating tournament', 'error');
-            }
-        }
-        
-        async function deleteTournament(tournamentId) {
-            if (!confirm('Are you sure you want to delete this tournament? This will also delete all associated teams, matches, and brackets. This action cannot be undone.')) return;
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/admin/tournaments/${tournamentId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    }
-                });
-                
-                if (response.ok) {
-                    showToast('Tournament deleted successfully', 'success');
-                    if (currentUser?.is_owner) {
-                        showOwnerTab('tournaments');
-                    } else {
-                        showAdminTab('tournaments');
-                    }
-                } else {
-                    throw new Error('Failed to delete tournament');
-                }
-                
-            } catch (error) {
-                console.error('Error deleting tournament:', error);
-                showToast('Error deleting tournament', 'error');
-            }
-        }
-        
-        async function loadAdminIPBans() {
-            const container = currentUser?.is_owner ? document.getElementById('ownerContent') : document.getElementById('adminContent');
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/admin/ip-bans`, {
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to load IP bans');
-                }
-                
-                const data = await response.json();
-                
-                container.innerHTML = `
-                    <div class="admin-ip-bans">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                            <h3 style="color: var(--primary); font-family: 'Orbitron';">IP BANNING SYSTEM</h3>
-                            <div style="display: flex; gap: 1rem;">
-                                <button class="btn btn-primary" onclick="showBanIPModal()" style="white-space: nowrap;">
-                                    <i class="fas fa-ban"></i> BAN IP
-                                </button>
-                                <button class="btn btn-secondary" onclick="${currentUser?.is_owner ? 'showOwnerTab' : 'showAdminTab'}('ip-bans')" style="white-space: nowrap;">
-                                    <i class="fas fa-sync"></i> REFRESH
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div style="background: rgba(0,0,0,0.7); border-radius: 10px; overflow: hidden;">
-                            <div style="display: grid; grid-template-columns: 2fr 3fr 2fr 1fr; gap: 1rem; padding: 1rem; background: rgba(220,38,38,0.1); border-bottom: 2px solid var(--primary); font-weight: 700; font-family: 'Orbitron';">
-                                <div>IP ADDRESS</div>
-                                <div>REASON</div>
-                                <div>EXPIRES</div>
-                                <div style="text-align: right;">ACTIONS</div>
-                            </div>
-                            
-                            <div style="max-height: 500px; overflow-y: auto;">
-                                ${data.bans && data.bans.length > 0 ? 
-                                    data.bans.map(ban => `
-                                        <div class="ip-ban-row">
-                                            <div style="font-family: monospace; font-weight: 700;">${ban.ip_address}</div>
-                                            <div style="font-size: 0.9rem;">${ban.reason}</div>
-                                            <div style="font-size: 0.8rem; color: var(--gray);">
-                                                ${ban.expires_at ? new Date(ban.expires_at).toLocaleDateString() : 'PERMANENT'}
-                                            </div>
-                                            <div style="text-align: right;">
-                                                <button class="btn btn-small btn-secondary" onclick="unbanIP('${ban.ip_address}')" style="padding: 0.3rem 0.8rem; font-size: 0.7rem; white-space: nowrap;">
-                                                    UNBAN
-                                                </button>
-                                            </div>
-                                        </div>
-                                    `).join('') :
-                                    '<div style="text-align: center; padding: 2rem; color: var(--gray);">No IP bans found</div>'
-                                }
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-            } catch (error) {
-                console.error('Error loading admin IP bans:', error);
-                container.innerHTML = '<div class="alert alert-error">Error loading IP bans</div>';
-            }
-        }
-        
-        function showBanIPModal() {
-            document.getElementById('banIPModal').style.display = 'flex';
-            document.getElementById('banIPAddress').value = '';
-            document.getElementById('banIPReason').value = '';
-            document.getElementById('banIPDuration').value = '';
-            document.getElementById('banIPAlert').style.display = 'none';
-        }
-        
-        async function submitBanIP() {
-            const ipAddress = document.getElementById('banIPAddress').value.trim();
-            const reason = document.getElementById('banIPReason').value.trim();
-            const duration = document.getElementById('banIPDuration').value;
-            
-            if (!ipAddress) {
-                showAlert('banIPAlert', 'IP address is required', 'error');
-                return;
-            }
-            
-            if (!reason) {
-                showAlert('banIPAlert', 'Reason is required', 'error');
-                return;
-            }
-            
-            try {
-                const banData = {
-                    ip_address: ipAddress,
-                    reason: reason
-                };
-                
-                if (duration) {
-                    banData.duration_days = parseInt(duration);
-                }
-                
-                const response = await fetch(`${API_BASE_URL}/api/admin/ip-bans`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentToken}`
-                    },
-                    body: JSON.stringify(banData)
-                });
-                
-                if (response.ok) {
-                    showToast('IP banned successfully', 'success');
-                    closeModal('banIPModal');
-                    if (currentUser?.is_owner) {
-                        showOwnerTab('ip-bans');
-                    } else {
-                        showAdminTab('ip-bans');
-                    }
-                } else {
-                    const error = await response.json();
-                    showAlert('banIPAlert', error.detail || 'Failed to ban IP', 'error');
-                }
-                
-            } catch (error) {
-                console.error('Error banning IP:', error);
-                showAlert('banIPAlert', 'Error banning IP', 'error');
-            }
-        }
-        
-        async function unbanIP(ipAddress) {
-            if (!confirm(`Are you sure you want to unban IP ${ipAddress}?`)) return;
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/admin/ip-bans/${ipAddress}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    }
-                });
-                
-                if (response.ok) {
-                    showToast('IP unbanned successfully', 'success');
-                    if (currentUser?.is_owner) {
-                        showOwnerTab('ip-bans');
-                    } else {
-                        showAdminTab('ip-bans');
-                    }
-                } else {
-                    throw new Error('Failed to unban IP');
-                }
-                
-            } catch (error) {
-                console.error('Error unbanning IP:', error);
-                showToast('Error unbanning IP', 'error');
-            }
-        }
-        
-        async function loadAdminBotServers() {
-            const container = currentUser?.is_owner ? document.getElementById('ownerContent') : document.getElementById('adminContent');
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/admin/bot-servers`, {
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to load bot servers');
-                }
-                
-                const data = await response.json();
-                
-                container.innerHTML = `
-                    <div class="admin-bot-servers">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                            <h3 style="color: var(--primary); font-family: 'Orbitron';">DISCORD BOT SERVERS</h3>
-                            <button class="btn btn-secondary" onclick="${currentUser?.is_owner ? 'showOwnerTab' : 'showAdminTab'}('bot-servers')" style="white-space: nowrap;">
-                                <i class="fas fa-sync"></i> REFRESH
-                            </button>
-                        </div>
-                        
-                        <div class="tournaments-grid">
-                            ${data.servers && data.servers.length > 0 ? 
-                                data.servers.map(server => `
-                                    <div class="tournament-card">
-                                        <div class="tournament-header">
-                                            <div class="tournament-title">${server.server_name}</div>
-                                            <div class="tournament-status" style="background: rgba(88, 101, 242, 0.15); color: #5865F2; border-color: rgba(88, 101, 242, 0.5); white-space: nowrap;">
-                                                DISCORD
-                                            </div>
-                                        </div>
-                                        
-                                        <div style="margin-bottom: 1.5rem;">
-                                            <div style="color: var(--primary); font-weight: 700; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 10px;">
-                                                <i class="fab fa-discord"></i> SERVER ID: ${server.server_id.substring(0, 8)}...
-                                            </div>
-                                            
-                                            <div style="font-size: 0.9rem; color: var(--gray); margin-bottom: 1rem;">
-                                                <i class="fas fa-users"></i> ${server.member_count || 0} members
-                                            </div>
-                                            
-                                            <div style="font-size: 0.8rem; color: var(--gray);">
-                                                <i class="fas fa-clock"></i> Last updated: ${new Date(server.last_updated).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('') :
-                                '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray);">No bot servers found</div>'
-                            }
-                        </div>
-                    </div>
-                `;
-                
-            } catch (error) {
-                console.error('Error loading admin bot servers:', error);
-                container.innerHTML = '<div class="alert alert-error">Error loading bot servers</div>';
-            }
-        }
-        
-        async function loadAdminLogs() {
-            const container = currentUser?.is_owner ? document.getElementById('ownerContent') : document.getElementById('adminContent');
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/admin/logs`, {
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to load logs');
-                }
-                
-                const data = await response.json();
-                
-                container.innerHTML = `
-                    <div class="admin-logs">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                            <h3 style="color: var(--primary); font-family: 'Orbitron';">AUDIT LOGS</h3>
-                            <button class="btn btn-secondary" onclick="${currentUser?.is_owner ? 'showOwnerTab' : 'showAdminTab'}('logs')" style="white-space: nowrap;">
-                                <i class="fas fa-sync"></i> REFRESH
-                            </button>
-                        </div>
-                        
-                        <div style="background: rgba(0,0,0,0.7); border-radius: 10px; overflow: hidden;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 2fr 3fr; gap: 1rem; padding: 1rem; background: rgba(220,38,38,0.1); border-bottom: 2px solid var(--primary); font-weight: 700; font-family: 'Orbitron';">
-                                <div>TIMESTAMP</div>
-                                <div>USER</div>
-                                <div>ACTION</div>
-                                <div>DETAILS</div>
-                            </div>
-                            
-                            <div style="max-height: 500px; overflow-y: auto;">
-                                ${data.logs && data.logs.length > 0 ? 
-                                    data.logs.map(log => `
-                                        <div style="display: grid; grid-template-columns: 1fr 1fr 2fr 3fr; gap: 1rem; padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); align-items: center; font-size: 0.9rem;">
-                                            <div style="color: var(--gray);">
-                                                ${new Date(log.created_at).toLocaleString()}
-                                            </div>
-                                            <div>
-                                                <div style="font-weight: 700;">${log.username || 'System'}</div>
-                                                <div style="font-size: 0.8rem; color: var(--gray);">${log.user_id?.substring(0, 8) || ''}</div>
-                                            </div>
-                                            <div>
-                                                <span style="background: rgba(220,38,38,0.2); padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: 700;">
-                                                    ${log.action}
-                                                </span>
-                                            </div>
-                                            <div style="color: var(--gray); font-family: monospace; font-size: 0.8rem;">
-                                                ${log.details ? JSON.stringify(log.details).substring(0, 50) + '...' : 'No details'}
-                                            </div>
-                                        </div>
-                                    `).join('') :
-                                    '<div style="text-align: center; padding: 2rem; color: var(--gray);">No logs found</div>'
-                                }
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-            } catch (error) {
-                console.error('Error loading admin logs:', error);
-                container.innerHTML = '<div class="alert alert-error">Error loading logs</div>';
-            }
-        }
-        
-        // ========== REAL BRACKET FUNCTIONS ==========
-        async function openRealBracketEditor(tournamentId) {
-            if (!managedTournament || managedTournament.id !== tournamentId) {
-                showToast('Use tournament pass to edit bracket', 'error');
-                showTournamentPassModal();
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/tournaments/${tournamentId}/bracket`);
-                
-                if (!response.ok) {
-                    throw new Error('Failed to load bracket data');
-                }
-                
-                const data = await response.json();
-                
-                if (!data.success) {
-                    throw new Error('Failed to load bracket data');
-                }
-                
-                currentTournamentForBracket = tournamentId;
-                document.getElementById('realBracketEditorTitle').textContent = `BRACKET EDITOR - ${data.tournament.name}`;
-                
-                const editorContent = document.getElementById('realBracketEditorContent');
-                
-                if (data.bracket && data.bracket.bracket_data) {
-                    currentBracketData = typeof data.bracket.bracket_data === 'string' 
-                        ? JSON.parse(data.bracket.bracket_data) 
-                        : data.bracket.bracket_data;
-                    editorContent.innerHTML = createRealBracketEditorHTML(currentBracketData, data.teams || []);
-                } else {
-                    editorContent.innerHTML = createEmptyBracketHTML(data.tournament, data.teams || []);
-                    currentBracketData = null;
-                }
-                
-                showSection('realBracketEditorSection');
-                
-            } catch (error) {
-                console.error('Error loading bracket editor:', error);
-                showToast('Error loading bracket editor', 'error');
-            }
-        }
-        
-        function createEmptyBracketHTML(tournament, teams) {
-            return `
-                <div class="real-bracket-editor">
-                    <div style="text-align: center; padding: 3rem;">
-                        <i class="fas fa-bracket-curly" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
-                        <h3 style="color: var(--primary); font-family: 'Orbitron';">NO BRACKET GENERATED</h3>
-                        <p style="color: var(--gray); margin-bottom: 2rem;">Generate a bracket to start the tournament</p>
-                        
-                        <div style="background: rgba(0,0,0,0.5); padding: 2rem; border-radius: 10px; margin-bottom: 2rem;">
-                            <h4 style="color: var(--light); margin-bottom: 1rem;">TOURNAMENT INFO</h4>
-                            <p><strong>Teams Registered:</strong> ${teams.length}</p>
-                            <p><strong>Max Teams:</strong> ${tournament.max_teams}</p>
-                            <p><strong>Status:</strong> ${tournament.status}</p>
-                        </div>
-                        
-                        <button class="btn btn-primary" onclick="generateRealBracket('${tournament.id}')" style="padding: 1rem 2rem; white-space: nowrap;">
-                            <i class="fas fa-magic"></i> GENERATE BRACKET
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-        
-        function createRealBracketEditorHTML(bracketData, teams) {
-            let html = `
-                <div class="real-bracket-editor">
-                    <div style="margin-bottom: 2rem;">
-                        <h3 style="color: var(--primary); font-family: 'Orbitron'; margin-bottom: 1rem;">TOURNAMENT BRACKET</h3>
-                        <p style="color: var(--gray);">Edit match scores and advance winners</p>
-                    </div>
-            `;
-            
-            if (!bracketData.rounds || bracketData.rounds.length === 0) {
-                html += `
-                    <div style="text-align: center; padding: 2rem;">
-                        <p style="color: var(--gray);">No bracket data available</p>
-                    </div>
-                `;
-            } else {
-                bracketData.rounds.forEach((round, roundIndex) => {
-                    html += `
-                        <div class="bracket-round">
-                            <div class="round-header">ROUND ${round.round_number || roundIndex + 1}</div>
-                            <div class="matches-grid">
-                    `;
-                    
-                    round.matches?.forEach((match, matchIndex) => {
-                        html += createRealMatchHTML(match, roundIndex, matchIndex);
-                    });
-                    
-                    html += `
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-            
-            html += `
-                    <div style="margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
-                        <button class="btn btn-primary" onclick="advanceRealBracketWinners()" style="white-space: nowrap;">
-                            <i class="fas fa-arrow-right"></i> ADVANCE WINNERS
-                        </button>
-                        <button class="btn btn-secondary" onclick="refreshBracket()" style="white-space: nowrap;">
-                            <i class="fas fa-sync"></i> REFRESH BRACKET
-                        </button>
-                        <button class="btn btn-secondary" onclick="viewRealBracket('${currentTournamentForBracket}')" style="white-space: nowrap;">
-                            <i class="fas fa-eye"></i> PREVIEW BRACKET
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            return html;
-        }
-        
-        function createRealMatchHTML(match, roundIndex, matchIndex) {
-            const matchId = `real-match-${roundIndex}-${matchIndex}`;
-            const isCompleted = match.winner_id !== null && match.winner_id !== undefined;
-            const status = isCompleted ? 'completed' : (match.status || 'scheduled');
-            
-            return `
-                <div class="match-card">
-                    <div class="match-header">
-                        <div class="match-id">MATCH ${match.match_number || matchIndex + 1}</div>
-                        <div class="match-status status-${status}">${status.toUpperCase()}</div>
-                    </div>
-                    
-                    <div class="team-row ${match.winner_id === match.team1_id ? 'winner' : ''}" id="${matchId}-team1" onclick="setRealMatchWinner('${matchId}', 'team1')">
-                        <div class="team-name">${match.team1_name || 'TBD'}</div>
-                        <input type="number" class="team-score" value="${match.score1 || 0}" min="0" onchange="updateRealMatchScore('${matchId}', 'team1', this.value)">
-                        ${!isCompleted ? `<button class="set-winner-btn" onclick="setRealMatchWinner('${matchId}', 'team1', event)">✓</button>` : ''}
-                    </div>
-                    
-                    <div class="team-row ${match.winner_id === match.team2_id ? 'winner' : ''}" id="${matchId}-team2" onclick="setRealMatchWinner('${matchId}', 'team2')">
-                        <div class="team-name">${match.team2_name || 'TBD'}</div>
-                        <input type="number" class="team-score" value="${match.score2 || 0}" min="0" onchange="updateRealMatchScore('${matchId}', 'team2', this.value)">
-                        ${!isCompleted ? `<button class="set-winner-btn" onclick="setRealMatchWinner('${matchId}', 'team2', event)">✓</button>` : ''}
-                    </div>
-                </div>
-            `;
-        }
-        
-        function updateRealMatchScore(matchId, team, score) {
-            const matchElement = document.getElementById(matchId);
-            if (!matchElement || !currentBracketData) return;
-            
-            const scoreNum = parseInt(score) || 0;
-            const scoreInput = document.querySelector(`#${matchId}-${team} .team-score`);
-            if (scoreInput) {
-                scoreInput.value = scoreNum;
-            }
-            
-            showToast('Score updated', 'success');
-        }
-        
-        function setRealMatchWinner(matchId, winningTeam, event) {
-            if (event) event.stopPropagation();
-            
-            const matchElement = document.getElementById(matchId);
-            if (!matchElement || !currentBracketData) return;
-            
-            // Update visual style
-            document.querySelectorAll(`#${matchId}-team1, #${matchId}-team2`).forEach(row => {
-                row.classList.remove('winner');
-            });
-            
-            const winnerElement = document.getElementById(`${matchId}-${winningTeam}`);
-            if (winnerElement) {
-                winnerElement.classList.add('winner');
-            }
-            
-            showToast('Winner set!', 'success');
-        }
-        
-        async function generateRealBracket(tournamentId) {
-            if (!managedTournament || managedTournament.id !== tournamentId) {
-                showToast('Not authorized to generate bracket', 'error');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/tournaments/${tournamentId}/generate-bracket`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to generate bracket');
-                }
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    showToast('✅ Bracket generated successfully!', 'success');
-                    setTimeout(() => {
-                        openRealBracketEditor(tournamentId);
-                    }, 1000);
-                }
-                
-            } catch (error) {
-                console.error('Error generating bracket:', error);
-                showToast('Error generating bracket', 'error');
-            }
-        }
-        
-        function advanceRealBracketWinners() {
-            showToast('Advancing winners to next round...', 'success');
-            // In a real implementation, this would update the bracket structure
-        }
-        
-        function refreshBracket() {
-            if (currentTournamentForBracket) {
-                openRealBracketEditor(currentTournamentForBracket);
-            }
-        }
-        
-        async function saveRealBracket() {
-            if (!currentBracketData || !currentTournamentForBracket) {
-                showToast('No bracket data to save', 'error');
-                return;
-            }
-            
-            // In a real implementation, this would save the bracket to the backend
-            showToast('Bracket saved successfully!', 'success');
-        }
-        
-        // ========== REAL BRACKET VIEWER ==========
-        async function viewRealBracket(tournamentId) {
-            try {
-                currentTournamentForBracket = tournamentId;
-                
-                const response = await fetch(`${API_BASE_URL}/api/tournaments/${tournamentId}/bracket`);
-                if (!response.ok) throw new Error('Failed to load bracket');
-                
-                const data = await response.json();
-                
-                if (!data.success) {
-                    showToast('Bracket not available', 'error');
-                    return;
-                }
-                
-                const tournament = data.tournament;
-                const bracketData = data.bracket?.bracket_data;
-                
-                // Setup canvas
-                const canvas = document.getElementById('bracketCanvas');
-                if (!canvas) return;
-                
-                const container = canvas.parentElement;
-                canvas.width = container.clientWidth - 40;
-                canvas.height = Math.max(600, (tournament.max_teams || 16) * 40);
-                
-                bracketCanvas = canvas;
-                bracketCtx = canvas.getContext('2d');
-                
-                // Clear canvas
-                bracketCtx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                // Draw bracket
-                drawBracket(bracketCtx, canvas.width, canvas.height, tournament, bracketData);
-                
-                // Show viewer
-                document.getElementById('bracketViewer').style.display = 'block';
-                
-            } catch (error) {
-                console.error('Error viewing bracket:', error);
-                showToast('Error loading bracket', 'error');
-            }
-        }
-        
-        function viewPublicBracket(tournamentId) {
-            viewRealBracket(tournamentId);
-        }
-        
-        function showTournamentFromBracket(tournamentId) {
-            showTournamentDetails(tournamentId);
-            closeModal('tournamentDetailsModal');
-        }
-        
-        function closeBracketViewer() {
-            document.getElementById('bracketViewer').style.display = 'none';
-        }
-        
-        function drawBracket(ctx, width, height, tournament, bracketData) {
-            // Set background
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-            ctx.fillRect(0, 0, width, height);
-            
-            // Draw tournament title
-            ctx.fillStyle = '#DC2626';
-            ctx.font = 'bold 24px Orbitron, monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText(tournament.name.toUpperCase(), width / 2, 40);
-            
-            ctx.fillStyle = '#888';
-            ctx.font = '16px Orbitron, monospace';
-            ctx.fillText(`${tournament.game} • ${tournament.status.toUpperCase()}`, width / 2, 70);
-            
-            // Draw bracket lines
-            const totalRounds = tournament.total_rounds || 1;
-            const matchHeight = 80;
-            const roundWidth = (width - 100) / totalRounds;
-            
-            // Draw matches
-            if (bracketData && bracketData.rounds) {
-                bracketData.rounds.forEach((round, roundIndex) => {
-                    const roundX = 50 + (roundIndex * roundWidth);
-                    const matchesInRound = round.matches?.length || 0;
-                    const totalSpace = matchesInRound * matchHeight;
-                    const startY = (height - totalSpace) / 2;
-                    
-                    round.matches?.forEach((match, matchIndex) => {
-                        const matchY = startY + (matchIndex * matchHeight);
-                        
-                        // Draw match box
-                        ctx.fillStyle = 'rgba(220, 38, 38, 0.1)';
-                        ctx.strokeStyle = '#DC2626';
-                        ctx.lineWidth = 2;
-                        ctx.strokeRect(roundX, matchY, roundWidth - 20, 60);
-                        ctx.fillRect(roundX, matchY, roundWidth - 20, 60);
-                        
-                        // Draw team names
-                        ctx.fillStyle = '#FFF';
-                        ctx.font = '12px Arial';
-                        ctx.textAlign = 'left';
-                        
-                        // Team 1
-                        ctx.fillText(match.team1_name || 'TBD', roundX + 10, matchY + 20);
-                        if (match.score1 !== undefined && match.score1 !== null) {
-                            ctx.fillText(match.score1, roundX + roundWidth - 40, matchY + 20);
-                        }
-                        
-                        // Team 2
-                        ctx.fillText(match.team2_name || 'TBD', roundX + 10, matchY + 40);
-                        if (match.score2 !== undefined && match.score2 !== null) {
-                            ctx.fillText(match.score2, roundX + roundWidth - 40, matchY + 40);
-                        }
-                        
-                        // Draw winner indicator
-                        if (match.winner_id) {
-                            ctx.fillStyle = '#10B981';
-                            ctx.beginPath();
-                            ctx.arc(roundX + roundWidth - 50, matchY + (match.winner_id === match.team1_id ? 20 : 40), 5, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
-                        
-                        // Draw connection lines to next round
-                        if (roundIndex < totalRounds - 1) {
-                            const nextRoundX = roundX + roundWidth;
-                            const nextMatchIndex = Math.floor(matchIndex / 2);
-                            const nextRound = bracketData.rounds[roundIndex + 1];
-                            
-                            if (nextRound && nextRound.matches && nextRound.matches[nextMatchIndex]) {
-                                const nextMatchY = startY + (nextMatchIndex * matchHeight * 2) + 30;
-                                
-                                ctx.strokeStyle = '#DC2626';
-                                ctx.lineWidth = 1;
-                                ctx.setLineDash([5, 5]);
-                                ctx.beginPath();
-                                ctx.moveTo(roundX + roundWidth - 20, matchY + 30);
-                                ctx.lineTo(nextRoundX, nextMatchY);
-                                ctx.stroke();
-                                ctx.setLineDash([]);
-                            }
-                        }
-                    });
-                });
-            } else {
-                // Draw empty bracket structure
-                ctx.fillStyle = '#888';
-                ctx.font = '18px Orbitron, monospace';
-                ctx.textAlign = 'center';
-                ctx.fillText('BRACKET NOT GENERATED YET', width / 2, height / 2);
-                
-                ctx.font = '14px Arial';
-                ctx.fillText('The tournament bracket will appear here once generated', width / 2, height / 2 + 30);
-            }
-        }
-        
-        // ========== UTILITY FUNCTIONS ==========
-        function showToast(message, type = 'success') {
-            document.querySelectorAll('.toast').forEach(toast => toast.remove());
-            
-            const toast = document.createElement('div');
-            toast.className = `alert alert-${type} toast`;
-            toast.style.position = 'fixed';
-            toast.style.top = '20px';
-            toast.style.right = '20px';
-            toast.style.zIndex = '9999';
-            toast.style.maxWidth = '300px';
-            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
-            
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-        
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
-        
-        // Initialize
-        showAuthTab('login');
-        
-        document.querySelector('#myTournamentsSection .tab[onclick="showMyTournamentsTab(\'joined\')"]').style.color = 'var(--primary)';
-        document.querySelector('#myTournamentsSection .tab[onclick="showMyTournamentsTab(\'joined\')"]').style.borderBottom = '3px solid var(--primary)';
-    </script>
-</body>
-</html>
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Tournament pass auth error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to authenticate tournament pass")
+
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
